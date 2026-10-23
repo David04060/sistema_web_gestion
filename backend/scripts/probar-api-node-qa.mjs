@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID, randomBytes } from 'node:crypto';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { URL } from 'node:url';
 import { abrirQa } from './neon-qa-guard.mjs';
 
@@ -8,22 +8,35 @@ const { qa, pool } = await abrirQa();
 Object.assign(process.env, qa);
 const { generarHash } = await import('../dist/shared/security/password.js');
 const tag = randomUUID().slice(0, 8);
-const claveUsuario = 'Fixture-runtime-' + tag;
-const claveNueva = 'Fixture-runtime-nueva-' + tag;
+const claveUsuario = 'Fixture-runtime-' + randomBytes(24).toString('base64url');
+const claveNueva = 'Fixture-runtime-nueva-' + randomBytes(24).toString('base64url');
 const claveSiseve = 'Fixture-restringido-' + randomUUID();
 process.env.DB_PROFILE = 'neon-qa';
 process.env.CORS_ORIGINS = 'https://qa-pages.example';
 process.env.TRUST_PROXY_HOPS = '1';
-const { app } = await import('../dist/app.js');
-const appPool = (await import('../dist/config/database.js')).pool;
-const server = app.listen(0, '127.0.0.1');
-await new Promise(resolve => server.once('listening', resolve));
-const host = 'http://127.0.0.1:' + server.address().port;
-assert.equal(new URL(host).hostname, '127.0.0.1', 'Solo ejecutar contra Express local');
+const remoto = process.argv.includes('--remoto');
+let server, appPool, host;
+if (remoto) {
+    // El destino se registra únicamente después de verificar el servicio creado y su configuración QA.
+    const despliegue = JSON.parse(readFileSync('../.private/render/DEPLOYMENT.json', 'utf8'));
+    assert.equal(despliegue.neonBranchId, qa.NEON_BRANCH_ID, 'El servicio no tiene la rama QA contrastada');
+    assert.equal(despliegue.qaConfigurada, true);
+    const url = new URL(despliegue.backend);
+    assert.equal(url.protocol, 'https:');
+    assert.equal(url.hostname.endsWith('.onrender.com'), true);
+    assert.equal(url.origin, despliegue.backend);
+    host = url.origin;
+} else {
+    const { app } = await import('../dist/app.js');
+    appPool = (await import('../dist/config/database.js')).pool;
+    server = app.listen(0, '127.0.0.1');
+    await new Promise(resolve => server.once('listening', resolve));
+    host = 'http://127.0.0.1:' + server.address().port;
+}
 const resultados = [];
 const caso = async (nombre, fn) => { await fn(); resultados.push(nombre); console.log('OK API Node:', nombre); };
 const call = async (token, ruta, body, status = 200, method = body === undefined ? 'GET' : 'POST') => {
-    const r = await fetch(host + ruta, { method,
+    const r = await fetch(host + ruta, { method, signal: globalThis.AbortSignal.timeout(30000),
         headers: { ...(token ? { Authorization: 'Bearer ' + token } : {}), 'Content-Type': 'application/json',
             'X-Forwarded-For': '198.51.100.61' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     assert.equal(r.status, status, method + ' ' + ruta + ' devolvió ' + r.status);
@@ -106,8 +119,9 @@ try {
         for (const secreto of [claveUsuario, claveNueva, claveSiseve, hash]) assert.equal(texto.includes(secreto), false);
     });
 } finally {
-    await new Promise(resolve => server.close(resolve));
-    await appPool.end();
+    if (server) await new Promise(resolve => server.close(resolve));
+    if (appPool) await appPool.end();
     await pool.end();
-    writeFileSync('../.private/render/RESULTADOS_API_NODE.json', JSON.stringify({ runtime: 'HTTP Express Node.js + Neon QA', resultados }, null, 2));
+    writeFileSync('../.private/render/' + (remoto ? 'RESULTADOS_API_REMOTA.json' : 'RESULTADOS_API_NODE.json'),
+        JSON.stringify({ runtime: remoto ? 'Render remoto HTTPS + Neon QA' : 'HTTP Express Node.js + Neon QA', resultados }, null, 2));
 }
