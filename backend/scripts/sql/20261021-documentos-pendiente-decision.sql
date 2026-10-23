@@ -1,0 +1,3 @@
+-- PROPUESTA ANTERIOR DESCARTADA. No ejecutar.
+-- Sustituida por 20261021-flujo-documental-cinco-estados.sql,
+-- pendiente de revision y autorizacion expresa del usuario.

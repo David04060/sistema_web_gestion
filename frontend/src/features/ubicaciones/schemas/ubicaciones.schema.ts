@@ -1,0 +1,13 @@
+import { z } from 'zod';
+const id = z.string().regex(/^[1-9][0-9]*$/);
+const fechas = { fecha_creacion: z.iso.datetime({ offset: true }), fecha_modificacion: z.iso.datetime({ offset: true }) };
+export const estanteDatosSchema = z.object({ codigo: z.string().trim().toUpperCase().regex(/^[A-Z]{1,10}$/, 'Usa entre 1 y 10 letras'), usuario_id: id, oficina_id: id }).strict();
+export const archivadorDatosSchema = z.object({ estante_id: id, numero: z.number().int().min(1, 'El número debe ser positivo').max(2147483647) }).strict();
+export const estanteSchema = estanteDatosSchema.extend({ id, oficina: z.string(), responsable: z.string(), responsable_activo: z.boolean(), ...fechas });
+export const archivadorSchema = archivadorDatosSchema.extend({ id, codigo: z.string(), usuario_id: id, oficina_id: id, oficina: z.string(), responsable: z.string(), ...fechas });
+export const opcionesSchema = z.object({ actor_id: id, administrador: z.boolean(), oficina_id: id.nullable(), oficinas: z.array(z.object({ id, nombre: z.string() })), responsables: z.array(z.object({ id, nombre: z.string(), oficina_id: id.nullable(), activo: z.boolean() })) });
+export type Estante = z.infer<typeof estanteSchema>;
+export type Archivador = z.infer<typeof archivadorSchema>;
+export type Opciones = z.infer<typeof opcionesSchema>;
+export type DatosEstante = z.infer<typeof estanteDatosSchema>;
+export type DatosArchivador = z.infer<typeof archivadorDatosSchema>;

@@ -1,0 +1,9 @@
+.badge { display:inline-flex; align-items:center; gap:6px; border:1px solid transparent; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:600; line-height:1.6; max-width:100%; }
+.badge::before { content:''; width:5px; height:5px; flex:none; border-radius:50%; background:currentColor; }
+.advertencia { color:#805316; background:#fffae9; border-color:#efdfb8; }
+.info { color:#000000; background:#eff5ff; border-color:#d5e3ff; }
+.exito { color:#2b672a; background:#f0f8ed; border-color:#d5e7d0; }
+.error { color:#9a2f24; background:#fff1ee; border-color:#f1d1ca; }
+.neutro { color:#626c79; background:#f3f4f6; border-color:#e1e4e8; }
+
+.info::before { background:#2158ad; }

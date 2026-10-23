@@ -1,0 +1,5 @@
+.dialogo { width:min(480px,calc(100% - 32px)); border:1px solid var(--borde); border-radius:14px; padding:28px; color:var(--texto); box-shadow:0 24px 100px #172b4050; }
+.dialogo::backdrop { background:#172d3e70; backdrop-filter:blur(3px); }
+.dialogo h2 { margin:0 0 18px; font-size:21px; }
+.dialogo p { line-height:1.8; font-size:13px; color:var(--texto-secundario); }
+.dialogo>div:last-child { padding-top:14px; justify-content:flex-end; }

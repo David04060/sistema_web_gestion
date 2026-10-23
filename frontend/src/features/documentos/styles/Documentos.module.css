@@ -1,0 +1,9 @@
+.historial { overflow-wrap:anywhere; }
+.historial article { position:relative; border-left:1px solid var(--borde); padding:0 0 22px 22px; margin:20px 0 0 5px; }
+.historial article::before { content:''; position:absolute; width:9px; height:9px; border:2px solid white; background:var(--primario); border-radius:50%; left:-5px; top:4px; box-shadow:0 0 0 1px var(--borde); }
+.historial h3 { font-size:12px; font-weight:650; margin:0 0 5px; letter-spacing:0; }
+.historial p { color:var(--texto-secundario); font-size:11px; margin:0 0 16px; }
+.historial dl { display:grid; gap:12px; background:#f8fafb; border:1px solid #edf0f3; border-radius:8px; padding:16px; }
+.historial dt { font-size:11px; font-weight:600; color:#536171; }
+.historial dd { margin:6px 0 0; white-space:pre-wrap; font-size:12px; line-height:1.7; }
+.antecedente { padding:16px; border:1px solid var(--borde); border-radius:8px; background:var(--superficie-secundaria); }

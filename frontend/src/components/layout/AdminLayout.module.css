@@ -1,0 +1,41 @@
+.sistema { min-height:100svh; background:var(--fondo); }
+.sidebar { width:248px; position:fixed; inset:0 auto 0 0; background:var(--superficie); border-right:1px solid var(--borde); display:flex; flex-direction:column; z-index:30; }
+.marca { display:flex; align-items:center; gap:11px; padding:29px 22px; }
+.marca strong { display:block; font-size:14px; letter-spacing:-.3px; }
+.marca small { display:block; margin-top:4px; color:var(--texto-secundario); font-size:11px; }
+.icono { width:38px; height:40px; flex:none; display:grid; place-items:center; background:var(--primario); color:white; border-radius:10px; font-weight:750; font-size:14px; }
+.menu { display:flex; flex-direction:column; gap:5px; padding:0 14px 20px; overflow-y:auto; }
+.grupo { text-transform:uppercase; letter-spacing:1.2px; font-size:10px; font-weight:700; color:var(--texto-secundario); margin:25px 12px 8px; }
+.menu a { display:flex; align-items:center; gap:12px; text-decoration:none; color:#52616d; font-size:13px; font-weight:500; padding:12px; border:1px solid transparent; border-radius:var(--radio-control); min-height:44px; }
+.menu a:hover { background:var(--superficie-secundaria); color:#000000; }
+.menu a[aria-current='page'] { color:#000000; background:#e9f2f0; font-weight:700; border-color:#d4e5e0; box-shadow:inset 3px 0 var(--primario-hover); }
+.pie { margin:auto 22px 22px; border-top:1px solid var(--borde); padding-top:20px; display:flex; gap:10px; color:#000000; font-size:12px; }
+.pie small { display:block; color:var(--texto-secundario); margin-top:5px; font-size:10px; }
+.area { margin-left:248px; min-width:0; }
+.barra { min-height:82px; padding:15px 34px; background:var(--superficie); border-bottom:1px solid var(--borde); display:flex; align-items:center; justify-content:space-between; gap:15px; }
+.contexto { display:flex; align-items:center; gap:12px; min-width:0; }
+.contexto span { display:block; color:var(--texto-secundario); font-size:10px; margin-bottom:5px; }
+.contexto strong { font-size:13px; font-weight:600; }
+.cuenta { display:flex; align-items:center; gap:11px; font-size:12px; }
+.cuenta strong,.cuenta small { display:block; }
+.cuenta small { margin-top:4px; font-size:10px; color:var(--texto-secundario); }
+.avatar { width:35px; height:35px; border-radius:50%; display:grid; place-items:center; color:#000000; background:var(--superficie-secundaria); font-size:11px; font-weight:700; }
+.cuenta button,.abrir,.cabeceraDrawer button { display:flex; align-items:center; justify-content:center; gap:7px; border:1px solid var(--borde); background:white; border-radius:8px; color:var(--texto-secundario); padding:9px 11px; min-height:38px; font-size:11px; }
+.cuenta button { margin-left:12px; }
+.cuenta button:hover { background:var(--superficie-secundaria); color:#000000; }
+.contenido { min-width:0; outline:none; }
+.abrir { display:none; }
+.drawer { padding:0; margin:0; height:100svh; max-height:100svh; width:min(300px,90vw); max-width:90vw; border:0; border-right:1px solid var(--borde); color:var(--texto); }
+.drawer::backdrop { background:#172d3e70; }
+.cabeceraDrawer { display:flex; align-items:center; justify-content:space-between; padding-right:15px; }
+.cabeceraDrawer .marca { padding:22px 15px; }
+.saltar { position:fixed; top:-100px; left:270px; padding:12px 20px; background:var(--primario); color:white; z-index:100; border-radius:8px; }
+.saltar:focus { top:10px; }
+@media(max-width:1050px) { .barra { padding:15px 22px; } .cuenta small { max-width:140px; } }
+@media(max-width:800px) { .sidebar { display:none; } .area { margin-left:0; } .abrir { display:flex; } .barra { min-height:72px; padding:12px 16px; } .cuenta>div { display:none; } .cuenta { gap:7px; } .cuenta button { margin-left:0; padding:9px; } .cuenta button svg { display:none; } .contexto span { font-size:9px; } .saltar { left:16px; } }
+@media(min-width:801px) { .drawer[open] { display:none; } }
+
+
+/* El cambio de texto conserva el color previo de los iconos. */
+.menu a:hover svg,.menu a[aria-current='page'] svg { color:var(--primario-hover); }
+.pie>svg,.cuenta button:hover svg { color:var(--primario); }

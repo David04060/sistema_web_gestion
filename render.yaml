@@ -1,0 +1,30 @@
+# Solo QA. Las credenciales se introducen en Render, nunca en este archivo.
+services:
+  - type: web
+    name: sistema-documental
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_VERSION
+        value: 24.21.0
+      - key: NODE_ENV
+        value: production
+      - key: DB_PROFILE
+        value: neon-qa
+      - key: TRUST_PROXY_HOPS
+        value: 1
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: NEON_BRANCH_ID
+        sync: false
+      - key: NEON_QA_HOST
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
