@@ -3,6 +3,22 @@
 Esta guía sustituye las instrucciones de ejecución Workers/Hyperdrive. Los
 informes históricos no se borran; sus comandos Workers dejaron de estar disponibles.
 
+## URLs QA verificadas
+
+- Frontend: https://sistema-documental-p.pages.dev
+- API: https://sistema-documental-hw7t.onrender.com
+- Salud: https://sistema-documental-hw7t.onrender.com/api/health
+- Repositorio privado: https://github.com/David04060/sistema_web_gestion
+
+El nombre del servicio Render es sistema-documental; Render asignó el sufijo
+hw7t a su URL pública. Pages se publicó mediante Direct Upload del build estático,
+con VITE_API_URL establecido al compilar. Para nuevas versiones, usar el mismo
+proyecto Pages y verificar el build antes de subirlo. Render tiene despliegue
+automático desactivado: publicar manualmente después de validar.
+
+Los resultados locales y remotos de esta entrega constan en
+[ENTREGA_RENDER_PAGES_QA.md](ENTREGA_RENDER_PAGES_QA.md).
+
 ## Backend y conexiones
 
 Arquitectura conservada: Routes → Controllers → Services → Repositories → PostgreSQL.
