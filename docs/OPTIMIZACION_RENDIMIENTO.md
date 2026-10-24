@@ -75,6 +75,15 @@ en despertar: https://render.com/docs/free. Si supera el presupuesto acotado, el
 usuario recibirá error y podrá reintentar manualmente. No se añaden keep-alives,
 servicios de pago ni debilitamientos criptográficos.
 
+Publicación confirmada en Pages Production/main:
+3b9dee20-957f-4fb5-ae56-97ac6d36cda8, commit de aplicación
+7e75b102f266d505332a11bccbee29794a76ea9d. El dominio
+https://sistema-documental-p.pages.dev devolvió HTTP 200; HTML y hashes de JS/CSS
+principales coincidieron con el artefacto local. Login visible sin alertas en
+Chrome. API remota: salud 200; /me, Dashboard y acceso SíseVe sin token 401.
+En esta etapa no se inició otra sesión institucional remota: las regresiones
+autenticadas del cambio se probaron con datos sintéticos locales.
+
 Prueba sintética reproducible: desde frontend, node tests/performance-server.mjs;
 abrir http://127.0.0.1:5176. Cualquier usuario y contraseña sintéticos no vacíos
 sirven solo en ese servidor, que intercepta /api y no importa PostgreSQL.
