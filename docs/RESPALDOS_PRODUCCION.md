@@ -23,8 +23,8 @@ sumidero de hash. Nunca se restaura en una base ni se ejecuta ese SQL. Esto veri
 legibilidad e integridad; no se presenta como un ensayo de recuperación en otra
 base, que el alcance actual prohíbe crear.
 
-Los archivos .dump.enc, sus manifiestos y ULTIMO_RESPALDO.json quedan en
-.private/production/backups. La clave local de 32 bytes se conserva por separado
+Los archivos .dump.enc y sus manifiestos quedan en .private/production/backups.
+El resumen ULTIMO_RESPALDO.json queda en .private/production. La clave local de 32 bytes se conserva por separado
 en .private/production/keys/backup.key. Guardar una copia privada segura de esa
 clave fuera del equipo: sin ella no hay recuperación. No subirla junto al backup.
 Git excluye la carpeta privada, claves y archivos cifrados.
