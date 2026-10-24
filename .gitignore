@@ -29,3 +29,6 @@ docs/*APLICAD*.json
 *.tar
 *.tgz
 *.tsbuildinfo
+*.dump.enc
+*.backup.enc
+*.key

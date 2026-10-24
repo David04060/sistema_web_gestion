@@ -1,0 +1,51 @@
+name: Respaldo cifrado Neon production
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * *' # 03:00 America/Lima
+permissions:
+  contents: read
+concurrency:
+  group: backup-production
+  cancel-in-progress: false
+jobs:
+  backup:
+    # No se ejecuta ni transmite datos hasta activar R2 y configurar secretos.
+    if: vars.BACKUPS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24.21.0'
+      - name: Instalar cliente PostgreSQL 18 desde PGDG oficial
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          curl --fail --silent --show-error https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc >/dev/null
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-18
+      - run: npm ci --include=dev && npm run build
+      - name: Crear, verificar y subir respaldo cifrado privado
+        run: node scripts/backup-production.mjs --r2
+        env:
+          PRODUCTION_CONFIG_SOURCE: environment
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          BACKUP_DATABASE_URL: ${{ secrets.PRODUCTION_BACKUP_DATABASE_URL }}
+          NEON_BRANCH_ID: ${{ secrets.PRODUCTION_NEON_BRANCH_ID }}
+          NEON_PROJECT_ID: ${{ secrets.PRODUCTION_NEON_PROJECT_ID }}
+          NEON_HOST: ${{ secrets.PRODUCTION_NEON_HOST }}
+          BACKUP_KEY_BASE64: ${{ secrets.BACKUP_KEY_BASE64 }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_PRIVATE_BUCKET_CONFIRMED: 'true'

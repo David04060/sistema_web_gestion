@@ -3,10 +3,11 @@
 ## Despliegue vigente
 
 Backend convencional Node.js 24 y Express en Render Free; frontend estático en
-Cloudflare Pages; PostgreSQL directo en Neon. La preparación y las pruebas públicas
-usan exclusivamente la rama `qa-pruebas`. Workers e Hyperdrive fueron retirados del
-backend. R2 queda reservado para la etapa posterior de respaldos.
-Consultar [la guía operativa de Render y Pages](docs/DESPLIEGUE_RENDER_PAGES.md).
+Cloudflare Pages; PostgreSQL directo en Neon, rama `production`, base `neondb`.
+La rama anterior `qa-pruebas` fue eliminada y no se utiliza en el despliegue.
+Workers e Hyperdrive fueron retirados del backend. R2 queda preparado para
+respaldos cifrados, sujeto a su activación manual y configuración de secretos.
+Consultar [la guía vigente de producción](docs/PRODUCCION.md).
 Los informes anteriores de Workers se conservan como documentación histórica.
 
 ## Stack aprobado

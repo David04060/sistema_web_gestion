@@ -1,5 +1,8 @@
 # Operación Node.js + Render + Pages
 
+> Etapa QA histórica. El despliegue definitivo usa Neon `production` y
+> `DB_PROFILE=neon`. La guía vigente es [PRODUCCION.md](PRODUCCION.md).
+
 Esta guía sustituye las instrucciones de ejecución Workers/Hyperdrive. Los
 informes históricos no se borran; sus comandos Workers dejaron de estar disponibles.
 

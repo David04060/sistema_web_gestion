@@ -1,5 +1,6 @@
 import pg from "pg";
-import { env, perfilNeon, perfilQa } from "./env.js";
+import { env, perfilNeon } from "./env.js";
+import { validarIdentidadPostgres, type IdentidadPostgres } from './neon.js';
 const { Pool } = pg;
 /** Pool compartido: las credenciales provienen del entorno y nunca se registran. */
 export const pool = new Pool({
@@ -15,12 +16,7 @@ pool.on("error", /** Registra un fallo inesperado del pool para diagnóstico; no
 export async function verificarBaseDatos() {
     const cliente = await pool.connect();
     try {
-        const resultado = await cliente.query<{
-            base_datos: string;
-            usuario: string;
-            version: string;
-            rama: string | null;
-        }>(`SELECT current_database() AS base_datos, current_user AS usuario,
+        const resultado = await cliente.query<IdentidadPostgres>(`SELECT current_database() AS base_datos, current_user AS usuario,
             current_setting('server_version') AS version, current_setting('neon.branch_id',true) AS rama`);
         // pg_stat_ssl describe el tramo interno tras el proxy; comprobar el socket de Node.
         const transporte = cliente as unknown as {
@@ -28,12 +24,8 @@ export async function verificarBaseDatos() {
         };
         const socket = transporte.connection?.stream;
         const tls = socket?.encrypted === true && socket.authorized === true;
-        const nombre = resultado.rows[0]?.base_datos;
-        if (nombre !== (perfilNeon ? "neondb" : "sistema_web_final")
-            || (perfilNeon && (resultado.rows[0]?.usuario !== "sistema_web_app" || !tls))
-            || (perfilQa && resultado.rows[0]?.rama !== process.env.NEON_BRANCH_ID)) {
-            throw new Error("El backend está conectado a una base de datos inesperada.");
-        }
+        validarIdentidadPostgres(resultado.rows[0], tls, perfilNeon,
+            perfilNeon ? process.env.NEON_BRANCH_ID : undefined);
         console.log("Conexión PostgreSQL verificada correctamente.");
         const identidad = resultado.rows[0]!;
         return { base_datos: identidad.base_datos, usuario: identidad.usuario, version: identidad.version, tls };
