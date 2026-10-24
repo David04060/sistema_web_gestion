@@ -9,7 +9,7 @@ import styles from '../../../components/ui/Admin.module.css';
 /** Administra permisos y hash compartido sin consultar contenido documental. */
 export function SiseveAdministracionPage() {
     const token = useAuth().sesion!.token;
-    const consulta = useConsulta(useCallback(/** Consulta configuración y permisos individuales desde el endpoint administrativo. */() => api.administracion(token), [token]));
+    const consulta = useConsulta(useCallback(/** Consulta configuración y permisos individuales desde el endpoint administrativo. */() => api.administracion(token), [token]), { restringida: true });
     const [error, setError] = useState('');
     const [mensaje, setMensaje] = useState('');
     const [ocupado, setOcupado] = useState(false);

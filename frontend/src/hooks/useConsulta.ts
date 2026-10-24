@@ -1,30 +1,29 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-/** Ejecuta una consulta explícita y descarta respuestas antiguas al cambiar filtros, token o desmontar. */
-export function useConsulta<T>(consultar: () => Promise<T>) {
-    const [datos, setDatos] = useState<T | null>(null);
-    const [cargando, setCargando] = useState(true);
-    const [error, setError] = useState('');
+import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '../features/auth/hooks/useAuth';
+import { Consulta } from './consulta';
+/** Separa primera carga y actualización; descarta resultados ante cambios de cuenta, permisos o filtros. */
+export function useConsulta<T>(consultar: () => Promise<T>, opciones: { restringida?: boolean; habilitada?: boolean } = {}) {
+    const { sesion, revisionAcceso } = useAuth();
+    const contexto = JSON.stringify([sesion?.token, sesion?.usuario, revisionAcceso]);
+    const restringida = opciones.restringida ?? false;
+    const habilitada = opciones.habilitada ?? true;
+    const [consulta] = useState(() => new Consulta<T>());
+    const [estado, setEstado] = useState(consulta.snapshot);
     const [revision, setRevision] = useState(0);
-    const vigente = useRef(0);
-    const recargar = useCallback(/** Solicita una nueva ejecución de la consulta aumentando su revisión. */ () => setRevision(/** Incrementa la revisión desde su valor anterior para no perder recargas concurrentes. */  valor => valor + 1), []);
-    useEffect(/** Inicia una versión de consulta, limpia datos previos y prepara el descarte de respuestas obsoletas. */ () => {
-        const version = ++vigente.current;
-        setCargando(true);
-        setError('');
-        setDatos(null);
-        void consultar().then(/** Publica datos solo si la respuesta pertenece a la consulta todavía vigente. */  resultado => {
-            if (version === vigente.current)
-                setDatos(resultado);
-        }).catch(/** Presenta el fallo solo si corresponde a la consulta vigente. */ (fallo: unknown) => {
-            if (version === vigente.current)
-                setError(fallo instanceof Error ? fallo.message : 'No se pudo consultar la información.');
-        }).finally(/** Finaliza la carga solo si esta operación sigue siendo la vigente. */ () => {
-            if (version === vigente.current)
-                setCargando(false);
-        });
+    const recargar = useCallback(() => { if (!consulta.snapshot.pendiente) setRevision(valor => valor + 1); }, [consulta]);
+    useEffect(/** Mantiene solo resultados ordinarios de una recarga del mismo contexto. */ () => {
+        const desuscribir = consulta.subscribe(setEstado);
+        if (habilitada) void consulta.ejecutar(consultar, contexto, !restringida);
+        else consulta.limpiar();
         return /** Invalida respuestas pendientes al cambiar dependencias o desmontar el consumidor. */ () => {
-            vigente.current++;
+            desuscribir();
+            consulta.cancelar();
         };
-    }, [consultar, revision]);
-    return { datos, cargando, error, recargar };
+    }, [consulta, consultar, contexto, restringida, habilitada, revision]);
+    // Evita incluso un render con datos de otra cuenta, filtro o perfil antes del efecto.
+    const vigente = habilitada && estado.consultar === consultar && estado.contexto === contexto;
+    return { datos: vigente ? estado.datos : null,
+        cargando: !vigente || (estado.pendiente && estado.datos === null),
+        actualizando: vigente && estado.pendiente && estado.datos !== null,
+        error: vigente ? estado.error : '', recargar };
 }

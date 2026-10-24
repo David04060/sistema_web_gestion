@@ -13,6 +13,8 @@ export interface EstadoAuth {
     cargando: boolean;
     error: string;
     mensaje: string;
+    revalidando: boolean;
+    revisionAcceso: number;
 }
 interface Dependencias {
     api: {
@@ -24,7 +26,7 @@ interface Dependencias {
     programar: (accion: () => void, ms: number) => ReturnType<typeof setTimeout>;
     cancelar: typeof clearTimeout;
 }
-const inicial: EstadoAuth = { estado: 'verificando', sesion: null, cargando: false, error: '', mensaje: '' };
+const inicial: EstadoAuth = { estado: 'verificando', sesion: null, cargando: false, error: '', mensaje: '', revalidando: false, revisionAcceso: 0 };
 /**
  * Única autoridad de sesión del cliente. El servidor decide la validez; exp solo
  * acota su duración local. Las dependencias por defecto usan Fetch y sessionStorage
@@ -34,6 +36,7 @@ export class AuthSession {
     private estado: EstadoAuth = inicial;
     private listeners = new Set<() => void>();
     private operacion = 0;
+    private ultimaVerificacion = -Infinity;
     private temporizador?: ReturnType<typeof setTimeout>;
     private desuscribir?: () => void;
     private recuperacionEnCurso?: {
@@ -117,7 +120,8 @@ export class AuthSession {
     private invalidar(mensaje: string): void {
         this.operacion++;
         const error = this.limpiar();
-        this.publicar({ estado: 'anonimo', sesion: null, cargando: false, error, mensaje });
+        this.ultimaVerificacion = -Infinity;
+        this.publicar({ ...inicial, estado: 'anonimo', error, mensaje, revisionAcceso: this.estado.revisionAcceso + 1 });
     }
     /** Descarta el estado y el JWT de esta pestaña; no representa revocación del servidor. */
     cerrarSesion = (): void => {
@@ -130,11 +134,17 @@ export class AuthSession {
      * @param venceEn - Vencimiento absoluto original expresado en milisegundos.
      */
     private aceptar(token: string, usuario: Usuario, venceEn: number): void {
+        if (this.estado.sesion?.token === token)
+            venceEn = Math.min(venceEn, this.estado.sesion.venceEn);
         if (venceEn <= this.deps.ahora())
             throw new Error('Tu sesión ha vencido. Inicia sesión nuevamente.');
         if (this.temporizador)
             this.deps.cancelar(this.temporizador);
-        this.publicar({ estado: 'autenticado', sesion: { token, usuario, venceEn }, cargando: false, error: '', mensaje: '' });
+        const anterior = this.estado.sesion;
+        const igual = anterior?.token === token && JSON.stringify(anterior.usuario) === JSON.stringify(usuario);
+        this.ultimaVerificacion = this.deps.ahora();
+        this.publicar({ ...inicial, estado: 'autenticado', sesion: igual ? anterior : { token, usuario, venceEn },
+            revisionAcceso: this.estado.revisionAcceso + (anterior && !igual ? 1 : 0) });
         this.temporizador = this.deps.programar(/** Comprueba el vencimiento cuando se cumple el temporizador de la sesión aceptada. */ () => this.comprobarVencimiento(), Math.min(venceEn - this.deps.ahora(), 2147483647));
     }
     /** Se ejecuta también al navegar/regresar a la pestaña; no depende solo de setTimeout. */
@@ -144,11 +154,18 @@ export class AuthSession {
             return;
         if (sesion.venceEn <= this.deps.ahora())
             this.invalidar('Tu sesión ha vencido. Inicia sesión nuevamente.');
-        else
-            this.aceptar(sesion.token, sesion.usuario, sesion.venceEn);
+    };
+    /** Agrupa foco/pageshow/visibilidad: el reloj siempre se comprueba, /me como máximo cada 30 s. */
+    revalidarAlVolver = (): Promise<void> => {
+        this.comprobarVencimiento();
+        if (this.estado.estado === 'anonimo') return Promise.resolve();
+        if (this.estado.estado === 'autenticado' && this.deps.ahora() - this.ultimaVerificacion < 30000)
+            return Promise.resolve();
+        return this.recuperar();
     };
     /**
-     * Restaura/revalida mediante /me. Un fallo de red bloquea la vista privada y permite
+     * Restaura/revalida mediante /me. La revalidación pendiente conserva vistas ordinarias.
+     * Un fallo de red bloquea la vista privada y permite
      * reintentar; no confunde indisponibilidad con token inválido ni borra un JWT vigente.
      */
     recuperar = (): Promise<void> => {
@@ -174,14 +191,18 @@ export class AuthSession {
      * Lee el JWT, valida su vencimiento y consulta /me antes de publicar contenido privado; descarta respuestas antiguas y diferencia rechazo de credenciales de indisponibilidad de red.
      */
     private recuperarAhora = async (): Promise<void> => {
+        const anterior = this.estado.sesion;
         const version = ++this.operacion;
         if (this.temporizador)
             this.deps.cancelar(this.temporizador);
-        this.publicar({ ...inicial });
+        this.publicar(anterior ? { ...this.estado, revalidando: true } : { ...inicial, revisionAcceso: this.estado.revisionAcceso });
         let token: string | null;
         let venceEn: number;
         try {
             token = this.deps.storage.leer();
+            if (anterior && token !== anterior.token) {
+                this.publicar({ ...inicial, revisionAcceso: this.estado.revisionAcceso + 1 });
+            }
             if (!token) {
                 this.invalidar('');
                 return;
@@ -214,7 +235,7 @@ export class AuthSession {
                 this.invalidar(fallo.status === 403 ? 'No tienes permiso para acceder al sistema.' : 'Tu sesión no es válida. Inicia sesión nuevamente.');
             }
             else {
-                this.publicar({ ...inicial, estado: 'error', error: fallo instanceof Error ? fallo.message : 'No se pudo verificar la sesión.' });
+                this.publicar({ ...inicial, revisionAcceso: this.estado.revisionAcceso + 1, estado: 'error', error: fallo instanceof Error ? fallo.message : 'No se pudo verificar la sesión.' });
             }
         }
     };
@@ -241,7 +262,7 @@ export class AuthSession {
             if (version !== this.operacion)
                 return;
             const errorStorage = this.limpiar();
-            this.publicar({ estado: 'anonimo', sesion: null, cargando: false,
+            this.publicar({ ...inicial, estado: 'anonimo',
                 error: errorStorage || (fallo instanceof Error ? fallo.message : 'No se pudo iniciar sesión.'), mensaje: '' });
         }
     };

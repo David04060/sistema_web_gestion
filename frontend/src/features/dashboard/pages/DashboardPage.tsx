@@ -1,6 +1,7 @@
 import { Icono } from '../../../components/icons/Icono';
 import { EstadoBadge } from '../../../components/ui/EstadoBadge';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { observarRegreso } from '../../../lib/regresoVisible';
 import { Link } from 'react-router-dom';
 import type { Usuario } from '../../auth/schemas/auth.schema';
 import { useAuth } from '../../auth/hooks/useAuth';
@@ -40,22 +41,19 @@ export function DashboardPage({ usuario }: {
     const { sesion } = useAuth();
     const token = sesion?.token ?? '';
     const consultar = useCallback(/** Consulta los indicadores autorizados con el JWT vigente. */() => consultarDashboard(token), [token]);
-    const { datos, cargando, error, recargar } = useConsulta(consultar);
+    const { datos, cargando, actualizando, error, recargar } = useConsulta(consultar);
+    const ultimaCarga = useRef(Date.now());
     useEffect(/** Registra la actualización del panel al recuperar foco o visibilidad. */() => {
         /**
          * Solicita indicadores actualizados al volver a una pestaña visible; el servidor vuelve a aplicar el alcance autorizado.
          */
-        const enfocar = () => {
-            if (document.visibilityState === 'visible')
-                recargar();
-        };
-        window.addEventListener('focus', enfocar);
-        document.addEventListener('visibilitychange', enfocar);
-        return /** Retira los eventos de actualización del panel al desmontarlo. */ () => {
-            window.removeEventListener('focus', enfocar);
-            document.removeEventListener('visibilitychange', enfocar);
-        };
+        return observarRegreso(() => {
+            if (Date.now() - ultimaCarga.current < 30000) return;
+            ultimaCarga.current = Date.now();
+            recargar();
+        });
     }, [recargar]);
+    useEffect(() => { if (datos) ultimaCarga.current = Date.now(); }, [datos]);
     return <main className={styles.contenido}>
         <span className={styles.etiqueta}>Panel principal · Gestión documental</span>
         <div className={styles.cabecera}>
@@ -66,9 +64,10 @@ export function DashboardPage({ usuario }: {
                     {usuario.rol} · {usuario.oficina ?? 'Sin oficina asignada'}
                 </p>
             </div>
-            <button type="button" onClick={recargar} disabled={cargando}>Actualizar panel</button>
+            <button type="button" onClick={recargar} disabled={cargando || actualizando}>Actualizar panel</button>
         </div>
         {cargando && <p role="status">Consultando indicadores…</p>}
+        {actualizando && <p role="status" className={styles.actualizado}>Actualizando indicadores…</p>}
         {error && <div role="alert" className={styles.tarjeta}>
             <p>
                 {error}

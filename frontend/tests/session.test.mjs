@@ -21,15 +21,199 @@ const result = await build({
                     ['AuthSession', 'src/features/auth/services/AuthSession.ts'],
                     ['ApiError, apiRequest', 'src/api/client.ts'],
                     ['obtenerVencimiento', 'src/features/auth/services/sessionStorage.ts'],
+                    ['Consulta', 'src/hooks/consulta.ts'],
+                    ['observarRegreso', 'src/lib/regresoVisible.ts'],
+                    ['solicitar', 'src/api/conectividad.ts'],
                 ].map(/** Construye la reexportación del módulo real con una ruta portátil para compilar la prueba en memoria. */ ([exports, file]) => `export {${exports}} from ${JSON.stringify(resolve(file).replaceAll('\\', '/'))};`).join('\n');
             },
         }],
     build: { write: false, minify: false, rollupOptions: { input: 'virtual:session-test', preserveEntrySignatures: 'strict', output: { format: 'es', codeSplitting: false } } },
 });
 const chunk = (Array.isArray(result) ? result : [result]).flatMap(/** Transforma cada entrada de (Array.isArray(result) ? result : [result]) para construir los datos que comprueba este escenario. */ /** Reúne los archivos emitidos por Vite tanto si devolvió un resultado único como si generó varios. */ item => item.output).find(/** Selecciona las entradas de (Array.isArray(result) ? result : [result]).flatMap(item => item.output) que cumplen el criterio requerido por la comprobación. */ /** Identifica el chunk JavaScript de entrada entre los archivos generados por Vite para inspeccionar el código real. */ item => item.type === 'chunk' && item.isEntry);
-const { AuthSession, ApiError, apiRequest, obtenerVencimiento } = await import(`data:text/javascript;base64,${Buffer.from(chunk.code).toString('base64')}`);
+const { AuthSession, ApiError, apiRequest, obtenerVencimiento, Consulta, observarRegreso, solicitar } = await import(`data:text/javascript;base64,${Buffer.from(chunk.code).toString('base64')}`);
 const usuario = { id: '1', nombre: 'Prueba', apellido: 'Local', nombre_usuario: 'prueba', email: null, rol: 'Prueba', oficina: null };
 const base = 1800000000000;
+
+test('Foco repetido limita /me durante 30 s, comprueba exp y no desmonta la sesión válida', async () => {
+    let completar;
+    let diferir = false;
+    const f = preparar({ token: jwt(base / 1000 + 900), perfil: () => diferir ? new Promise(resolve => { completar = resolve; }) : { usuario } });
+    await f.session.recuperar();
+    const sesion = f.session.getSnapshot().sesion;
+    for (let i = 0; i < 5; i++) await f.session.revalidarAlVolver();
+    assert.equal(f.consultas, 1);
+    f.avanzar(30001);
+    diferir = true;
+    const pendiente = f.session.revalidarAlVolver();
+    assert.equal(f.session.getSnapshot().estado, 'autenticado');
+    assert.equal(f.session.getSnapshot().revalidando, true);
+    assert.equal(f.session.getSnapshot().sesion, sesion);
+    assert.equal(f.session.revalidarAlVolver(), pendiente);
+    completar({ usuario });
+    await pendiente;
+    assert.equal(f.consultas, 2);
+    assert.equal(f.session.getSnapshot().sesion, sesion);
+    assert.equal(f.session.getSnapshot().revalidando, false);
+    f.avanzar(900000);
+    await f.session.revalidarAlVolver();
+    assert.equal(f.session.getSnapshot().estado, 'anonimo');
+    assert.equal(f.consultas, 2);
+});
+
+test('Revalidación fallida bloquea acceso; rechazo revoca, red conserva solo el JWT para reintentar', async () => {
+    for (const status of [0, 401, 403, 503]) {
+        let falla = false;
+        const f = preparar({ token: jwt(base / 1000 + 900), perfil: async () => {
+            if (falla) throw new ApiError(status, 'No disponible');
+            return { usuario };
+        } });
+        await f.session.recuperar();
+        falla = true;
+        f.avanzar(30001);
+        await f.session.revalidarAlVolver();
+        assert.equal(f.session.getSnapshot().sesion, null);
+        assert.equal(f.session.getSnapshot().estado, [401, 403].includes(status) ? 'anonimo' : 'error');
+        assert.equal(!!f.token, ![401, 403].includes(status));
+    }
+});
+
+test('Cambio de perfil invalida el contexto sin renovar el vencimiento', async () => {
+    let perfil = usuario;
+    const f = preparar({ token: jwt(base / 1000 + 900), perfil: async () => ({ usuario: perfil }) });
+    await f.session.recuperar();
+    const anterior = f.session.getSnapshot();
+    perfil = { ...usuario, rol: 'Otro rol', oficina: 'Otra oficina' };
+    await f.session.recuperar();
+    assert.equal(f.session.getSnapshot().revisionAcceso, anterior.revisionAcceso + 1);
+    assert.equal(f.session.getSnapshot().sesion.venceEn, anterior.sesion.venceEn);
+});
+
+test('Expiración o logout durante revalidación en segundo plano no resucitan el acceso', async () => {
+    for (const expirar of [false, true]) {
+        let diferir = false;
+        let completar;
+        const f = preparar({ token: jwt(base / 1000 + 60), perfil: () => diferir ? new Promise(resolve => { completar = resolve; }) : { usuario } });
+        await f.session.recuperar();
+        f.avanzar(30001);
+        diferir = true;
+        const pendiente = f.session.revalidarAlVolver();
+        if (expirar) { f.avanzar(30000); f.ejecutar(); }
+        else f.session.cerrarSesion();
+        completar({ usuario });
+        await pendiente;
+        assert.equal(f.session.getSnapshot().sesion, null);
+        assert.equal(f.token, null);
+    }
+});
+
+test('Consultas ordinarias conservan resultados en actualización y red, nunca ante rechazo o cambio de contexto', async () => {
+    const q = new Consulta();
+    let completar;
+    let fallo;
+    let diferir = false;
+    const consultar = async () => {
+        if (fallo) throw fallo;
+        if (diferir) return new Promise(resolve => { completar = resolve; });
+        return ['dato sintético'];
+    };
+    await q.ejecutar(consultar, 'cuentaA', true);
+    diferir = true;
+    const pendiente = q.ejecutar(consultar, 'cuentaA', true);
+    assert.deepEqual(q.snapshot.datos, ['dato sintético']);
+    assert.equal(q.snapshot.pendiente, true);
+    completar(['actualizado']);
+    await pendiente;
+    diferir = false;
+    fallo = new ApiError(0, 'Sin red');
+    await q.ejecutar(consultar, 'cuentaA', true);
+    assert.deepEqual(q.snapshot.datos, ['actualizado']);
+    assert.equal(q.snapshot.error, 'Sin red');
+    fallo = new ApiError(403, 'Sin permiso');
+    await q.ejecutar(consultar, 'cuentaA', true);
+    assert.equal(q.snapshot.datos, null);
+    fallo = undefined;
+    await q.ejecutar(consultar, 'cuentaA', true);
+    diferir = true;
+    const otra = q.ejecutar(consultar, 'cuentaB', true);
+    assert.equal(q.snapshot.datos, null);
+    q.limpiar();
+    completar(['respuesta antigua']);
+    await otra;
+    assert.equal(q.snapshot.datos, null);
+});
+
+test('Contenido restringido, filtros distintos y desmontaje nunca reutilizan la respuesta anterior', async () => {
+    const q = new Consulta();
+    const inicial = async () => ['sintético'];
+    await q.ejecutar(inicial, 'A', true);
+    let completar;
+    const distinto = () => new Promise(resolve => { completar = resolve; });
+    const cambio = q.ejecutar(distinto, 'A', true);
+    assert.equal(q.snapshot.datos, null);
+    q.cancelar();
+    completar(['descartar']);
+    await cambio;
+    assert.equal(q.snapshot.datos, null);
+    await q.ejecutar(inicial, 'A', true);
+    const restringida = q.ejecutar(inicial, 'A', false);
+    assert.equal(q.snapshot.datos, null);
+    await restringida;
+    q.limpiar();
+    assert.equal(q.snapshot.datos, null);
+});
+
+test('Foco, pageshow y visibilidad de un regreso producen una actualización; ocultar descarta SíseVe', () => {
+    const ventana = new globalThis.EventTarget();
+    const pagina = new globalThis.EventTarget();
+    pagina.visibilityState = 'visible';
+    let reloj = 0;
+    let vueltas = 0;
+    let ocultaciones = 0;
+    const retirar = observarRegreso(() => vueltas++, () => ocultaciones++, ventana, pagina, () => reloj);
+    reloj = 31000;
+    ventana.dispatchEvent(new globalThis.Event('focus'));
+    ventana.dispatchEvent(new globalThis.Event('pageshow'));
+    pagina.dispatchEvent(new globalThis.Event('visibilitychange'));
+    assert.equal(vueltas, 1);
+    pagina.visibilityState = 'hidden';
+    pagina.dispatchEvent(new globalThis.Event('visibilitychange'));
+    assert.equal(ocultaciones, 1);
+    pagina.visibilityState = 'visible';
+    pagina.dispatchEvent(new globalThis.Event('visibilitychange'));
+    assert.equal(vueltas, 2);
+    retirar();
+    reloj += 5000;
+    ventana.dispatchEvent(new globalThis.Event('focus'));
+    assert.equal(vueltas, 2);
+});
+
+test('Transporte limita GET a dos intentos y nunca repite login, escrituras, SíseVe ni abortos explícitos', async () => {
+    const original = globalThis.fetch;
+    try {
+        for (const [ruta, opciones, esperados] of [
+            ['/api/dashboard', {}, 2], ['/api/auth/login', { method: 'POST' }, 1],
+            ['/api/documentos', { method: 'PATCH', body: '{}' }, 1],
+            ['/api/siseve/administracion', {}, 1],
+            ['/api/documentos', { signal: new globalThis.AbortController().signal }, 1],
+        ]) {
+            let intentos = 0;
+            globalThis.fetch = async () => { intentos++; throw new Error('Sin red sintética'); };
+            await assert.rejects(solicitar(ruta, opciones, ruta));
+            assert.equal(intentos, esperados);
+        }
+        for (const status of [401, 403, 429, 500, 502, 503, 504]) {
+            let intentos = 0;
+            globalThis.fetch = async () => { intentos++; return new Response('{}', { status }); };
+            const respuesta = await solicitar('/api/dashboard', {}, '/api/dashboard');
+            assert.equal(respuesta.respuesta.status, status);
+            assert.equal(intentos, [502, 503, 504].includes(status) ? 2 : 1);
+        }
+        let intentos = 0;
+        globalThis.fetch = async () => { intentos++; return new Response('{}', { status: intentos === 1 ? 503 : 200 }); };
+        assert.equal((await solicitar('/api/dashboard', {}, '/api/dashboard')).respuesta.status, 200);
+        assert.equal(intentos, 2);
+    } finally { globalThis.fetch = original; }
+});
 /** Construye un JWT ficticio con exp para probar el reloj del cliente; no contiene una firma válida para el backend. */
 const jwt = exp => `e30.${Buffer.from(JSON.stringify({ exp })).toString('base64url')}.firma-de-prueba`;
 /** Crea una sesión con almacenamiento, reloj, temporizadores y API controlados; devuelve adaptadores para comprobar carreras y vencimiento. */

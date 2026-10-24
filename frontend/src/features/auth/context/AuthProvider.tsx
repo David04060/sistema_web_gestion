@@ -13,7 +13,7 @@ export function AuthProvider({ children }: {
          */
         const validar = () => {
             if (document.visibilityState === 'visible' && session.getSnapshot().estado !== 'anonimo') {
-                void session.recuperar();
+                void session.revalidarAlVolver();
             }
         };
         window.addEventListener('focus', validar);

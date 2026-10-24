@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { solicitar } from './conectividad';
 // Vite sustituye esta URL pública al compilar; vacío conserva /api y el proxy local.
 const apiBase = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 const listeners401 = new Set<(token: string) => void>();
@@ -57,11 +58,10 @@ export async function apiRequest<T>(ruta: string, schema: z.ZodType<T>, opciones
     let respuesta: Response;
     let texto: string;
     try {
-        respuesta = await fetch(apiBase + ruta, { ...opciones, headers, signal: opciones.signal ?? AbortSignal.timeout(15000) });
-        texto = await respuesta.text();
+        ({ respuesta, texto } = await solicitar(apiBase + ruta, { ...opciones, headers }, ruta));
     }
     catch {
-        throw new ApiError(0, 'No se pudo conectar con el servidor.');
+        throw new ApiError(0, 'No se pudo conectar con el servidor. Puede estar iniciándose o haber un problema de red. Vuelve a intentarlo.');
     }
     // El estado HTTP prevalece incluso cuando un proxy devuelve HTML en lugar de JSON.
     if (!respuesta.ok) {

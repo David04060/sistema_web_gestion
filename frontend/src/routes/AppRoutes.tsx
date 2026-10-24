@@ -3,6 +3,7 @@ import { CargaRuta } from '../components/ui/CargaRuta';
 import { lazy, Suspense, useEffect } from 'react';
 import { Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth';
+import { useAccesoSiseve } from '../features/siseve/hooks/useAccesoSiseve';
 import styles from '../components/ui/EstadoPagina.module.css';
 /** Las factorías se declaran fuera del render; los guards deciden qué pantalla llega a cargarse. */
 const AdminLayout = lazy(/** Descarga la pantalla AdminLayout únicamente cuando su ruta autorizada se renderiza. */() => import('../components/layout/AdminLayout').then(/** Adapta la exportación AdminLayout al contrato default requerido por React.lazy. */  m => ({ default: m.AdminLayout })));
@@ -112,9 +113,20 @@ function Inicio() {
     const { sesion } = useAuth();
     return <Navigate to={sesion ? '/dashboard' : '/login'} replace />;
 }
-/**
- * Presenta la ruta inexistente y un enlace de regreso apropiado para una sesión privada o anónima.
- */
+/** Desmonta resultados y formularios restringidos cuando sus permisos requieren nueva comprobación. */
+function VerificacionSiseve() {
+    const auth = useAuth();
+    const acceso = useAccesoSiseve();
+    if (auth.revalidando || acceso.cargando || !acceso.datos) {
+        return <main className={styles.pagina}>
+            {acceso.error ? <div role="alert">
+                {acceso.error}<button onClick={acceso.recargar}>Reintentar</button>
+            </div> : <p role="status">Verificando acceso a SíseVe…</p>}
+        </main>;
+    }
+    return <Outlet />;
+}
+/** Presenta la ruta inexistente y un enlace de regreso apropiado para la sesión. */
 function NoEncontrada() {
     const { sesion } = useAuth();
     return <main className={styles.pagina}>
@@ -139,7 +151,9 @@ export function AppRoutes() {
                     <Route element={<RutaPrivada />}>
                         <Route element={<AdminLayout />}>
                             <Route path="/dashboard" element={<Panel />} />
-                            <Route path="/siseve" element={<SisevePage />} />
+                            <Route element={<VerificacionSiseve />}>
+                                <Route path="/siseve" element={<SisevePage />} />
+                            </Route>
                             <Route path="/documentos" element={<DocumentosListaPage />} />
                             <Route path="/documentos/nuevo" element={<DocumentoFormularioPage />} />
                             <Route path="/documentos/:id/editar" element={<DocumentoFormularioPage />} />
@@ -156,7 +170,9 @@ export function AppRoutes() {
                             <Route path="/ubicaciones/archivadores/:id" element={<Ubicaciones.DetalleArchivadorPage />} />
                             <Route path="/ubicaciones/archivadores/:id/editar" element={<Ubicaciones.FormularioArchivadorPage />} />
                             <Route element={<SoloAdministrador />}>
-                                <Route path="/siseve/administracion" element={<SiseveAdministracionPage />} />
+                                <Route element={<VerificacionSiseve />}>
+                                    <Route path="/siseve/administracion" element={<SiseveAdministracionPage />} />
+                                </Route>
                                 <Route path="/tipos-documentales/nuevo" element={<Tipos.FormularioTipoPage />} />
                                 <Route path="/tipos-documentales/:id/editar" element={<Tipos.FormularioTipoPage />} />
                                 <Route path="/roles" element={<Roles.Lista />} />
