@@ -8,11 +8,10 @@ export const motivoSchema = z.string().trim().min(1, 'El motivo es obligatorio')
  */
 const textoOpcional = (max: number) => z.string().trim().max(max).transform(/** Convierte el contenido opcional vacío en null después de recortar espacios. */  v => v || null).nullable();
 export const contenidoSchema = z.object({ asunto: z.string().trim().min(1, 'El asunto es obligatorio').max(20000), remitente: textoOpcional(250), observaciones: textoOpcional(20000) }).strict();
-export const registrarSchema = contenidoSchema.extend({ tipo_documental_id: idSchema, archivador_id: idSchema.nullable(), archivo_id: idSchema.optional() }).strict();
-export const vincularArchivoSchema = z.object({ archivo_id: idSchema, fundamento: motivoSchema }).strict();
-export const corregirSchema = contenidoSchema.extend({ motivo: motivoSchema, version_documental: z.string().regex(/^[0-9]+$/).optional() }).strict();
+export const registrarSchema = contenidoSchema.extend({ tipo_documental_id: idSchema, archivador_id: idSchema.nullable() }).strict();
+export const corregirSchema = contenidoSchema.extend({ motivo: motivoSchema }).strict();
 export const anularSchema = z.object({ motivo: motivoSchema }).strict();
-export const filtrosSchema = z.object({ q: z.string().trim().max(250).default(''), archivo_id: idSchema.optional(), tipo_documental_id: idSchema.optional(), oficina_id: idSchema.optional(), responsable_id: idSchema.optional(), archivador_id: idSchema.optional(), estado: z.enum(['PENDIENTE_DECISION', 'EN_TRASLADO', 'RECIBIDO', 'RECHAZADO', 'CANCELADO']).optional(), activo: z.enum(['true', 'false']).optional(), pagina: z.coerce.number().int().min(1).max(1000000).default(1), limite: z.coerce.number().int().min(1).max(100).default(10) }).strict();
+export const filtrosSchema = z.object({ q: z.string().trim().max(250).default(''), tipo_documental_id: idSchema.optional(), oficina_id: idSchema.optional(), responsable_id: idSchema.optional(), archivador_id: idSchema.optional(), estado: z.enum(['PENDIENTE_DECISION', 'EN_TRASLADO', 'RECIBIDO', 'RECHAZADO', 'CANCELADO']).optional(), activo: z.enum(['true', 'false']).optional(), pagina: z.coerce.number().int().min(1).max(1000000).default(1), limite: z.coerce.number().int().min(1).max(100).default(10) }).strict();
 export type Contenido = z.infer<typeof contenidoSchema>;
 export type Registrar = z.infer<typeof registrarSchema>;
 export type Filtros = z.infer<typeof filtrosSchema>;

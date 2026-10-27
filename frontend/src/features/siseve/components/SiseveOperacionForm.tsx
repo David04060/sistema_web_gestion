@@ -10,7 +10,6 @@ export interface Preparacion {
     remitente?: string | null;
     observaciones?: string | null;
     pagina?: number;
-    referencia?:string;
     revision: number;
 }
 interface Props {
@@ -28,7 +27,7 @@ interface Props {
 }
 /** La contraseña se limpia antes de enviar; cada acción vuelve a exigir entrada explícita. */
 export function SiseveOperacionForm({ preparacion: p, operaciones, catalogos, ocupado, destinoAutorizado, ejecutar }: Props) {
-    const { register, handleSubmit, control, resetField, setError, setValue, formState: { errors } } = useForm<Solicitud>({ defaultValues: { operacion: p.operacion, id: p.id, asunto: p.asunto ?? '', remitente: p.remitente ?? '', observaciones: p.observaciones ?? '', clave: '', archivador_id: '', usuario_destino_id: '', motivo: '', q: '', estado: '', pagina: String(p.pagina ?? 1), confirmado: false } });
+    const { register, handleSubmit, control, resetField, setError, formState: { errors } } = useForm<Solicitud>({ defaultValues: { operacion: p.operacion, id: p.id, asunto: p.asunto ?? '', remitente: p.remitente ?? '', observaciones: p.observaciones ?? '', clave: '', archivador_id: '', usuario_destino_id: '', motivo: '', q: '', estado: '', pagina: String(p.pagina ?? 1), confirmado: false } });
     const operacion = useWatch({ control, name: 'operacion' });
     const consulta = ['listar', 'detalle', 'historial', 'opciones', 'movimientos', 'movimiento'].includes(operacion);
     const contenido = operacion === 'registrar' || operacion === 'corregir';
@@ -57,11 +56,17 @@ export function SiseveOperacionForm({ preparacion: p, operaciones, catalogos, oc
             <div className={styles.datos}>
                 <div className={styles.campo}>
                     <label htmlFor="s-operacion">Operación</label>
-                    <input type="hidden" {...register('operacion')}/>
-                    <div className={styles.acciones}>{operaciones.map(o=><button type="button" key={o.id} className={styles.secundario} aria-pressed={operacion===o.id} disabled={ocupado} onClick={()=>setValue('operacion',o.id)}>{o.nombre}</button>)}</div>
+                    <select id="s-operacion" {...register('operacion')}>
+                        {operaciones.map(/** Presenta una operación habilitada para preparar su solicitud independiente. */  o => <option key={o.id} value={o.id}>
+                            {o.nombre}
+                        </option>)}
+                    </select>
                 </div>
-                <input type="hidden" {...register('id')}/>
-                {p.id && <p>Original o movimiento seleccionado: {p.referencia??'seleccionado desde una consulta protegida'}. Cada acción vuelve a exigir la contraseña adicional.</p>}
+                {!['listar', 'opciones', 'registrar'].includes(operacion) && <div className={styles.campo}>
+                    <label htmlFor="s-id">Identificador {['movimiento', 'recibir', 'rechazar', 'recuperar', 'cancelar'].includes(operacion) ? 'del movimiento' : 'del documento'}
+                    </label>
+                    <input id="s-id" {...register('id')} inputMode="numeric" pattern="[1-9][0-9]*" required={operacion !== 'movimientos'} />
+                </div>}
                 {(operacion === 'listar' || operacion === 'movimientos') && <>
                     <div className={styles.campo}>
                         <label htmlFor="s-buscar">Buscar código, asunto o remitente (documentos)</label>
@@ -81,7 +86,7 @@ export function SiseveOperacionForm({ preparacion: p, operaciones, catalogos, oc
                         <input id="s-pagina" type="number" min={1} max={1000000} {...register('pagina')} />
                     </div>
                 </>}
-                {operacion === 'salir' && destinoAutorizado && <p>La salida utilizará exclusivamente el destinatario autorizado: {catalogos?.destinatarios.find(/** Busca el destinatario previamente autorizado para informar la salida restringida. */  u => u.id === destinoAutorizado)?.nombre ?? 'Destinatario previamente autorizado'}
+                {operacion === 'salir' && destinoAutorizado && <p>La salida utilizará exclusivamente el destinatario autorizado: {catalogos?.destinatarios.find(/** Busca el destinatario previamente autorizado para informar la salida restringida. */  u => u.id === destinoAutorizado)?.nombre ?? `Cuenta ${destinoAutorizado}`}
                 </p>}
                 {contenido && <>
                     <div className={styles.campo}>

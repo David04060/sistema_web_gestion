@@ -1,4 +1,3 @@
-import { archivosDisponiblesSchema } from '../schemas/documentos.schema';
 import { z } from 'zod';
 import { apiRequest } from '../../../api/client';
 import { detalleDocumentoSchema, opcionesSchema, listaDocumentosSchema, historialSchema } from '../schemas/documentos.schema';
@@ -40,7 +39,3 @@ export const guardar = (token: string, id: string | undefined, datos: unknown) =
  * @throws ApiError si el transporte, el estado HTTP o el contrato de respuesta no son válidos.
  */
 export const operar = (token: string, id: string, operacion: string, datos: unknown) => apiRequest(`/api/documentos/${id}/${operacion}`, detalleDocumentoSchema, { method: 'POST', body: JSON.stringify(datos) }, token);
-
-/** Selección operativa propia, separada de la administración de archivos. */
-export const archivosDisponibles = (token: string) => apiRequest('/api/documentos/archivos-disponibles', archivosDisponiblesSchema, {}, token);
-export const vincularArchivo = (token: string, id: string, datos: { archivo_id: string; fundamento: string }) => operar(token, id, 'archivo', datos);

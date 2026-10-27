@@ -1,6 +1,4 @@
-import { capacidades } from '../../features/continuidad/continuidad.api';
-import { useConsulta } from '../../hooks/useConsulta';
-import { useCallback, Suspense } from 'react';
+import { Suspense } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { AccesoSiseveProvider } from '../../features/siseve/context/AccesoSiseveProvider';
 import { useAccesoSiseve } from '../../features/siseve/hooks/useAccesoSiseve';
@@ -14,17 +12,15 @@ interface Enlace {
     ruta: string;
     titulo: string;
     icono: IconName;
-    documental?: boolean;
 }
 const gestion: Enlace[] = [
     { ruta: '/dashboard', titulo: 'Dashboard', icono: 'panel' },
-    { ruta: '/documentos', titulo: 'Documentos', icono: 'documentos', documental: true },
-    { ruta: '/movimientos', titulo: 'Movimientos', icono: 'movimientos', documental: true },
+    { ruta: '/documentos', titulo: 'Documentos', icono: 'documentos' },
+    { ruta: '/movimientos', titulo: 'Movimientos', icono: 'movimientos' },
     { ruta: '/tipos-documentales', titulo: 'Tipos documentales', icono: 'tipos' },
     { ruta: '/ubicaciones', titulo: 'Ubicaciones', icono: 'ubicaciones' },
 ];
 const administracion: Enlace[] = [
-    { ruta: '/archivos', titulo: 'Archivos institucionales', icono: 'tipos' },
     { ruta: '/usuarios', titulo: 'Usuarios', icono: 'usuarios' },
     { ruta: '/roles', titulo: 'Roles', icono: 'roles' },
     { ruta: '/oficinas', titulo: 'Oficinas', icono: 'oficinas' },
@@ -56,21 +52,18 @@ function GrupoEnlaces({ enlaces, cerrar }: {
 function ContenidoAdminLayout() {
     const auth = useAuth();
     const siseve = useAccesoSiseve();
-    const capacidadesConsulta=useConsulta(useCallback(()=>capacidades(auth.sesion!.token),[auth.sesion]));
     const location = useLocation();
     const { dialogo, abrir, cerrar } = useMenuMovil();
     const usuario = auth.sesion!.usuario;
     const enlaces = [
-        ...(capacidadesConsulta.datos?.relevos ? [{ruta:usuario.rol==='Administrador'?'/continuidad-administrativa':'/continuidad',titulo:'Continuidad institucional',icono:'movimientos' as const}] : []),
-        ...gestion.filter(/** Conserva los catálogos administrativos y retira únicamente la navegación documental ordinaria del Administrador. */
-            enlace => usuario.rol !== 'Administrador' || !enlace.documental),
+        ...gestion,
         ...(siseve.datos?.autorizado ? [{ ruta: '/siseve', titulo: 'SíseVe', icono: 'seguridad' as const }] : []),
     ];
     const titulo = [...administracion, ...enlaces].find(
         /** Identifica el módulo por la ruta exacta o una de sus páginas descendientes. */
         enlace => location.pathname === enlace.ruta || location.pathname.startsWith(enlace.ruta + '/'))?.titulo ?? 'Gestión documental';
     const marca = <div className={styles.marca}>
-        <span className={styles.emblema}><img src="/escudo-institucional.jpg" alt="Insignia de la I.E. Enrique Paillardelle"/></span>
+        <span className={styles.icono} aria-hidden="true">EP</span>
         <div>
             <strong>Gestión Documental</strong>
             <small>Enrique Paillardelle</small>

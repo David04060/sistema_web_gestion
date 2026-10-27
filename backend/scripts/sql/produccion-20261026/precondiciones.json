@@ -1,7 +1,0 @@
-{
-  "fn_documentos_proteger_integridad": "8c327b0f25950ff9e08593d10ad705a39eb34cba0688fdf1a693600c57104267",
-  "fn_movimientos_proteger_historial": "592321ebfdabe2a86a6a02613eef23bc278e2a5c6f8e5f8f77cf2608da571fcc",
-  "fn_documental_validar_circulacion": "d55316cfb2e25384a2d8cb1ac444023597d8e48f3dc9e5dbca5c0e5a603af32b",
-  "fn_movimientos_validar_salida": "78fb9e4cdc37c26807ecc5bd051f29bce561e65f08f1a4850294cb180ec4ee2c",
-  "fn_documental_validar_archivador": "5213447025a4ae902664672c1d775fdc8b20b014d8fe141b7f707dbd03c4587c"
-}

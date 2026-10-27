@@ -1,4 +1,3 @@
-import { etiquetasEstado } from '../../../lib/estados-documentales';
 import { EstadoBadge } from '../../../components/ui/EstadoBadge';
 import { MovimientoAcciones } from '../components/MovimientoAcciones';
 import { useCallback, useState } from 'react';
@@ -63,8 +62,8 @@ export function MovimientosListaPage() {
                         setParams(p);
                     }}>
                         <option value="">Todos</option>
-                        {['EN_TRASLADO', 'RECIBIDO', 'RECHAZADO', 'CANCELADO'].map(/** Presenta un estado de movimiento aprobado como filtro. */  e => <option key={e} value={e}>
-                            {etiquetasEstado[e]??e}
+                        {['EN_TRASLADO', 'RECIBIDO', 'RECHAZADO', 'CANCELADO'].map(/** Presenta un estado de movimiento aprobado como filtro. */  e => <option key={e}>
+                            {e}
                         </option>)}
                     </select>
                 </div>
@@ -148,13 +147,7 @@ export function MovimientoDetallePage() {
             <h2>
                 {m.codigo} · <EstadoBadge estado={m.estado} />
             </h2>
-            {m.puede_primer_ingreso && <div className={styles.tarjeta}>
-                <h3>Primer ingreso ordinario</h3>
-                <p>Una entrega a Secretaría puede recibirse sin abrir un trámite o incorporarse expresamente a Mesa de Partes.</p>
-                <Link className={styles.boton} to={`/mesa-partes/recepciones/${m.id}`}>{m.estado === 'EN_TRASLADO' ? 'Recibir e ingresar a Mesa de Partes' : 'Formalizar primer ingreso de esta recepción'}</Link>
-            </div>}
             <dl className={styles.datos}>
-                {m.ingreso_referencia !== undefined && <div><dt>Ingreso relacionado con esta salida</dt><dd>{m.ingreso_referencia ?? 'Movimiento sin contexto de ingreso; puede corresponder a una entrega previa al trámite.'}</dd></div>}
                 <div>
                     <dt>Origen</dt>
                     <dd>
@@ -168,9 +161,9 @@ export function MovimientoDetallePage() {
                     </dd>
                 </div>
                 <div>
-                    <dt>Decisión autorizada por</dt>
+                    <dt>Autorizado por (identificador historico)</dt>
                     <dd>
-                        {m.decidido_por ?? 'Derivación directa del custodio'}
+                        {m.decidido_por_id ?? 'Derivacion directa del custodio'}
                     </dd>
                 </div>
                 <div>
@@ -194,39 +187,39 @@ export function MovimientoDetallePage() {
                 <div>
                     <dt>Usuario que confirmó la recepción</dt>
                     <dd>
-                        {m.recibido_por ?? 'Sin recepción confirmada'}
+                        {m.recibido_por_id ?? 'Sin recepcion'}
                     </dd>
                 </div>
-                {m.fecha_rechazo && <div>
+                <div>
                     <dt>Fecha y usuario de rechazo</dt>
                     <dd>
-                        {m.fecha_rechazo ? `${fechaLocal(m.fecha_rechazo)} · ${m.rechazado_por??'Persona no disponible'}` : 'Sin rechazo'}
+                        {m.fecha_rechazo ? `${fechaLocal(m.fecha_rechazo)} · Cuenta ${m.rechazado_por_id}` : 'Sin rechazo'}
                     </dd>
-                </div>}
-                {m.fecha_rechazo && <div>
+                </div>
+                <div>
                     <dt>Rechazo</dt>
                     <dd>
                         {m.motivo_rechazo ?? 'Sin rechazo'}
                     </dd>
-                </div>}
-                {m.fecha_confirmacion_devolucion && <div>
+                </div>
+                <div>
                     <dt>Recuperación en origen</dt>
                     <dd>
-                        {m.fecha_confirmacion_devolucion ? `${fechaLocal(m.fecha_confirmacion_devolucion)} · ${m.recuperado_por??'Persona no disponible'}` : 'Sin recuperación registrada'}
+                        {m.fecha_confirmacion_devolucion ? fechaLocal(m.fecha_confirmacion_devolucion) : 'Sin recuperación registrada'}
                     </dd>
-                </div>}
-                {m.fecha_cancelacion && <div>
+                </div>
+                <div>
                     <dt>Fecha y usuario de cancelacion</dt>
                     <dd>
-                        {m.fecha_cancelacion ? `${fechaLocal(m.fecha_cancelacion)} · ${m.cancelado_por??'Persona no disponible'}` : 'Sin cancelacion'}
+                        {m.fecha_cancelacion ? `${fechaLocal(m.fecha_cancelacion)} · Cuenta ${m.cancelado_por_id}` : 'Sin cancelacion'}
                     </dd>
-                </div>}
-                {m.fecha_cancelacion && <div>
+                </div>
+                <div>
                     <dt>Cancelación</dt>
                     <dd>
                         {m.motivo_cancelacion ?? 'Sin cancelación'}
                     </dd>
-                </div>}
+                </div>
             </dl>
             <div className={styles.acciones}>
                 <Link className={styles.boton} to={`/movimientos?documento_id=${m.documento_id}`}>Recorrido completo</Link>

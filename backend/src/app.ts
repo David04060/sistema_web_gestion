@@ -1,8 +1,4 @@
-import { requiereAuth } from './middlewares/auth.middleware.js';
-import { continuidadRouter } from './modules/continuidad/continuidad.routes.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.routes.js';
-import { archivosRouter } from './modules/archivos/archivos.routes.js';
-import { ingresosRouter } from './modules/ingresos/ingresos.routes.js';
 import { siseveRouter } from './modules/siseve/siseve.routes.js';
 import { documentosRouter } from './modules/documentos/documentos.routes.js';
 import { movimientosRouter } from './modules/movimientos/movimientos.routes.js';
@@ -31,16 +27,7 @@ app.get("/api/health", /** Responde al chequeo de disponibilidad HTTP sin consul
         message: "Backend funcionando correctamente",
     });
 });
-app.get('/api/sistema/capacidades',requiereAuth,(_q,r)=>{
-    r.setHeader('Cache-Control','no-store, private');
-    r.json({archivos:env.VINCULACION_ARCHIVOS_HABILITADA,primer_ingreso:env.PRIMER_INGRESO_ORDINARIO_HABILITADO,
-        ciclo_ingresos:env.CICLO_INGRESOS_ORDINARIOS_HABILITADO,relevos:env.RELEVOS_HABILITADOS,sustituciones:env.SUSTITUCIONES_HABILITADAS,
-        correcciones_versionadas:env.CORRECCIONES_VERSIONADAS_HABILITADAS,version:/^[a-f0-9]{40}$/.test(process.env.RENDER_GIT_COMMIT??'')?process.env.RENDER_GIT_COMMIT:'local'});
-});
 app.use('/api/dashboard', dashboardRouter);
-app.use('/api/continuidad', continuidadRouter);
-app.use('/api/archivos', archivosRouter);
-app.use('/api/ingresos', ingresosRouter);
 app.use("/api/tipos-documentales", tiposDocumentalesRouter);
 app.use("/api/ubicaciones", ubicacionesRouter);
 app.use("/api/documentos", documentosRouter);

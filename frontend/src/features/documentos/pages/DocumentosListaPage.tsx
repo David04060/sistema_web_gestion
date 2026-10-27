@@ -1,4 +1,3 @@
-import { etiquetasEstado } from '../../../lib/estados-documentales';
 import { EstadoBadge } from '../../../components/ui/EstadoBadge';
 import { useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -15,8 +14,6 @@ export function DocumentosListaPage() {
     const filtros = params.toString();
     const opciones = useConsulta(useCallback(/** Consulta las opciones y filtros documentales autorizados. */() => api.opciones(token), [token]));
     const consulta = useConsulta(useCallback(/** Consulta la página documental definida por los parámetros de la URL. */() => api.listar(token, filtros), [token, filtros]));
-    const mostrarArchivo = opciones.datos?.vinculacion_archivos_habilitada
-        || consulta.datos?.documentos.some(d => d.archivo_id !== undefined);
     /**
      * Cambia únicamente la página de la consulta en la URL, conservando los filtros actuales.
      * @param numero - Página solicitada manteniendo los filtros actuales.
@@ -31,7 +28,6 @@ export function DocumentosListaPage() {
             <div>
                 <h1>Documentos</h1>
                 {opciones.datos?.puede_registrar && <Link className={styles.boton} to="/documentos/nuevo">Registrar documento</Link>}
-                {opciones.datos?.primer_ingreso_ordinario_habilitado && opciones.datos.puede_ingresar_mesa && <p><Link className={styles.boton} to="/mesa-partes/nuevo">Registrar original externo e ingreso</Link></p>}
                 <p>Registros físicos ordinarios dentro de tu acceso autorizado.</p>
             </div>
         </div>
@@ -63,8 +59,8 @@ export function DocumentosListaPage() {
                         <label htmlFor="estado-filtro">Circulacion</label>
                         <select id="estado-filtro" name="estado" defaultValue={params.get('estado') ?? ''}>
                             <option value="">Todos</option>
-                            {['PENDIENTE_DECISION', 'EN_TRASLADO', 'RECIBIDO', 'RECHAZADO', 'CANCELADO'].map(/** Presenta uno de los cinco estados aprobados como filtro. */  e => <option key={e} value={e}>
-                                {etiquetasEstado[e]??e}
+                            {['PENDIENTE_DECISION', 'EN_TRASLADO', 'RECIBIDO', 'RECHAZADO', 'CANCELADO'].map(/** Presenta uno de los cinco estados aprobados como filtro. */  e => <option key={e}>
+                                {e}
                             </option>)}
                         </select>
                     </div>
@@ -79,13 +75,6 @@ export function DocumentosListaPage() {
                             </option>)}
                         </select>
                     </div>)}
-                    {opciones.datos?.vinculacion_archivos_habilitada && <div className={styles.campo}>
-                        <label htmlFor="archivo-filtro">Archivo institucional</label>
-                        <select id="archivo-filtro" name="archivo_id" defaultValue={params.get('archivo_id') ?? ''}>
-                            <option value="">Todos los autorizados</option>
-                            {opciones.datos.archivos.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-                        </select>
-                    </div>}
                     <div className={styles.campo}>
                         <label htmlFor="activo-documento">Estado del registro</label>
                         <select id="activo-documento" name="activo" defaultValue={params.get('activo') ?? ''}>
@@ -110,7 +99,7 @@ export function DocumentosListaPage() {
                             <th>Código</th>
                             <th>Asunto</th>
                             <th>Tipo</th>
-                            {mostrarArchivo && <th>Archivo / responsable vigente</th>}<th>Registrador original</th><th>Custodio / oficina</th><th>Ubicación física confirmada</th>
+                            <th>Responsable / oficina</th>
                             <th>Circulación</th>
                             <th>Registro</th>
                         </tr>
@@ -128,14 +117,11 @@ export function DocumentosListaPage() {
                             <td>
                                 {d.tipo_documental}
                             </td>
-                            {mostrarArchivo && <td>{d.archivo_nombre ?? 'Archivo institucional pendiente de clasificación'}<br />{d.archivo_responsable || ''}</td>}
-                            <td>{d.registrador}</td>
                             <td>
                                 {d.responsable}
                                 <br />
                                 {d.oficina}
                             </td>
-                            <td>{d.archivador_id ? `Estante ${d.estante} · Archivador ${d.archivador_numero}` : ['EN_TRASLADO', 'RECHAZADO'].includes(d.estado_tramite) ? 'Sin ubicación confirmada' : 'Sin archivador registrado'}</td>
                             <td>
                                 <EstadoBadge estado={d.estado_tramite} />
                                 <br />

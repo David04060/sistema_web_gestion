@@ -38,13 +38,6 @@ const envSchema = z.object({
     PORT: z.coerce.number().int().min(1).max(65535)
         .default(3000),
     DATABASE_URL: z.string().min(1),
-    VINCULACION_ARCHIVOS_HABILITADA: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
-    PRIMER_INGRESO_ORDINARIO_HABILITADO: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
-    CICLO_INGRESOS_ORDINARIOS_HABILITADO: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
-    RELEVOS_HABILITADOS: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
-    SUSTITUCIONES_HABILITADAS: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
-    CORRECCIONES_VERSIONADAS_HABILITADAS: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
-    ACTUALIZACION_ARCHIVISTICA_PRODUCCION: z.string().default(''),
     JWT_SECRET: z.string().min(32),
     CORS_ORIGINS: z.string().default('').transform(valor => valor.split(',').map(origen => origen.trim()).filter(Boolean))
         .refine(origenes => origenes.every(origen => {
@@ -62,23 +55,6 @@ if (!result.success) {
     process.exit(1);
 }
 export const env = result.data;
-if (env.PRIMER_INGRESO_ORDINARIO_HABILITADO && !env.VINCULACION_ARCHIVOS_HABILITADA)
-    throw new Error('Primer ingreso ordinario requiere vinculación archivística habilitada en QA');
-if (env.CICLO_INGRESOS_ORDINARIOS_HABILITADO && !env.PRIMER_INGRESO_ORDINARIO_HABILITADO)
-    throw new Error('Ciclo ordinario requiere primer ingreso habilitado en QA');
-// Esta entrega solo habilita la capacidad en procesos contra la copia QA local.
-if (env.VINCULACION_ARCHIVOS_HABILITADA) {
-    const destino = new URL(env.DATABASE_URL);
-    const qaLocal = !administrado && ['localhost', '127.0.0.1', '[::1]'].includes(destino.hostname)
-        && /^\/sistema_web_final_qa_archivo_[a-f0-9]{32}$/.test(destino.pathname);
-    const produccionExplicita = perfilNeon && !perfilQa && env.NODE_ENV === 'production'
-        && env.ACTUALIZACION_ARCHIVISTICA_PRODUCCION === '20261026-archivo-v1';
-    if (!qaLocal && !produccionExplicita) {
-        throw new Error('La vinculación requiere QA local o activación explícita de la versión de producción');
-    }
-}
-if ((env.RELEVOS_HABILITADOS || env.SUSTITUCIONES_HABILITADAS) && !env.VINCULACION_ARCHIVOS_HABILITADA)
-    throw new Error('Relevos y sustituciones requieren integración archivística');
 if ((perfilQa && !/^br-[a-z0-9-]+$/.test(process.env.NEON_BRANCH_ID ?? ''))
     || (administrado && (!/^br-[a-z0-9-]+$/.test(process.env.NEON_BRANCH_ID ?? '')
         || !process.env.NEON_HOST || env.CORS_ORIGINS.length === 0 || env.TRUST_PROXY_HOPS !== 1

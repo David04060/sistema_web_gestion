@@ -1,13 +1,8 @@
-import { conexionDocumental } from '../../shared/documental/contexto.js';
-import * as recorridoRepository from './recorrido.repository.js';
-import { env } from '../../config/env.js';
 import type { PoolClient } from 'pg';
 import type { ActorDocumental } from '../../shared/documental/transaccion.js';
 import { transaccionDocumental, obtenerActor } from '../../shared/documental/transaccion.js';
 import { HttpError } from '../../shared/http/HttpError.js';
 import * as repository from './documentos.repository.js';
-import * as pertenencia from './pertenencia.repository.js';
-import * as ingresos from '../ingresos/ingresos.repository.js';
 import type { Contenido, Registrar, Filtros } from './documentos.schema.js';
 /**
  * Revalida al actor y obtiene página y total autorizados; conserva los filtros de paginación en la respuesta.
@@ -16,8 +11,7 @@ import type { Contenido, Registrar, Filtros } from './documentos.schema.js';
  */
 export async function listar(actorId: string, filtros: Filtros) {
     const actor = await obtenerActor(actorId);
-    if (filtros.archivo_id && !pertenencia.pertenenciaHabilitada()) throw new HttpError(409, 'El filtro archivístico no está habilitado');
-    return { ...await pertenencia.consultar(actor, c => repository.listar(actor, filtros, c)), pagina: filtros.pagina, limite: filtros.limite };
+    return { ...await repository.listar(actor, filtros), pagina: filtros.pagina, limite: filtros.limite };
 }
 /**
  * Obtiene el contenido consultable y calcula permisos de presentación con custodia y estado vigentes.
@@ -30,16 +24,13 @@ export async function listar(actorId: string, filtros: Filtros) {
  */
 export async function detalle(actorId: string, id: string) {
     const actor = await obtenerActor(actorId);
-    const documento = await pertenencia.consultar(actor, c => repository.obtener(actor, id, c));
+    const documento = await repository.obtener(actor, id);
     if (!documento)
         throw new HttpError(404, 'Documento inexistente o no autorizado');
     const libre = documento.activo && ['RECIBIDO', 'PENDIENTE_DECISION'].includes(documento.estado_tramite);
     const custodio = libre && documento.responsable_actual_id === actor.id;
     const mesa = actor.rol === 'Secretaria de Dirección' || documento.oficina === 'Mesa de Partes';
-    const puedeVincular = pertenencia.pertenenciaHabilitada() && actor.rol !== 'Administrador' && custodio
-        && documento.registrado_por_id === actor.id && !documento.archivo_id
-        && !documento.destinatario_autorizado_id && !await repository.movimientoAbierto(id);
-    return { ...documento, ciclo_ingresos_ordinarios_habilitado: ingresos.cicloHabilitado(), ...(ingresos.habilitado() ? { ingreso_mesa_partes: await ingresos.lectura(actor, c => ingresos.obtener(actor, id, c!)) } : {}), ultima_ubicacion: await repository.ultimaUbicacion(id), permisos: { vincular_archivo: puedeVincular, editar: custodio, anular: custodio, autorizar: libre && documento.estado_tramite === 'PENDIENTE_DECISION' && actor.rol === 'Director(a)', salir: custodio && (documento.estado_tramite === 'PENDIENTE_DECISION' ? documento.destinatario_autorizado_id !== null : !mesa), solicitar_decision: custodio && mesa && documento.estado_tramite === 'RECIBIDO' } };
+    return { ...documento, ultima_ubicacion: await repository.ultimaUbicacion(id), permisos: { editar: custodio, anular: custodio, autorizar: libre && documento.estado_tramite === 'PENDIENTE_DECISION' && actor.rol === 'Director(a)', salir: custodio && (documento.estado_tramite === 'PENDIENTE_DECISION' ? documento.destinatario_autorizado_id !== null : !mesa), solicitar_decision: custodio && mesa && documento.estado_tramite === 'RECIBIDO' } };
 }
 /**
  * Autoriza primero el contenido del documento y solo después solicita su auditoría completa.
@@ -77,11 +68,7 @@ export async function exigirEditable(actor: ActorDocumental, documento: reposito
  * @param actorId - ID de la cuenta autenticada que debe revalidarse antes de operar.
  */
 export async function opciones(actorId: string) {
-    const actor = await obtenerActor(actorId);
-    const opciones = await pertenencia.consultar(actor, c => repository.opciones(actor, c));
-    const puedeIngresar = ingresos.habilitado() && actor.rol === 'Secretaria de Dirección' && actor.oficina_id !== null
-        && await pertenencia.consultar(actor, c => repository.oficinaNombre(actor.oficina_id!, c!)) === 'Mesa de Partes';
-    return { ...opciones, ciclo_ingresos_ordinarios_habilitado: ingresos.cicloHabilitado(), primer_ingreso_ordinario_habilitado: ingresos.habilitado(), puede_ingresar_mesa: puedeIngresar };
+    return repository.opciones(await obtenerActor(actorId));
 }
 /**
  * Registra el original bajo custodia del actor y su oficina vigente.
@@ -90,61 +77,22 @@ export async function opciones(actorId: string) {
  */
 export async function registrar(actorId: string, datos: Registrar) {
     const id = await transaccionDocumental(actorId, 'Registro inicial del documento fisico', /** Verifica oficina y tipo registrable antes de insertar el original con estado inicial del circuito correspondiente. */ async (cliente, actor) => {
-        if (pertenencia.pertenenciaHabilitada()) pertenencia.exigirOperador(actor);
         if (!actor.oficina_id)
             throw new HttpError(409, 'Debe tener una oficina asignada para registrar documentos');
-        if (pertenencia.pertenenciaHabilitada()) {
-            if (!datos.archivo_id) throw new HttpError(400, 'Seleccione un archivo institucional asignado; solicite su asignación al Administrador si no dispone de uno');
-            await pertenencia.validarAsignacion(actor, datos.archivo_id, cliente);
-        } else if (datos.archivo_id) {
-            throw new HttpError(409, 'La vinculación ordinaria no está habilitada en este circuito');
-        }
         if (!await repository.tipoRegistrable(datos.tipo_documental_id, cliente))
             throw new HttpError(400, 'Tipo restringido o sin prefijo documental aprobado');
         const mesa = actor.rol === 'Secretaria de Dirección' || await repository.oficinaNombre(actor.oficina_id, cliente) === 'Mesa de Partes';
-        const nuevo = await repository.registrar(actor, datos, mesa ? 'PENDIENTE_DECISION' : 'RECIBIDO', cliente);
-        if (pertenencia.pertenenciaHabilitada()) {
-            await cliente.query("SELECT set_config('app.pertenencia_operacion','REGISTRAR',true)");
-            await pertenencia.vincular(actor, nuevo, datos.archivo_id!, 'Registro inicial dentro del archivo institucional seleccionado', actor.oficina_id, cliente);
-        }
-        return nuevo;
-    });
-    return detalle(actorId, id);
-}
-/** Consulta operativa separada de /api/archivos: nunca amplía permisos administrativos. */
-export async function archivosDisponibles(actorId: string) {
-    const actor = await obtenerActor(actorId);
-    pertenencia.exigirOperador(actor);
-    return { archivos: await pertenencia.consultar(actor, c => pertenencia.disponibles(actor, c!)) };
-}
-
-/** Clasificación explícita individual sin modificar el original ni simular entrega física. */
-export async function vincularArchivo(actorId: string, id: string, datos: { archivo_id: string; fundamento: string }) {
-    await transaccionDocumental(actorId, datos.fundamento, async (cliente, actor) => {
-        pertenencia.exigirOperador(actor);
-        const documento = await documentoBloqueado(actor, id, cliente);
-        if (documento.archivo_id) throw new HttpError(409, 'El documento ya está vinculado a un archivo institucional');
-        if (documento.registrado_por_id !== actor.id) throw new HttpError(403, 'Solo el registrador original que conserva la custodia puede clasificar el documento');
-        await exigirEditable(actor, documento, cliente);
-        if (!['RECIBIDO', 'PENDIENTE_DECISION'].includes(documento.estado_tramite) || documento.destinatario_autorizado_id)
-            throw new HttpError(409, 'Finalice primero la actuación documental pendiente');
-        await pertenencia.validarAsignacion(actor, datos.archivo_id, cliente);
-        await cliente.query("SELECT set_config('app.pertenencia_operacion','VINCULAR',true)");
-        await pertenencia.vincular(actor, id, datos.archivo_id, datos.fundamento, await pertenencia.oficinaHistorica(id, cliente), cliente);
+        return repository.registrar(actor, datos, mesa ? 'PENDIENTE_DECISION' : 'RECIBIDO', cliente);
     });
     return detalle(actorId, id);
 }
 /** Corrige exclusivamente contenido; motivo e identidad quedan en auditoria atomica. */
 export async function corregir(actorId: string, id: string, datos: Contenido & {
     motivo: string;
-    version_documental?: string;
 }) {
     await transaccionDocumental(actorId, datos.motivo, /** Bloquea y comprueba custodia antes de corregir exclusivamente el contenido con auditoría atómica. */ async (cliente, actor) => {
         const documento = await documentoBloqueado(actor, id, cliente);
         await exigirEditable(actor, documento, cliente);
-        if ((env.CORRECCIONES_VERSIONADAS_HABILITADAS && !datos.version_documental)
-            || (datos.version_documental && datos.version_documental !== documento.version_documental))
-            throw new HttpError(409, 'El documento cambió desde que abrió la corrección. Consulte la versión actual y conserve su borrador antes de reintentar.');
         await repository.corregir(id, datos, cliente);
     });
     return detalle(actorId, id);
@@ -193,10 +141,4 @@ export async function solicitarDecision(actorId: string, id: string, motivo: str
         await repository.solicitarDecision(id, cliente);
     });
     return detalle(actorId, id);
-}
-
-/** El recorrido completo comparte exactamente el alcance de contenido, incluidos conteos. */
-export async function recorrido(actorId:string,id:string,pagina:number,limite:number){
- const actor=await obtenerActor(actorId);if(actor.rol==='Administrador')throw new HttpError(403,'Administración no consulta recorridos documentales');
- return pertenencia.consultar(actor,async c=>{if(!await repository.obtener(actor,id,c))throw new HttpError(404,'Documento inexistente o no autorizado');return {...await recorridoRepository.recorrido(c??conexionDocumental(),id,pagina,limite),pagina,limite};});
 }

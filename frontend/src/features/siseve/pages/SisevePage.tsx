@@ -30,7 +30,7 @@ export function SisevePage() {
      * @param p - Campos de preparación de la siguiente operación.
      */
     const preparar = (p: Omit<Preparacion, 'revision'>) => setPreparacion(/** Incrementa la revisión de preparación para reiniciar los campos sin conservar claves. */  anterior => ({ ...p, revision: anterior.revision + 1 }));
-    const operaciones = [{ id: 'listar', nombre: 'Buscar y listar documentos' }, { id: 'opciones', nombre: 'Consultar opciones para registro o derivación' }, { id: 'movimientos', nombre: 'Consultar recorrido documental' }, ...(acceso.datos?.puede_registrar ? [{ id: 'registrar', nombre: 'Registrar documento físico SíseVe' }] : [])];
+    const operaciones = [{ id: 'listar', nombre: 'Buscar y listar documentos' }, { id: 'opciones', nombre: 'Consultar opciones para registro o derivación' }, { id: 'detalle', nombre: 'Consultar un documento' }, { id: 'historial', nombre: 'Consultar historial de un documento' }, { id: 'movimientos', nombre: 'Consultar recorrido documental' }, { id: 'movimiento', nombre: 'Consultar un movimiento' }, ...(acceso.datos?.puede_registrar ? [{ id: 'registrar', nombre: 'Registrar documento físico SíseVe' }] : [])];
     if (documento) {
         const d = documento.documento;
         for (const [permiso, permitido] of Object.entries(d.permisos))
@@ -59,7 +59,7 @@ export function SisevePage() {
         setResultado(null);
         setOcupado(true);
         try {
-            const r = await api.ejecutarSolicitud(sesion.token, d, acceso.datos!.tipo_documental_id, documento?.documento.id === d.id ? documento.documento.destinatario_autorizado_id : null, documento?.documento.id===d.id?documento.documento.version_documental:undefined);
+            const r = await api.ejecutarSolicitud(sesion.token, d, acceso.datos!.tipo_documental_id, documento?.documento.id === d.id ? documento.documento.destinatario_autorizado_id : null);
             setResultado(r);
             if ('tipos' in r)
                 setCatalogos(r);
@@ -87,8 +87,6 @@ export function SisevePage() {
     return <main className={`${styles.pagina} ${siseveStyles.modulo}`}>
         <h1>SíseVe · documentación restringida</h1>
         <p className={siseveStyles.aviso}>Se requieren autorización individual vigente y contraseña adicional en cada operación. El acceso no amplía los permisos de custodia o circulación.</p>
-        <p>Dirección consulta el ámbito institucional protegido únicamente con autorización individual vigente y contraseña adicional. Esta consulta no concede edición o custodia global. Un relevo de archivo no transfiere autorizaciones de SíseVe.</p>
-        {acceso.datos?.clave_configurada===false && <p className={styles.aviso}>Falta configurar la contraseña institucional adicional. Administración debe establecerla privadamente en «Administrar SíseVe» y autorizar expresamente a las personas que correspondan, incluida Dirección. No envíe contraseñas por el chat.</p>}
         <EstadoCarga {...acceso} reintentar={acceso.recargar} />
         {error && <p className={styles.error} role="alert">
             {error}
