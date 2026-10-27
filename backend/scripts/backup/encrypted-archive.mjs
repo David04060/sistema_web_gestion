@@ -30,7 +30,7 @@ function proceso(binario, args, env) {
 }
 
 /** pg_dump va directamente a AES-256-GCM; nunca escribe un volcado en claro. */
-export async function crearArchivoCifrado({ pgDump, pgRestore, entorno, destino, key }) {
+export async function crearArchivoCifrado({ pgDump, pgRestore, entorno, destino, key, snapshot }) {
     if (key.length !== 32) throw new Error('Clave AES inválida');
     await mkdir(dirname(destino), { recursive: true });
     const iv = randomBytes(12), header = Buffer.concat([MAGIC, iv]);
@@ -39,7 +39,7 @@ export async function crearArchivoCifrado({ pgDump, pgRestore, entorno, destino,
     const cipher = createCipheriv('aes-256-gcm', key, iv); cipher.setAAD(header);
     const digest = createHash('sha256');
     const tap = new Transform({ transform(chunk, _encoding, cb) { digest.update(chunk); cb(null, chunk); } });
-    const { child, done } = proceso(pgDump, ['--format=custom', '--no-password'], entorno);
+    const { child, done } = proceso(pgDump, ['--format=custom', '--no-password', ...(snapshot ? ['--snapshot', snapshot] : [])], entorno);
     child.stdin.end();
     try {
         await Promise.all([pipeline(child.stdout, tap, cipher, createWriteStream(partial, { flags: 'a' })), done]);

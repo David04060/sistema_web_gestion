@@ -46,7 +46,7 @@ export function SiseveResultado({ resultado: r, preparar, acciones }: Props) {
                                 <EstadoBadge estado={d.estado_tramite} />
                             </td>
                             <td>
-                                <button className={styles.secundario} onClick={/** Prepara la consulta de detalle; su ejecución volverá a exigir la clave adicional. */() => preparar({ operacion: 'detalle', id: d.id })}>Preparar consulta</button>
+                                <button className={styles.secundario} onClick={/** Prepara la consulta de detalle; su ejecución volverá a exigir la clave adicional. */() => preparar({ operacion: 'detalle', id: d.id, referencia:d.codigo })}>Preparar consulta</button>
                             </td>
                         </tr>)}
                     </tbody>
@@ -103,9 +103,9 @@ export function SiseveResultado({ resultado: r, preparar, acciones }: Props) {
                 </div>
             </dl>
             <div className={styles.acciones}>
-                <button className={styles.secundario} onClick={/** Prepara la consulta del historial sin ejecutar todavía otra operación protegida. */() => preparar({ operacion: 'historial', id: d.id })}>Preparar historial</button>
-                <button className={styles.secundario} onClick={/** Prepara la consulta del recorrido sin reutilizar la clave anterior. */() => preparar({ operacion: 'movimientos', id: d.id })}>Preparar recorrido</button>
-                {acciones.map(/** Presenta una acción documental permitida para preparar una nueva solicitud protegida. */  a => <button key={a.id} className={styles.secundario} onClick={/** Prepara la acción con contenido del documento; la clave debe introducirse de nuevo. */() => preparar({ operacion: a.id, id: d.id, asunto: d.asunto, remitente: d.remitente, observaciones: d.observaciones })}>Preparar {a.id}
+                <button className={styles.secundario} onClick={/** Prepara la consulta del historial sin ejecutar todavía otra operación protegida. */() => preparar({ operacion: 'historial', id: d.id, referencia:d.codigo })}>Preparar historial</button>
+                <button className={styles.secundario} onClick={/** Prepara la consulta del recorrido sin reutilizar la clave anterior. */() => preparar({ operacion: 'movimientos', id: d.id, referencia:d.codigo })}>Preparar recorrido</button>
+                {acciones.map(/** Presenta una acción documental permitida para preparar una nueva solicitud protegida. */  a => <button key={a.id} className={styles.secundario} onClick={/** Prepara la acción con contenido del documento; la clave debe introducirse de nuevo. */() => preparar({ operacion: a.id, id: d.id, referencia:d.codigo, asunto: d.asunto, remitente: d.remitente, observaciones: d.observaciones })}>{a.nombre}
                 </button>)}
             </div>
         </section>;
@@ -148,7 +148,7 @@ export function SiseveResultado({ resultado: r, preparar, acciones }: Props) {
                                 <EstadoBadge estado={m.estado} />
                             </td>
                             <td>
-                                <button className={styles.secundario} onClick={/** Prepara el detalle del movimiento sin conceder una autorización persistente. */() => preparar({ operacion: 'movimiento', id: m.id })}>Preparar detalle</button>
+                                <button className={styles.secundario} onClick={/** Prepara el detalle del movimiento sin conceder una autorización persistente. */() => preparar({ operacion: 'movimiento', id: m.id, referencia:m.codigo })}>Preparar detalle</button>
                             </td>
                         </tr>)}
                     </tbody>
@@ -186,27 +186,27 @@ export function SiseveResultado({ resultado: r, preparar, acciones }: Props) {
                         {m.fecha_recepcion ? fechaLocal(m.fecha_recepcion) : 'No confirmada'}
                     </dd>
                 </div>
-                <div>
+                {m.fecha_rechazo && <div>
                     <dt>Rechazo</dt>
                     <dd>
-                        {m.motivo_rechazo ?? 'Sin rechazo'}
+                        {m.rechazado_por} · {m.fecha_rechazo&&fechaLocal(m.fecha_rechazo)} · {m.motivo_rechazo}
                     </dd>
-                </div>
-                <div>
+                </div>}
+                {m.fecha_confirmacion_devolucion && <div>
                     <dt>Recuperación</dt>
                     <dd>
-                        {m.fecha_confirmacion_devolucion ? fechaLocal(m.fecha_confirmacion_devolucion) : 'Sin recuperación'}
+                        {m.recuperado_por} · {m.fecha_confirmacion_devolucion&&fechaLocal(m.fecha_confirmacion_devolucion)}
                     </dd>
-                </div>
-                <div>
+                </div>}
+                {m.fecha_cancelacion && <div>
                     <dt>Cancelación</dt>
                     <dd>
-                        {m.motivo_cancelacion ?? 'Sin cancelación'}
+                        {m.cancelado_por} · {m.fecha_cancelacion&&fechaLocal(m.fecha_cancelacion)} · {m.motivo_cancelacion}
                     </dd>
-                </div>
+                </div>}
             </dl>
             <div className={styles.acciones}>
-                {acciones.map(/** Presenta una acción física permitida sobre el movimiento consultado. */  a => <button key={a.id} className={styles.secundario} onClick={/** Prepara una acción física que exigirá otra verificación de clave al ejecutarse. */() => preparar({ operacion: a.id, id: m.id })}>
+                {acciones.map(/** Presenta una acción física permitida sobre el movimiento consultado. */  a => <button key={a.id} className={styles.secundario} onClick={/** Prepara una acción física que exigirá otra verificación de clave al ejecutarse. */() => preparar({ operacion: a.id, id: m.id, referencia:m.codigo })}>
                     {a.nombre}
                 </button>)}
             </div>

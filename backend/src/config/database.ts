@@ -26,6 +26,19 @@ export async function verificarBaseDatos() {
         const tls = socket?.encrypted === true && socket.authorized === true;
         validarIdentidadPostgres(resultado.rows[0], tls, perfilNeon,
             perfilNeon ? process.env.NEON_BRANCH_ID : undefined);
+        if (perfilNeon && env.VINCULACION_ARCHIVOS_HABILITADA) {
+            if (env.ACTUALIZACION_ARCHIVISTICA_PRODUCCION !== '20261026-archivo-v1')
+                throw new Error('La activación de producción no identifica la versión aprobada');
+            const estado=(await cliente.query<{activada:boolean; migraciones:number}>(`SELECT c.activada,
+                (SELECT count(*)::int FROM migraciones_archivisticas m WHERE m.version_release=c.version) migraciones
+                FROM capacidades_archivisticas c WHERE c.version=$1`,[env.ACTUALIZACION_ARCHIVISTICA_PRODUCCION])).rows[0];
+            if (!estado?.activada || estado.migraciones!==10) throw new Error('La actualización archivística no está migrada y activada');
+            const privilegios=(await cliente.query<{inseguro:boolean}>(`SELECT rolsuper OR rolbypassrls OR rolcreatedb OR rolcreaterole
+                OR has_schema_privilege('public','CREATE') OR has_table_privilege('documentos','DELETE')
+                OR has_table_privilege('historial_modificaciones','UPDATE') OR has_table_privilege('movimientos_documentales','TRUNCATE') inseguro
+                FROM pg_roles WHERE rolname=current_user`)).rows[0];
+            if (!privilegios || privilegios.inseguro) throw new Error('El rol operativo conserva privilegios incompatibles con esta versión');
+        }
         console.log("Conexión PostgreSQL verificada correctamente.");
         const identidad = resultado.rows[0]!;
         return { base_datos: identidad.base_datos, usuario: identidad.usuario, version: identidad.version, tls };

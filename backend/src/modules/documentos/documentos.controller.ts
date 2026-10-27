@@ -1,9 +1,18 @@
+import { paginaSchema } from '../ingresos/ingresos.schema.js';
 import type { Response } from 'express';
 import type { RequestAutenticada } from '../../middlewares/auth.middleware.js';
 import { validar } from '../../shared/http/validar.js';
 import { parametroIdSchema } from '../../shared/admin/admin.schema.js';
-import { filtrosSchema, registrarSchema, corregirSchema, anularSchema, autorizarSchema } from './documentos.schema.js';
+import { filtrosSchema, registrarSchema, corregirSchema, anularSchema, autorizarSchema, vincularArchivoSchema } from './documentos.schema.js';
 import * as service from './documentos.service.js';
+/** Metadatos mínimos de archivos actualmente asignados al actor. */
+export async function archivosDisponibles(req: RequestAutenticada, res: Response) {
+    res.json(await service.archivosDisponibles(req.usuario!.id));
+}
+/** La autorización y la vinculación se confirman dentro de una transacción. */
+export async function vincularArchivo(req: RequestAutenticada, res: Response) {
+    res.json({ documento: await service.vincularArchivo(req.usuario!.id, validar(parametroIdSchema, req.params).id, validar(vincularArchivoSchema, req.body)) });
+}
 /**
  * Consulta el listado mediante el servicio del módulo, validando con Zod las entradas que utiliza; adapta el resultado a la respuesta HTTP sin consultar SQL.
  * @param req - Solicitud HTTP con la identidad incorporada por requiereAuth.
@@ -85,3 +94,5 @@ export async function retirarAutorizacion(req: RequestAutenticada, res: Response
 export async function solicitarDecision(req: RequestAutenticada, res: Response) {
     res.json({ documento: await service.solicitarDecision(req.usuario!.id, validar(parametroIdSchema, req.params).id, validar(anularSchema, req.body).motivo) });
 }
+
+export async function recorrido(req:RequestAutenticada,res:Response){const {pagina,limite}=validar(paginaSchema,req.query);res.json(await service.recorrido(req.usuario!.id,validar(parametroIdSchema,req.params).id,pagina,limite));}

@@ -5,6 +5,10 @@ import { Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router
 import { useAuth } from '../features/auth/hooks/useAuth';
 import { useAccesoSiseve } from '../features/siseve/hooks/useAccesoSiseve';
 import styles from '../components/ui/EstadoPagina.module.css';
+const ContinuidadPage = lazy(() => import('../features/continuidad/ContinuidadPage').then(m=>({default:m.ContinuidadPage})));
+const ArchivosListaPage = lazy(() => import('../features/archivos/pages/ArchivosListaPage').then(m => ({ default: m.ArchivosListaPage })));
+const ArchivoFormularioPage = lazy(() => import('../features/archivos/pages/ArchivoFormularioPage').then(m => ({ default: m.ArchivoFormularioPage })));
+const ArchivoDetallePage = lazy(() => import('../features/archivos/pages/ArchivoDetallePage').then(m => ({ default: m.ArchivoDetallePage })));
 /** Las factorías se declaran fuera del render; los guards deciden qué pantalla llega a cargarse. */
 const AdminLayout = lazy(/** Descarga la pantalla AdminLayout únicamente cuando su ruta autorizada se renderiza. */() => import('../components/layout/AdminLayout').then(/** Adapta la exportación AdminLayout al contrato default requerido por React.lazy. */  m => ({ default: m.AdminLayout })));
 const LoginPage = lazy(/** Descarga la pantalla LoginPage únicamente cuando su ruta autorizada se renderiza. */() => import('../features/auth/pages/LoginPage').then(/** Adapta la exportación LoginPage al contrato default requerido por React.lazy. */  m => ({ default: m.LoginPage })));
@@ -19,6 +23,7 @@ const MovimientoDetallePage = lazy(/** Descarga la pantalla MovimientoDetallePag
 const UsuariosListaPage = lazy(/** Descarga la pantalla UsuariosListaPage únicamente cuando su ruta autorizada se renderiza. */() => import('../features/usuarios/pages/UsuariosListaPage').then(/** Adapta la exportación UsuariosListaPage al contrato default requerido por React.lazy. */  m => ({ default: m.UsuariosListaPage })));
 const UsuarioFormularioPage = lazy(/** Descarga la pantalla UsuarioFormularioPage únicamente cuando su ruta autorizada se renderiza. */() => import('../features/usuarios/pages/UsuarioFormularioPage').then(/** Adapta la exportación UsuarioFormularioPage al contrato default requerido por React.lazy. */  m => ({ default: m.UsuarioFormularioPage })));
 const UsuarioDetallePage = lazy(/** Descarga la pantalla UsuarioDetallePage únicamente cuando su ruta autorizada se renderiza. */() => import('../features/usuarios/pages/UsuarioDetallePage').then(/** Adapta la exportación UsuarioDetallePage al contrato default requerido por React.lazy. */  m => ({ default: m.UsuarioDetallePage })));
+const PrimerIngresoPage = lazy(() => import('../features/ingresos/pages/PrimerIngresoPage').then(m => ({ default: m.PrimerIngresoPage })));
 const Roles = {
     Lista: lazy(/** Descarga la pantalla Lista únicamente cuando su ruta autorizada se renderiza. */() => import('../features/roles/pages/RolesPages').then(/** Adapta la exportación Lista al contrato default requerido por React.lazy. */  m => ({ default: m.Lista }))),
     Detalle: lazy(/** Descarga la pantalla Detalle únicamente cuando su ruta autorizada se renderiza. */() => import('../features/roles/pages/RolesPages').then(/** Adapta la exportación Detalle al contrato default requerido por React.lazy. */  m => ({ default: m.Detalle }))),
@@ -106,6 +111,25 @@ function SoloAdministrador() {
             </section>
         </main>;
 }
+/** Limita la presentación documental ordinaria sin montar sus pantallas ni sustituir la autorización del backend. */
+function AccesoDocumentalOrdinario() {
+    const { sesion } = useAuth();
+    return sesion?.usuario.rol === 'Administrador' ?
+        <main className={styles.pagina}>
+            <section className={styles.tarjeta}>
+                <h1>Sección no disponible</h1>
+                <p>Esta sección no está disponible para tu perfil administrativo</p>
+                <div className={styles.acciones}>
+                    <Link to="/dashboard">Volver al inicio administrativo</Link>
+                </div>
+            </section>
+        </main> : <Outlet />;
+}
+/** Solo Secretaría monta formularios de ingreso; backend vuelve a comprobar rol y oficina. */
+function SoloMesaPartes() {
+    const { sesion } = useAuth();
+    return sesion?.usuario.rol === 'Secretaria de Dirección' ? <Outlet /> : <main className={styles.pagina}><h1>Acceso no autorizado</h1><p>El primer ingreso ordinario corresponde a Secretaría de Mesa de Partes.</p><Link to="/dashboard">Volver al inicio</Link></main>;
+}
 /**
  * Resuelve la entrada del sistema hacia el panel o el login según la sesión verificada.
  */
@@ -154,12 +178,19 @@ export function AppRoutes() {
                             <Route element={<VerificacionSiseve />}>
                                 <Route path="/siseve" element={<SisevePage />} />
                             </Route>
-                            <Route path="/documentos" element={<DocumentosListaPage />} />
-                            <Route path="/documentos/nuevo" element={<DocumentoFormularioPage />} />
-                            <Route path="/documentos/:id/editar" element={<DocumentoFormularioPage />} />
-                            <Route path="/documentos/:id" element={<DocumentoDetallePage />} />
-                            <Route path="/movimientos" element={<MovimientosListaPage />} />
-                            <Route path="/movimientos/:id" element={<MovimientoDetallePage />} />
+                            <Route element={<AccesoDocumentalOrdinario />}>
+                                <Route element={<SoloMesaPartes />}>
+                                    <Route path="/mesa-partes/nuevo" element={<PrimerIngresoPage />} />
+                                    <Route path="/mesa-partes/recepciones/:id" element={<PrimerIngresoPage />} />
+                                </Route>
+                                <Route path="/continuidad" element={<ContinuidadPage />} />
+                                <Route path="/documentos" element={<DocumentosListaPage />} />
+                                <Route path="/documentos/nuevo" element={<DocumentoFormularioPage />} />
+                                <Route path="/documentos/:id/editar" element={<DocumentoFormularioPage />} />
+                                <Route path="/documentos/:id" element={<DocumentoDetallePage />} />
+                                <Route path="/movimientos" element={<MovimientosListaPage />} />
+                                <Route path="/movimientos/:id" element={<MovimientoDetallePage />} />
+                            </Route>
                             <Route path="/tipos-documentales" element={<Tipos.ListaTiposPage />} />
                             <Route path="/tipos-documentales/:id" element={<Tipos.DetalleTipoPage />} />
                             <Route path="/ubicaciones" element={<Ubicaciones.UbicacionesPage />} />
@@ -170,6 +201,11 @@ export function AppRoutes() {
                             <Route path="/ubicaciones/archivadores/:id" element={<Ubicaciones.DetalleArchivadorPage />} />
                             <Route path="/ubicaciones/archivadores/:id/editar" element={<Ubicaciones.FormularioArchivadorPage />} />
                             <Route element={<SoloAdministrador />}>
+                                <Route path="/continuidad-administrativa" element={<ContinuidadPage />} />
+                                <Route path="/archivos" element={<ArchivosListaPage />} />
+                                <Route path="/archivos/nuevo" element={<ArchivoFormularioPage />} />
+                                <Route path="/archivos/:id" element={<ArchivoDetallePage />} />
+                                <Route path="/archivos/:id/editar" element={<ArchivoFormularioPage />} />
                                 <Route element={<VerificacionSiseve />}>
                                     <Route path="/siseve/administracion" element={<SiseveAdministracionPage />} />
                                 </Route>

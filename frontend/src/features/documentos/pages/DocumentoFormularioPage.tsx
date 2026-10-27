@@ -11,7 +11,11 @@ import styles from '../../../components/ui/Admin.module.css';
 export function DocumentoFormularioPage() {
     const { id } = useParams();
     const token = useAuth().sesion!.token;
-    const consulta = useConsulta(useCallback(/** Carga opciones y, cuando corresponde, el detalle del documento que se corrige. */ async () => ({ opciones: await api.opciones(token), detalle: id ? await api.detalle(token, id) : null }), [token, id]));
+    const consulta = useConsulta(useCallback(/** Carga opciones y, cuando corresponde, el detalle del documento que se corrige. */ async () => {
+        const opciones = await api.opciones(token);
+        const archivos = !id && opciones.vinculacion_archivos_habilitada ? (await api.archivosDisponibles(token)).archivos : [];
+        return { opciones: { ...opciones, disponibles: archivos }, detalle: id ? await api.detalle(token, id) : null };
+    }, [token, id]));
     return <main className={styles.pagina}>
         <h1>
             {id ? 'Corregir documento' : 'Registrar documento fisico'}
@@ -28,11 +32,11 @@ function Formulario({ token, id, inicial, opciones }: {
     token: string;
     id: string | undefined;
     inicial: Documento | undefined;
-    opciones: Awaited<ReturnType<typeof api.opciones>>;
+    opciones: Awaited<ReturnType<typeof api.opciones>> & { disponibles: Awaited<ReturnType<typeof api.archivosDisponibles>>['archivos'] };
 }) {
     const navigate = useNavigate();
     const [error, setError] = useState('');
-    const { register, handleSubmit, formState: { isSubmitting } } = useForm<FormularioDocumento>({ defaultValues: { tipo_documental_id: inicial?.tipo_documental_id ?? '', asunto: inicial?.asunto ?? '', remitente: inicial?.remitente ?? '', observaciones: inicial?.observaciones ?? '', archivador_id: inicial?.archivador_id ?? '', motivo: '' } });
+    const { register, handleSubmit, formState: { isSubmitting } } = useForm<FormularioDocumento>({ defaultValues: { archivo_id: '', tipo_documental_id: inicial?.tipo_documental_id ?? '', asunto: inicial?.asunto ?? '', remitente: inicial?.remitente ?? '', observaciones: inicial?.observaciones ?? '', archivador_id: inicial?.archivador_id ?? '', motivo: '' } });
     /**
      * Valida contenido y motivo, adapta vacíos opcionales al contrato y navega al documento confirmado; mantiene el error de envío en el formulario.
      * @param valores - Campos del formulario antes de normalizar y validar.
@@ -48,9 +52,13 @@ function Formulario({ token, id, inicial, opciones }: {
             setError('El motivo de correccion es obligatorio');
             return;
         }
+        if (!id && opciones.vinculacion_archivos_habilitada && !valores.archivo_id) {
+            setError('Seleccione un archivo institucional asignado a su nombre');
+            return;
+        }
         const contenido = { asunto: valores.asunto, remitente: valores.remitente || null, observaciones: valores.observaciones || null };
         try {
-            const r = await api.guardar(token, id, id ? { ...contenido, motivo: valores.motivo } : { ...contenido, tipo_documental_id: valores.tipo_documental_id, archivador_id: valores.archivador_id || null });
+            const r = await api.guardar(token, id, id ? { ...contenido, motivo: valores.motivo, version_documental: inicial?.version_documental } : { ...contenido, tipo_documental_id: valores.tipo_documental_id, archivador_id: valores.archivador_id || null, ...(opciones.vinculacion_archivos_habilitada ? { archivo_id: valores.archivo_id } : {}) });
             navigate(`/documentos/${r.documento.id}`, { replace: true });
         }
         catch (e) {
@@ -59,7 +67,15 @@ function Formulario({ token, id, inicial, opciones }: {
     }
     return <section className={styles.tarjeta}>
         <p>El codigo, la fecha y la autoria se asignan automaticamente. El original permanece bajo su custodia hasta confirmar una entrega.</p>
-        {!id && !opciones.puede_registrar ? <p role="alert">Necesita una oficina asignada para registrar documentos.</p> : <form onSubmit={handleSubmit(guardar)}>
+        {!id && opciones.vinculacion_archivos_habilitada && <p>El archivo conserva su identidad aunque cambie el trabajador. RECIBIDO representa aquí la custodia inicial registrada; no una recepción entre oficinas. No se crea ingreso de Mesa de Partes ni traslado físico.</p>}
+        {!id && opciones.vinculacion_archivos_habilitada && !opciones.disponibles.length ? <p role="alert">No tiene un archivo institucional asignado. Solicite su asignación al Administrador para registrar documentos.</p> : !id && !opciones.puede_registrar ? <p role="alert">Necesita una oficina asignada para registrar documentos.</p> : <form onSubmit={handleSubmit(guardar)}>
+            {!id && opciones.vinculacion_archivos_habilitada && <div className={styles.campo}>
+                <label htmlFor="archivo-institucional">Archivo institucional</label>
+                <select id="archivo-institucional" {...register('archivo_id')} required>
+                    <option value="">Seleccione su archivo</option>
+                    {opciones.disponibles.map(a => <option key={a.id} value={a.id}>{a.nombre} · {a.oficina}</option>)}
+                </select>
+            </div>}
             <div className={styles.campo}>
                 <label htmlFor="tipo">Tipo documental</label>
                 {id ? <>

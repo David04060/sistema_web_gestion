@@ -9,6 +9,8 @@ documentosRouter.use(/** Impide almacenar respuestas privadas en caché y contin
 });
 documentosRouter.get('/', controller.listar);
 documentosRouter.get('/opciones', controller.opciones);
+documentosRouter.get('/archivos-disponibles', controller.archivosDisponibles);
+documentosRouter.post('/:id/archivo', controller.vincularArchivo);
 documentosRouter.post('/', controller.registrar);
 documentosRouter.put('/:id', controller.corregir);
 documentosRouter.post('/:id/anular', controller.anular);
@@ -17,3 +19,5 @@ documentosRouter.post('/:id/retirar-autorizacion', controller.retirarAutorizacio
 documentosRouter.post('/:id/solicitar-decision', controller.solicitarDecision);
 documentosRouter.get('/:id', controller.detalle);
 documentosRouter.get('/:id/historial', controller.historial);
+
+documentosRouter.get('/:id/recorrido', controller.recorrido);

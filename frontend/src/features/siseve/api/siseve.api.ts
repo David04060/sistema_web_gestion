@@ -32,7 +32,7 @@ export async function operar(token: string, clave: string, operacion: string, da
     return (await apiRequest('/api/siseve/operaciones', z.object({ resultado: resultadoSchema }), { method: 'POST', body: JSON.stringify({ clave, operacion, datos, ...(id ? { id } : {}) }) }, token)).resultado;
 }
 /** Adapta campos visuales al contrato estricto existente sin permitir campos generados o privilegios. */
-export function ejecutarSolicitud(token: string, d: Solicitud, tipoId: string, destinoAutorizado: string | null) {
+export function ejecutarSolicitud(token: string, d: Solicitud, tipoId: string, destinoAutorizado: string | null, versionDocumental?: string) {
     const contenido = { asunto: d.asunto, remitente: d.remitente || null, observaciones: d.observaciones || null };
     let datos: unknown = {};
     switch (d.operacion) {
@@ -46,7 +46,7 @@ export function ejecutarSolicitud(token: string, d: Solicitud, tipoId: string, d
             datos = { ...contenido, tipo_documental_id: tipoId, archivador_id: d.archivador_id || null };
             break;
         case 'corregir':
-            datos = { ...contenido, motivo: d.motivo };
+            datos = { ...contenido, motivo: d.motivo, ...(versionDocumental?{version_documental:versionDocumental}:{}) };
             break;
         case 'autorizar':
             datos = { usuario_destino_id: d.usuario_destino_id, motivo: d.motivo };

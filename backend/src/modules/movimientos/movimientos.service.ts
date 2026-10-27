@@ -1,3 +1,4 @@
+import * as ingresos from '../ingresos/ingresos.repository.js';
 import * as documentos from '../documentos/documentos.repository.js';
 import { documentoBloqueado, exigirEditable } from '../documentos/documentos.service.js';
 import { transaccionDocumental, obtenerActor } from '../../shared/documental/transaccion.js';
@@ -6,7 +7,8 @@ import * as repository from './movimientos.repository.js';
 import type { Filtros } from './movimientos.schema.js';
 /** El repositorio limita tanto filas como conteos a documentos ordinarios autorizados. */
 export async function listar(actorId: string, filtros: Filtros) {
-    return { ...await repository.listar(await obtenerActor(actorId), filtros), pagina: filtros.pagina, limite: filtros.limite };
+    const actor = await obtenerActor(actorId);
+    return { ...await ingresos.lectura(actor, c => repository.listar(actor, filtros, c)), pagina: filtros.pagina, limite: filtros.limite };
 }
 /**
  * Revalida al actor y devuelve el movimiento consultable; utiliza el mismo 404 para inexistencia o falta de autorización.
@@ -14,10 +16,19 @@ export async function listar(actorId: string, filtros: Filtros) {
  * @param id - Identificador textual del registro al que se aplica esta operación.
  */
 export async function detalle(actorId: string, id: string) {
-    const movimiento = await repository.obtener(await obtenerActor(actorId), id);
-    if (!movimiento)
-        throw new HttpError(404, 'Movimiento inexistente o no autorizado');
-    return movimiento;
+    const actor = await obtenerActor(actorId);
+    return ingresos.lectura(actor, async c => {
+        const movimiento = await repository.obtener(actor, id, c);
+        if (!movimiento) throw new HttpError(404, 'Movimiento inexistente o no autorizado');
+        if (!ingresos.habilitado()) return movimiento;
+        // Datos y disponibilidad pertenecen a la misma instantánea autorizada.
+        const puedeIngresar = actor.rol === 'Secretaria de Dirección'
+            && movimiento.usuario_destino_id === actor.id && !movimiento.ingreso_referencia
+            && actor.oficina_id !== null && await documentos.oficinaNombre(actor.oficina_id, c!) === 'Mesa de Partes';
+        const admite = puedeIngresar && !!await ingresos.recepcion(actor, id, c!)
+            && !await ingresos.existe(movimiento.documento_id, c!);
+        return { ...movimiento, puede_primer_ingreso: !!admite };
+    });
 }
 /** Salida real: movimiento y consumo de autorizacion se confirman en una unica transaccion. */
 export async function derivar(actorId: string, datos: {

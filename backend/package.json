@@ -21,11 +21,14 @@
     "test:siseve": "npm run test:migracion-documental",
     "test:dashboard": "npm run build && node --test tests/dashboard.integration.mjs",
     "test:revision-final": "npm run build && node --test tests/revision-final.integration.mjs",
+    "test:archivos": "node --import tsx --test tests/archivos.integration.mjs",
     "dev:neon:qa": "tsx watch src/server.ts --neon-qa",
     "start:neon:qa": "node dist/server.js --neon-qa",
     "check:neon:qa": "node scripts/verificar-neon-qa.mjs",
     "test:neon:qa:documental": "node scripts/probar-neon-qa.mjs flujo-migration.integration.mjs",
-    "test:neon:qa:dashboard": "node scripts/probar-neon-qa.mjs dashboard.integration.mjs"
+    "test:neon:qa:dashboard": "node scripts/probar-neon-qa.mjs dashboard.integration.mjs",
+    "test:ciclo-ingresos": "node --import tsx --test tests/ciclo-ingresos.integration.mjs",
+    "test:continuidad": "node --import tsx --test tests/continuidad.integration.mjs"
   },
   "keywords": [],
   "author": "",

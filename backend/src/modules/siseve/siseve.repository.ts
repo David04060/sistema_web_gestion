@@ -82,7 +82,8 @@ export async function accesoPropio(usuarioId: string) {
     return (await pool.query<{
         tipo_documental_id: string;
         autorizado: boolean;
-    }>(`SELECT t.id::text tipo_documental_id,EXISTS(SELECT 1 FROM autorizaciones_tipos_restringidos a WHERE a.tipo_documental_id=t.id AND a.usuario_id=$1 AND a.activo) autorizado FROM tipos_documentales t WHERE t.nombre='SíseVe' AND t.requiere_clave`, [usuarioId])).rows[0];
+        clave_configurada: boolean;
+    }>(`SELECT EXISTS(SELECT 1 FROM claves_tipos_documentales c WHERE c.tipo_documental_id=t.id) clave_configurada,t.id::text tipo_documental_id,EXISTS(SELECT 1 FROM autorizaciones_tipos_restringidos a WHERE a.tipo_documental_id=t.id AND a.usuario_id=$1 AND a.activo) autorizado FROM tipos_documentales t WHERE t.nombre='SíseVe' AND t.requiere_clave`, [usuarioId])).rows[0];
 }
 /** Exclusivo del servicio administrativo: el hash nunca forma parte de un DTO de respuesta. */
 export async function claveActual(cliente: PoolClient, tipoId: string) {
