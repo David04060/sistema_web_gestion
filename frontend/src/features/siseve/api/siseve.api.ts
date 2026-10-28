@@ -43,7 +43,7 @@ export function ejecutarSolicitud(token: string, d: Solicitud, tipoId: string, d
             datos = { ...(d.id ? { documento_id: d.id } : {}), pagina: Number(d.pagina) || 1, ...(d.estado ? { estado: d.estado } : {}) };
             break;
         case 'registrar':
-            datos = { ...contenido, tipo_documental_id: tipoId, archivador_id: d.archivador_id || null };
+            datos = { ...contenido, tipo_documental_id: tipoId, clasificacion_registro: d.clasificacion_registro, archivador_id: d.archivador_id || null };
             break;
         case 'corregir':
             datos = { ...contenido, motivo: d.motivo };

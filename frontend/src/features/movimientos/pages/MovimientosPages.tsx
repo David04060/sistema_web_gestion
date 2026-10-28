@@ -1,3 +1,6 @@
+import {DelegacionesPersonalesPage} from './DelegacionesPersonalesPage';
+import documentoStyles from '../../documentos/styles/Documentos.module.css';
+import {etiquetasEstado} from '../../../lib/estados-documentales';
 import { EstadoBadge } from '../../../components/ui/EstadoBadge';
 import { MovimientoAcciones } from '../components/MovimientoAcciones';
 import { useCallback, useState } from 'react';
@@ -9,7 +12,8 @@ import { fechaLocal } from '../../../lib/fechas';
 import * as api from '../api/movimientos.api';
 import styles from '../../../components/ui/Admin.module.css';
 /** Consulta el recorrido autorizado; participar en él no concede edición ni acceso a todo el contenido. */
-export function MovimientosListaPage() {
+export function MovimientosListaPage(){const auth=useAuth();return auth.sesion!.usuario.rol==='Usuario'?<DelegacionesPersonalesPage/>:<MovimientosInstitucionalesPage/>;}
+function MovimientosInstitucionalesPage() {
     const token = useAuth().sesion!.token;
     const [params, setParams] = useSearchParams();
     const filtros = params.toString();
@@ -27,9 +31,9 @@ export function MovimientosListaPage() {
         <div className={styles.titulo}>
             <div>
                 <h1>Movimientos documentales</h1>
-                <p>Recorrido de los originales dentro de tu acceso institucional.</p>
+
             </div>
-            <Link className={styles.secundario} to="/documentos">Consultar documentos</Link>
+            <Link className={styles.secundario} to={params.get('documento_id')?`/documentos/${encodeURIComponent(params.get('documento_id')!)}`:'/documentos'}>{params.get('documento_id')?'Volver al documento':'Consultar documentos'}</Link>
         </div>
         <section className={styles.tarjeta}>
             <div className={styles.datos}>
@@ -62,14 +66,14 @@ export function MovimientosListaPage() {
                         setParams(p);
                     }}>
                         <option value="">Todos</option>
-                        {['EN_TRASLADO', 'RECIBIDO', 'RECHAZADO', 'CANCELADO'].map(/** Presenta un estado de movimiento aprobado como filtro. */  e => <option key={e}>
-                            {e}
+                        {['EN_TRASLADO', 'RECIBIDO', 'RECHAZADO', 'CANCELADO'].map(/** Presenta un estado de movimiento aprobado como filtro. */  e => <option key={e} value={e}>
+                            {etiquetasEstado[e]??e}
                         </option>)}
                     </select>
                 </div>
             </div>
             <p>
-                <Link to="/documentos?estado=PENDIENTE_DECISION">Documentos pendientes de decision o salida autorizada</Link>
+                <Link className={styles.secundario} to="/documentos?situacion=PENDIENTE_DECISION">Consultar pendientes de decisión</Link>
             </p>
         </section>
         <EstadoCarga {...consulta} reintentar={consulta.recargar} />
@@ -105,10 +109,10 @@ export function MovimientosListaPage() {
                                 <EstadoBadge estado={m.estado} />
                             </td>
                             <td>
-                                {fechaLocal(m.fecha_creacion)}
+                                {fechaLocal(m.fecha_creacion)}<br />{m.registrado_por??'Persona no disponible'}
                             </td>
                             <td>
-                                <Link to={`/movimientos/${m.id}`}>Consultar</Link>
+                                <Link className={styles.secundario} to={`/movimientos/${m.id}`}>Ver detalle</Link>
                             </td>
                         </tr>)}
                     </tbody>
@@ -132,6 +136,7 @@ export function MovimientosListaPage() {
  */
 export function MovimientoDetallePage() {
     const { id = '' } = useParams();
+    const personal=useAuth().sesion!.usuario.rol==='Usuario';
     const token = useAuth().sesion!.token;
     const consulta = useConsulta(useCallback(/** Consulta el movimiento seleccionado con el JWT actual. */() => api.detalle(token, id), [token, id]));
     // Se conserva aun cuando la acción cierre el movimiento y desaparezca el formulario.
@@ -147,88 +152,31 @@ export function MovimientoDetallePage() {
             <h2>
                 {m.codigo} · <EstadoBadge estado={m.estado} />
             </h2>
-            <dl className={styles.datos}>
-                <div>
-                    <dt>Origen</dt>
-                    <dd>
-                        {m.usuario_origen} · {m.oficina_origen}
-                    </dd>
-                </div>
-                <div>
-                    <dt>Destino</dt>
-                    <dd>
-                        {m.usuario_destino} · {m.oficina_destino}
-                    </dd>
-                </div>
-                <div>
-                    <dt>Autorizado por (identificador historico)</dt>
-                    <dd>
-                        {m.decidido_por_id ?? 'Derivacion directa del custodio'}
-                    </dd>
-                </div>
-                <div>
-                    <dt>Registro</dt>
-                    <dd>
-                        {fechaLocal(m.fecha_creacion)}
-                    </dd>
-                </div>
-                <div>
-                    <dt>Salida</dt>
-                    <dd>
-                        {m.fecha_salida ? fechaLocal(m.fecha_salida) : 'Sin salida registrada'}
-                    </dd>
-                </div>
-                <div>
-                    <dt>Recepción</dt>
-                    <dd>
-                        {m.fecha_recepcion ? fechaLocal(m.fecha_recepcion) : 'Sin recepción confirmada'}
-                    </dd>
-                </div>
-                <div>
-                    <dt>Usuario que confirmó la recepción</dt>
-                    <dd>
-                        {m.recibido_por_id ?? 'Sin recepcion'}
-                    </dd>
-                </div>
-                <div>
-                    <dt>Fecha y usuario de rechazo</dt>
-                    <dd>
-                        {m.fecha_rechazo ? `${fechaLocal(m.fecha_rechazo)} · Cuenta ${m.rechazado_por_id}` : 'Sin rechazo'}
-                    </dd>
-                </div>
-                <div>
-                    <dt>Rechazo</dt>
-                    <dd>
-                        {m.motivo_rechazo ?? 'Sin rechazo'}
-                    </dd>
-                </div>
-                <div>
-                    <dt>Recuperación en origen</dt>
-                    <dd>
-                        {m.fecha_confirmacion_devolucion ? fechaLocal(m.fecha_confirmacion_devolucion) : 'Sin recuperación registrada'}
-                    </dd>
-                </div>
-                <div>
-                    <dt>Fecha y usuario de cancelacion</dt>
-                    <dd>
-                        {m.fecha_cancelacion ? `${fechaLocal(m.fecha_cancelacion)} · Cuenta ${m.cancelado_por_id}` : 'Sin cancelacion'}
-                    </dd>
-                </div>
-                <div>
-                    <dt>Cancelación</dt>
-                    <dd>
-                        {m.motivo_cancelacion ?? 'Sin cancelación'}
-                    </dd>
-                </div>
-            </dl>
-            <div className={styles.acciones}>
-                <Link className={styles.boton} to={`/movimientos?documento_id=${m.documento_id}`}>Recorrido completo</Link>
-                <Link className={styles.secundario} to="/movimientos">Volver</Link>
+            <div className={documentoStyles.recorrido}>
+                <section className={documentoStyles.cuadroRecorrido}><h3>Participantes</h3><dl>
+                    <div><dt>Origen</dt><dd>{m.usuario_origen}<span>{m.oficina_origen}</span></dd></div>
+                    <div><dt>Destino</dt><dd>{m.usuario_destino}<span>{m.oficina_destino}</span></dd></div>
+                    <div><dt>Registrado por</dt><dd>{m.registrado_por??'Persona no disponible'}</dd></div>
+                    <div><dt>Decisión de Dirección</dt><dd>{m.decidido_por??'Derivación directa'}</dd></div>
+                </dl></section>
+                <section className={documentoStyles.cuadroRecorrido}><h3>Acciones y fechas</h3><ol className={documentoStyles.hitos}>
+                    <li><strong>Registro</strong><span>{m.registrado_por??'Persona no disponible'}</span><time dateTime={m.fecha_creacion}>{fechaLocal(m.fecha_creacion)}</time></li>
+                    {m.fecha_salida&&<li><strong>Salida</strong><span>{m.trasladado_por??m.registrado_por??'Persona no disponible'}</span><time dateTime={m.fecha_salida}>{fechaLocal(m.fecha_salida)}</time></li>}
+                    {m.fecha_recepcion&&<li><strong>Recepción confirmada</strong><span>{m.recibido_por??'Persona no disponible'}</span><time dateTime={m.fecha_recepcion}>{fechaLocal(m.fecha_recepcion)}</time></li>}
+                    {m.fecha_rechazo&&<li><strong>Rechazo</strong><span>{m.rechazado_por??'Persona no disponible'}</span><time dateTime={m.fecha_rechazo}>{fechaLocal(m.fecha_rechazo)}</time><p>{m.motivo_rechazo}</p></li>}
+                    {m.fecha_confirmacion_devolucion&&<li><strong>Recuperación en origen</strong><span>{m.devolucion_confirmada_por??'Persona no disponible'}</span><time dateTime={m.fecha_confirmacion_devolucion}>{fechaLocal(m.fecha_confirmacion_devolucion)}</time></li>}
+                    {m.fecha_cancelacion&&<li><strong>Cancelación</strong><span>{m.cancelado_por??'Persona no disponible'}</span><time dateTime={m.fecha_cancelacion}>{fechaLocal(m.fecha_cancelacion)}</time><p>{m.motivo_cancelacion}</p></li>}
+                </ol></section>
             </div>
-            <MovimientoAcciones movimiento={m} actualizar={/** Conserva el mensaje de confirmación para este movimiento y recarga su estado autorizado. */ mensaje => {
+            <div className={styles.acciones}>
+                {!personal&&<Link className={styles.boton} to={`/movimientos?documento_id=${m.documento_id}`}>Recorrido completo</Link>}
+                <Link className={styles.secundario} to={`/documentos/${m.documento_id}`}>Ver documento</Link>
+                <Link className={styles.secundario} to="/movimientos">Volver a movimientos</Link>
+            </div>
+            {!personal&&<MovimientoAcciones movimiento={m} actualizar={/** Conserva el mensaje de confirmación para este movimiento y recarga su estado autorizado. */ mensaje => {
                 setConfirmacion({ id, mensaje });
                 consulta.recargar();
-            }} />
+            }} />}
         </section>}
     </main>;
 }

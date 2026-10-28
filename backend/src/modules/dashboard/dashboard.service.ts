@@ -11,18 +11,16 @@ export async function obtener(actorId: string): Promise<Dashboard> {
         const actor = await obtenerActor(actorId, c);
         const admin = actor.rol === 'Administrador';
         const contexto = await repository.contexto(c, actor.oficina_id);
-        const mesa = actor.rol === 'Secretaria de Dirección' || contexto.oficina === 'Mesa de Partes';
         const resultado: Dashboard = {
-            alcance: admin ? 'administrativo' : actor.rol === 'Director(a)' ? 'institucional' : 'personal',
+            alcance: admin ? 'administrativo' : ['Director(a)','Secretaria de Dirección'].includes(actor.rol) ? 'institucional' : 'personal',
             actualizado: contexto.fecha,
-            ...(admin ? { indicadores: await repository.administracion(c), estados: [], operaciones: [], recientes: [], pendientes: [] } : await repository.documental(c, actor, mesa)),
+            atencion: await repository.atencion(c,actor),
+            ...(admin ? { indicadores: await repository.administracion(c), estados: [], operaciones: [], recientes: [], pendientes: [] } : await repository.documental(c, actor)),
             accesos: admin ? [{ etiqueta: 'Usuarios', ruta: '/usuarios' }, { etiqueta: 'Oficinas', ruta: '/oficinas' }, { etiqueta: 'Roles', ruta: '/roles' }, { etiqueta: 'Tipos documentales', ruta: '/tipos-documentales' }] : [
-                { etiqueta: 'Consultar documentos', ruta: '/documentos' }, { etiqueta: 'Movimientos y recepciones', ruta: '/movimientos' },
-                ...(actor.oficina_id ? [{ etiqueta: 'Registrar documento', ruta: '/documentos/nuevo' }] : []), { etiqueta: 'Mis ubicaciones', ruta: '/ubicaciones' }
+                { etiqueta: 'Consultar documentos', ruta: '/documentos' }, { etiqueta: 'Movimientos', ruta: '/movimientos' },
+                ...(actor.oficina_id ? [{ etiqueta: 'Registrar documento recibido', ruta: '/documentos/nuevo?clasificacion=RECIBIDO' }, { etiqueta: 'Registrar documento emitido', ruta: '/documentos/nuevo?clasificacion=EMITIDO' }] : []), { etiqueta: 'Mis ubicaciones', ruta: '/ubicaciones' }
             ],
         };
-        if (!admin && !mesa)
-            resultado.operaciones = resultado.operaciones.filter(/** Retira la operación de solicitar decisión para cuentas fuera del circuito de Mesa de Partes. */  i => i.clave !== 'solicitar');
         await c.query('COMMIT');
         return resultado;
     }

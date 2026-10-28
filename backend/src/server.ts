@@ -46,7 +46,7 @@ async function iniciarServidor(): Promise<void> {
     });
 }
 iniciarServidor().catch(/** Gestiona el fallo de arranque, libera el pool y termina con código de error. */ async (error: unknown) => {
-    console.error("No se pudo iniciar el backend:", error instanceof Error ? error.name : "Error desconocido");
+    console.error("No se pudo iniciar el backend:", error instanceof Error ? (env.NODE_ENV === "development" ? error.message : error.name) : "Error desconocido");
     await cerrarBaseDatos().catch(/** Informa un fallo de cierre del pool durante la recuperación del arranque. */ () => {
         console.error("No se pudo cerrar el pool PostgreSQL.");
     });

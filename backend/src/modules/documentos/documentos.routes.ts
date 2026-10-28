@@ -17,3 +17,11 @@ documentosRouter.post('/:id/retirar-autorizacion', controller.retirarAutorizacio
 documentosRouter.post('/:id/solicitar-decision', controller.solicitarDecision);
 documentosRouter.get('/:id', controller.detalle);
 documentosRouter.get('/:id/historial', controller.historial);
+
+documentosRouter.post('/:id/asignar-destinatario', controller.asignarDestinatario);
+documentosRouter.post('/:id/confirmar-entrega', controller.confirmarEntrega);
+
+documentosRouter.post('/:id/delegar', controller.asignarDestinatario);
+documentosRouter.post('/:id/guardar-direccion', controller.guardarDireccion);
+
+documentosRouter.post('/:id/delegar-personal',controller.delegarPersonal);

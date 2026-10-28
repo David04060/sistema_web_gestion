@@ -27,7 +27,7 @@ interface Props {
 }
 /** La contraseña se limpia antes de enviar; cada acción vuelve a exigir entrada explícita. */
 export function SiseveOperacionForm({ preparacion: p, operaciones, catalogos, ocupado, destinoAutorizado, ejecutar }: Props) {
-    const { register, handleSubmit, control, resetField, setError, formState: { errors } } = useForm<Solicitud>({ defaultValues: { operacion: p.operacion, id: p.id, asunto: p.asunto ?? '', remitente: p.remitente ?? '', observaciones: p.observaciones ?? '', clave: '', archivador_id: '', usuario_destino_id: '', motivo: '', q: '', estado: '', pagina: String(p.pagina ?? 1), confirmado: false } });
+    const { register, handleSubmit, control, resetField, setError, formState: { errors } } = useForm<Solicitud>({ defaultValues: { operacion: p.operacion, clasificacion_registro: '', id: p.id, asunto: p.asunto ?? '', remitente: p.remitente ?? '', observaciones: p.observaciones ?? '', clave: '', archivador_id: '', usuario_destino_id: '', motivo: '', q: '', estado: '', pagina: String(p.pagina ?? 1), confirmado: false } });
     const operacion = useWatch({ control, name: 'operacion' });
     const consulta = ['listar', 'detalle', 'historial', 'opciones', 'movimientos', 'movimiento'].includes(operacion);
     const contenido = operacion === 'registrar' || operacion === 'corregir';
@@ -88,6 +88,7 @@ export function SiseveOperacionForm({ preparacion: p, operaciones, catalogos, oc
                 </>}
                 {operacion === 'salir' && destinoAutorizado && <p>La salida utilizará exclusivamente el destinatario autorizado: {catalogos?.destinatarios.find(/** Busca el destinatario previamente autorizado para informar la salida restringida. */  u => u.id === destinoAutorizado)?.nombre ?? `Cuenta ${destinoAutorizado}`}
                 </p>}
+                {operacion === 'registrar' && <div className={styles.campo}><label htmlFor="s-clasificacion">Clasificación del registro</label><select id="s-clasificacion" required {...register('clasificacion_registro')}><option value="">Seleccione</option><option value="RECIBIDO">Recibido</option><option value="EMITIDO">Emitido</option></select></div>}
                 {contenido && <>
                     <div className={styles.campo}>
                         <label htmlFor="s-asunto">Asunto</label>

@@ -11,7 +11,7 @@ test('Siseve transmite cada clave en body y valida el resultado sin generar desb
     globalThis.fetch = /** Sustituye Fetch por la respuesta controlada y captura la petición del caso, sin utilizar red ni credenciales reales. */
         async (ruta, opciones) => {
             peticiones.push({ ruta, opciones });
-            return new Response(JSON.stringify({ resultado: { tipos: [], destinatarios: [], archivadores: [], filtros: [], puede_registrar: true } }), { status: 200 });
+            return new Response(JSON.stringify({ resultado: { oficinas: [], tipos: [], destinatarios: [], archivadores: [], filtros: [], puede_registrar: true } }), { status: 200 });
         };
     try {
         await api.operar('jwt-qa', 'Primera clave literal ', 'opciones', {});

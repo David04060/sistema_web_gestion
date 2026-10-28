@@ -52,3 +52,14 @@
 @media(max-width:1050px) { .pagina { padding:26px 22px 40px; } }
 @media(max-width:600px) { .pagina { padding:24px 16px 32px; } .pagina>h1,.titulo h1 { font-size:23px; } .tarjeta { padding:18px; border-radius:10px; } .tabla th,.tabla td { padding:12px; } .datos { gap:16px; } .titulo { align-items:flex-start; } }
 
+
+/* Usuarios conserva la tabla en escritorio y dispone cada cuenta en una fila legible en móvil. */
+.tablaUsuarios td { overflow-wrap: break-word; word-break: normal; }
+@media (max-width: 600px) {
+    .tablaUsuarios table, .tablaUsuarios tbody { display: block; }
+    .tablaUsuarios thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .tablaUsuarios tr { display: block; padding: 10px 14px; border-bottom: 1px solid var(--color-borde, #dce3ed); }
+    .tablaUsuarios td { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; padding: 7px 0; border: 0; text-align: left; }
+    .tablaUsuarios td::before { content: attr(data-label); font-weight: 600; }
+    .tablaUsuarios td a { min-width: 0; }
+}

@@ -1,11 +1,15 @@
+import { presentarAuditoria } from './auditoria-presentacion.js';
 import type { PoolClient } from 'pg';
-import { conexionDocumental, tipoVisibleSQL } from '../../shared/documental/contexto.js';
+import { clienteDocumental, conexionDocumental, tipoVisibleSQL } from '../../shared/documental/contexto.js';
 import type { ActorDocumental } from '../../shared/documental/transaccion.js';
 import type { Contenido, Filtros, Registrar } from './documentos.schema.js';
 import type { EstadoDocumento } from '../../shared/documental/estados.js';
 export interface Documento extends Contenido {
+    registro_personal: boolean;
+    entrega: { observaciones: string | null; ubicacion_direccion: string | null; situacion: string; destinatario: string | null; asignado_por: string | null; asignado_en: string | null; confirmado_por: string | null; confirmado_en: string | null; revision: number } | null;
     id: string;
     codigo: string;
+    clasificacion_registro: 'RECIBIDO' | 'EMITIDO' | null;
     destinatario_autorizado_id: string | null;
     oficina_destino_autorizada_id: string | null;
     decision_autorizada_por_id: string | null;
@@ -27,14 +31,32 @@ export interface Documento extends Contenido {
     fecha_modificacion: string;
 }
 /** Exclusión obligatoria incluso para Administrador y Director, antes de filas, totales e historial. */
-export const contenidoAutorizadoSQL = () => `(${tipoVisibleSQL()} AND (d.registrado_por_id=$1::bigint OR d.responsable_actual_id=$1::bigint OR $2::boolean))`;
+export const contenidoAutorizadoSQL = () => {
+    // SíseVe conserva su puerta individual, clave por operación y alcance aprobado.
+    if (clienteDocumental()) return `(${tipoVisibleSQL()} AND (d.registrado_por_id=$1::bigint OR d.responsable_actual_id=$1::bigint OR $2::boolean))`;
+    return `(${tipoVisibleSQL()} AND EXISTS (
+      SELECT 1 FROM usuarios lector JOIN roles rol_lector ON rol_lector.id=lector.rol_id
+      WHERE lector.id=$1::bigint AND lector.activo
+      AND rol_lector.nombre IN ('Usuario','Secretaria de Dirección','Director(a)')
+      AND (d.registrado_por_id=lector.id OR EXISTS (
+        SELECT 1 FROM usuarios autor JOIN roles rol_autor ON rol_autor.id=autor.rol_id
+        WHERE autor.id=d.registrado_por_id AND (
+          (rol_lector.nombre='Director(a)' AND $2::boolean AND rol_autor.nombre='Secretaria de Dirección')
+          OR (rol_lector.nombre='Secretaria de Dirección' AND rol_autor.nombre='Director(a)')
+        )
+      ))
+    ))`;
+
+};
 /**
- * Construye el predicado de recorrido: admite participantes históricos además de creador, custodio y Dirección, pero mantiene la exclusión del tipo restringido.
+ * El recorrido ordinario respeta autoría. El contexto protegido conserva su alcance histórico sin abrir accesos ordinarios.
  * @returns Fragmento SQL con los parámetros $1 (actor) y $2 (alcance de Dirección); el llamador vincula sus valores.
  */
-export const recorridoAutorizadoSQL = () => `(${tipoVisibleSQL()} AND (d.registrado_por_id=$1::bigint OR d.responsable_actual_id=$1::bigint OR $2::boolean OR EXISTS (
- SELECT 1 FROM movimientos_documentales acceso WHERE acceso.documento_id=d.id AND $1::bigint IN (acceso.usuario_origen_id,acceso.usuario_destino_id,acceso.registrado_por_id,acceso.decidido_por_id,acceso.trasladado_por_id))))`;
-const columnas = `d.id::text,d.codigo,d.destinatario_autorizado_id::text,d.oficina_destino_autorizada_id::text,d.decision_autorizada_por_id::text,d.tipo_documental_id::text,td.nombre tipo_documental,d.asunto,d.remitente,d.observaciones,d.archivador_id::text,d.registrado_por_id::text,concat_ws(' ',ur.nombre,ur.apellido) registrador,d.responsable_actual_id::text,concat_ws(' ',uc.nombre,uc.apellido) responsable,d.oficina_responsable_id::text,o.nombre oficina,d.estado_tramite,d.activo,e.id::text estante_id,e.codigo estante,ar.numero archivador_numero,to_jsonb(d.fecha_creacion)#>>'{}' fecha_creacion,to_jsonb(d.fecha_modificacion)#>>'{}' fecha_modificacion`;
+export const recorridoAutorizadoSQL = () => clienteDocumental() ? `(${tipoVisibleSQL()} AND (d.registrado_por_id=$1::bigint OR d.responsable_actual_id=$1::bigint OR $2::boolean OR EXISTS (
+ SELECT 1 FROM movimientos_documentales acceso WHERE acceso.documento_id=d.id AND $1::bigint IN (acceso.usuario_origen_id,acceso.usuario_destino_id,acceso.registrado_por_id,acceso.decidido_por_id,acceso.trasladado_por_id))))` : contenidoAutorizadoSQL();
+/** La ubicación vigente del guardado prevalece sin alterar la ubicación ni los antecedentes originales. */
+const archivadorVigenteSQL = () => `coalesce((SELECT f.archivador_direccion_id FROM entregas_secretaria f WHERE f.documento_id=d.id AND f.situacion IN ('GUARDADO_DIRECCION','GUARDADO_SECRETARIA')),d.archivador_id)`;
+const columnas = `(NOT td.requiere_clave AND lower(btrim(td.nombre))<>'síseve' AND EXISTS(SELECT 1 FROM usuarios au JOIN roles ar ON ar.id=au.rol_id WHERE au.id=d.registrado_por_id AND ar.nombre='Usuario')) registro_personal,COALESCE((SELECT jsonb_build_object('situacion',f.situacion,'destinatario',f.destinatario,'asignado_por',f.asignado_por_nombre,'asignado_en',f.asignado_en,'confirmado_por',f.confirmado_por_nombre,'confirmado_en',f.confirmado_en,'revision',f.revision,'observaciones',f.observaciones_direccion,'ubicacion_direccion',f.ubicacion_direccion) FROM entregas_secretaria f WHERE f.documento_id=d.id),(SELECT jsonb_build_object('situacion','DELEGADO','destinatario',p.destinatario,'asignado_por',p.actor_nombre,'asignado_en',p.registrada_en,'confirmado_por',NULL,'confirmado_en',NULL,'revision',0,'observaciones',NULL,'ubicacion_direccion',NULL) FROM delegaciones_personales p WHERE p.documento_id=d.id)) entrega,d.id::text,d.codigo,d.clasificacion_registro,d.destinatario_autorizado_id::text,d.oficina_destino_autorizada_id::text,d.decision_autorizada_por_id::text,d.tipo_documental_id::text,td.nombre tipo_documental,d.asunto,d.remitente,d.observaciones,d.archivador_id::text,d.registrado_por_id::text,concat_ws(' ',ur.nombre,ur.apellido) registrador,d.responsable_actual_id::text,concat_ws(' ',uc.nombre,uc.apellido) responsable,d.oficina_responsable_id::text,o.nombre oficina,d.estado_tramite,d.activo,e.id::text estante_id,e.codigo estante,ar.numero archivador_numero,to_jsonb(d.fecha_creacion)#>>'{}' fecha_creacion,to_jsonb(d.fecha_modificacion)#>>'{}' fecha_modificacion`;
 const relaciones = `FROM documentos d JOIN tipos_documentales td ON td.id=d.tipo_documental_id JOIN usuarios ur ON ur.id=d.registrado_por_id JOIN usuarios uc ON uc.id=d.responsable_actual_id JOIN oficinas o ON o.id=d.oficina_responsable_id LEFT JOIN archivadores ar ON ar.id=d.archivador_id LEFT JOIN estantes e ON e.id=ar.estante_id`;
 /** Página y conteo comparten predicado de autorización y la misma instantánea SQL. */
 export async function listar(actor: ActorDocumental, f: Filtros) {
@@ -45,9 +67,10 @@ export async function listar(actor: ActorDocumental, f: Filtros) {
     }>(`WITH visibles AS (SELECT ${columnas} ${relaciones} WHERE ${contenidoAutorizadoSQL()}
  AND concat_ws(' ',d.codigo,d.asunto,d.remitente) ILIKE $3 ESCAPE E'\\\\'
  AND ($4::bigint IS NULL OR d.tipo_documental_id=$4::bigint) AND ($5::bigint IS NULL OR d.oficina_responsable_id=$5::bigint)
- AND ($6::bigint IS NULL OR d.responsable_actual_id=$6::bigint) AND ($7::bigint IS NULL OR d.archivador_id=$7::bigint)
+ AND ($6::bigint IS NULL OR d.responsable_actual_id=$6::bigint) AND ($7::bigint IS NULL OR ${archivadorVigenteSQL()}=$7::bigint)
+ AND ($12::text IS NULL OR EXISTS(SELECT 1 FROM entregas_secretaria f WHERE f.documento_id=d.id AND f.situacion=$12) OR ($12='DELEGADO' AND EXISTS(SELECT 1 FROM delegaciones_personales p WHERE p.documento_id=d.id)))
  AND ($8::text IS NULL OR d.estado_tramite=$8) AND ($9::boolean IS NULL OR d.activo=$9))
- SELECT (SELECT count(*)::int FROM visibles) total,COALESCE((SELECT jsonb_agg(to_jsonb(p)) FROM (SELECT * FROM visibles ORDER BY fecha_creacion DESC,id::bigint DESC LIMIT $10 OFFSET $11) p),'[]'::jsonb) documentos`, [actor.id, actor.rol === 'Director(a)', patron, f.tipo_documental_id ?? null, f.oficina_id ?? null, f.responsable_id ?? null, f.archivador_id ?? null, f.estado ?? null, f.activo === undefined ? null : f.activo === 'true', f.limite, (f.pagina - 1) * f.limite])).rows[0]!;
+ SELECT (SELECT count(*)::int FROM visibles) total,COALESCE((SELECT jsonb_agg(to_jsonb(p)) FROM (SELECT * FROM visibles ORDER BY fecha_creacion DESC,id::bigint DESC LIMIT $10 OFFSET $11) p),'[]'::jsonb) documentos`, [actor.id, actor.rol === 'Director(a)', patron, f.tipo_documental_id ?? null, f.oficina_id ?? null, f.responsable_id ?? null, f.archivador_id ?? null, f.estado ?? null, f.activo === undefined ? null : f.activo === 'true', f.limite, (f.pagina - 1) * f.limite, f.situacion ?? null])).rows[0]!;
 }
 /**
  * Consulta el contenido de un documento aplicando el mismo predicado de autorización que el listado; devuelve undefined si no existe o no es visible.
@@ -95,14 +118,14 @@ export async function anular(id: string, cliente: PoolClient) {
  * @throws Error de PostgreSQL si falla la consulta; el servicio y el middleware gestionan su traducción pública.
  */
 export async function historial(id: string) {
-    return (await conexionDocumental().query(`SELECT h.id::text,h.accion,h.usuario_actor_id::text,concat_ws(' ',u.nombre,u.apellido) actor,to_jsonb(h.fecha)#>>'{}' fecha,h.campos_modificados FROM historial_modificaciones h LEFT JOIN usuarios u ON u.id=h.usuario_actor_id WHERE h.tabla='documentos' AND h.registro_id=$1::bigint ORDER BY h.fecha,h.id`, [id])).rows;
+    return presentarAuditoria((await conexionDocumental().query(`SELECT h.id::text,h.accion,h.usuario_actor_id::text,concat_ws(' ',u.nombre,u.apellido) actor,to_jsonb(h.fecha)#>>'{}' fecha,h.campos_modificados FROM historial_modificaciones h LEFT JOIN usuarios u ON u.id=h.usuario_actor_id WHERE h.tabla='documentos' AND h.registro_id=$1::bigint ORDER BY h.fecha,h.id`, [id])).rows);
 }
 /** Inserta solamente entradas humanas; PostgreSQL asigna codigo, identidad y fechas. */
 export async function registrar(actor: ActorDocumental, datos: Registrar, estado: EstadoDocumento, cliente: PoolClient) {
     return (await cliente.query<{
         id: string;
-    }>(`INSERT INTO documentos(tipo_documental_id,asunto,remitente,observaciones,archivador_id,registrado_por_id,responsable_actual_id,oficina_responsable_id,estado_tramite)
- VALUES($1,$2,$3,$4,$5,$6,$6,$7,$8) RETURNING id::text`, [datos.tipo_documental_id, datos.asunto, datos.remitente, datos.observaciones, datos.archivador_id, actor.id, actor.oficina_id, estado])).rows[0]!.id;
+    }>(`INSERT INTO documentos(tipo_documental_id,asunto,remitente,observaciones,archivador_id,registrado_por_id,responsable_actual_id,oficina_responsable_id,estado_tramite,clasificacion_registro)
+ VALUES($1,$2,$3,$4,$5,$6,$6,$7,$8,$9) RETURNING id::text`, [datos.tipo_documental_id, datos.asunto, datos.remitente, datos.observaciones, datos.archivador_id, actor.id, actor.oficina_id, estado, datos.clasificacion_registro])).rows[0]!.id;
 }
 /**
  * Obtiene el nombre institucional de la oficina en la conexión bloqueada para evaluar el circuito de Dirección.
@@ -137,12 +160,14 @@ export async function movimientoAbierto(id: string, cliente: PoolClient) {
 export async function opciones(actor: ActorDocumental) {
     // El catálogo aplica el contexto ordinario o restringido antes de enumerar tipos.
     const tipos = (await conexionDocumental().query(`SELECT id::text,nombre,prefijo_codigo FROM tipos_documentales td WHERE ${tipoVisibleSQL()} ORDER BY nombre`)).rows;
-    const destinatarios = (await conexionDocumental().query(`SELECT u.id::text,concat_ws(' ',u.nombre,u.apellido) nombre,u.oficina_id::text,o.nombre oficina FROM usuarios u JOIN oficinas o ON o.id=u.oficina_id WHERE u.activo AND u.id<>$1 ORDER BY o.nombre,u.nombre`, [actor.id])).rows;
+    const destinatarios = (await conexionDocumental().query(`SELECT u.id::text,concat_ws(' ',u.nombre,u.apellido) nombre,u.oficina_id::text,o.nombre oficina FROM usuarios u LEFT JOIN oficinas o ON o.id=u.oficina_id WHERE u.activo ORDER BY o.nombre,u.nombre`)).rows;
     // La ubicación seleccionable pertenece a la cuenta y a su oficina vigente, no al alcance institucional de consulta.
     const archivadores = (await conexionDocumental().query(`SELECT a.id::text,concat(e.codigo,' / Archivador ',a.numero) nombre FROM archivadores a JOIN estantes e ON e.id=a.estante_id WHERE e.usuario_id=$1 AND e.oficina_id=$2 ORDER BY e.codigo,a.numero`, [actor.id, actor.oficina_id])).rows;
     // Los filtros se derivan exclusivamente de contenido consultable: no permiten inferir documentos ajenos o restringidos.
-    const filtros = (await conexionDocumental().query(`SELECT DISTINCT d.oficina_responsable_id::text oficina_id,o.nombre oficina,d.responsable_actual_id::text responsable_id,concat_ws(' ',u.nombre,u.apellido) responsable,d.archivador_id::text archivador_id,concat(e.codigo,' / Archivador ',ar.numero) ubicacion FROM documentos d JOIN tipos_documentales td ON td.id=d.tipo_documental_id JOIN oficinas o ON o.id=d.oficina_responsable_id JOIN usuarios u ON u.id=d.responsable_actual_id LEFT JOIN archivadores ar ON ar.id=d.archivador_id LEFT JOIN estantes e ON e.id=ar.estante_id WHERE ${contenidoAutorizadoSQL()}`, [actor.id, actor.rol === 'Director(a)'])).rows;
-    return { tipos, destinatarios, archivadores, filtros, puede_registrar: actor.oficina_id !== null };
+    const filtros = (await conexionDocumental().query(`SELECT DISTINCT d.oficina_responsable_id::text oficina_id,o.nombre oficina,d.responsable_actual_id::text responsable_id,concat_ws(' ',u.nombre,u.apellido) responsable,ar.id::text archivador_id,concat(e.codigo,' / Archivador ',ar.numero) ubicacion FROM documentos d JOIN tipos_documentales td ON td.id=d.tipo_documental_id JOIN oficinas o ON o.id=d.oficina_responsable_id JOIN usuarios u ON u.id=d.responsable_actual_id LEFT JOIN archivadores ar ON ar.id=${archivadorVigenteSQL()} LEFT JOIN estantes e ON e.id=ar.estante_id WHERE ${contenidoAutorizadoSQL()}`, [actor.id, actor.rol === 'Director(a)'])).rows;
+    const oficinas = (await conexionDocumental().query('SELECT id::text,nombre FROM oficinas ORDER BY nombre')).rows;
+    const ubicaciones_direccion = ['Director(a)','Secretaria de Dirección'].includes(actor.rol) ? (await conexionDocumental().query("SELECT a.id::text,e.id::text estante_id,e.codigo estante,a.numero FROM archivadores a JOIN estantes e ON e.id=a.estante_id JOIN oficinas o ON o.id=e.oficina_id WHERE e.oficina_id=$1 AND ($2::boolean OR o.nombre='Dirección') ORDER BY e.codigo,a.numero",[actor.oficina_id,actor.rol==='Secretaria de Dirección'])).rows : [];
+    return { tipos, oficinas, destinatarios, archivadores, puede_delegar_personal:!clienteDocumental() && actor.rol==='Usuario',  ubicaciones_direccion, nombre_guardado:actor.rol==='Secretaria de Dirección'?'Guardar en Secretaría':'Guardar en Dirección', puede_decidir_registro:!clienteDocumental() && ['Director(a)','Secretaria de Dirección'].includes(actor.rol), filtros, puede_registrar: actor.rol !== 'Administrador' && actor.oficina_id !== null };
 }
 /** La triada de autorizacion se escribe o retira completa sin crear movimiento. */
 export async function autorizar(id: string, destinatario: string | null, oficina: string | null, autor: string | null, cliente: PoolClient) {
@@ -200,4 +225,27 @@ export async function ultimaUbicacion(id: string) {
         nombre: string;
         fecha: string;
     }>(`SELECT concat(o.nombre,' / ',e.codigo,' / Archivador ',a.numero) nombre,to_jsonb(h.fecha)#>>'{}' fecha FROM historial_modificaciones h JOIN archivadores a ON a.id=CASE WHEN h.campos_modificados->'archivador_id'->>'antes' ~ '^[1-9][0-9]*$' THEN (h.campos_modificados->'archivador_id'->>'antes')::bigint END JOIN estantes e ON e.id=a.estante_id JOIN oficinas o ON o.id=e.oficina_id WHERE h.tabla='documentos' AND h.registro_id=$1 ORDER BY h.fecha DESC,h.id DESC LIMIT 1`, [id])).rows[0] ?? null;
+}
+
+/** Relaciones filtradas de nuevo por el acceso del lector a cada documento vinculado. */
+export async function relacionesDocumento(actor: ActorDocumental, id: string) {
+    const filas = (await conexionDocumental().query<Documento & { sentido: string; relacion_por: string; relacion_fecha: string }>(`
+        SELECT ${columnas}, CASE WHEN v.documento_id=$3::bigint THEN 'ORIGEN' ELSE 'RELACIONADO' END sentido,
+        v.creado_por_nombre relacion_por,to_jsonb(v.creado_en)#>>'{}' relacion_fecha
+        ${relaciones} JOIN documentos_relaciones v ON
+          (v.documento_id=$3::bigint AND d.id=v.documento_origen_id)
+          OR (v.documento_origen_id=$3::bigint AND d.id=v.documento_id)
+        WHERE ${contenidoAutorizadoSQL()} ORDER BY d.fecha_creacion,d.id`, [actor.id,actor.rol==='Director(a)',id])).rows;
+    return { documento_origen: filas.find(f=>f.sentido==='ORIGEN') ?? null,
+        documentos_relacionados: filas.filter(f=>f.sentido==='RELACIONADO') };
+}
+
+/** Inserta solo la referencia nueva: su trigger conserva actor, fecha y auditoría. */
+export async function relacionar(documento: string, origen: string, cliente: PoolClient) {
+    await cliente.query('INSERT INTO documentos_relaciones(documento_id,documento_origen_id) VALUES($1,$2)',[documento,origen]);
+}
+
+/** La acción depende de la registradora del origen, no de su custodio ni situación. */
+export async function rolRegistrador(id:string,cliente?:PoolClient) {
+    return (await (cliente??conexionDocumental()).query('SELECT r.nombre FROM documentos d JOIN usuarios u ON u.id=d.registrado_por_id JOIN roles r ON r.id=u.rol_id WHERE d.id=$1',[id])).rows[0]?.nombre;
 }

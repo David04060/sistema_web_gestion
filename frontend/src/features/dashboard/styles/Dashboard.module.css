@@ -36,3 +36,18 @@
 @media(max-width:1150px) { .indicadores { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:1050px) { .contenido { padding:26px 22px 40px; } }
 @media(max-width:650px) { .contenido { padding:24px 16px 32px; } .cabecera h1 { font-size:25px; } .columnas { grid-template-columns:1fr; gap:0; } .tarjeta { padding:18px; } .indicadores { gap:12px; } .indicador { padding:16px; } .indicador>span { padding-right:0; min-height:38px; font-size:11px; } .iconoTarjeta { position:static; width:25px; height:25px; order:-1; margin-bottom:-6px; } .indicador strong { font-size:28px; } }
+
+.atencion { border:1px solid #9ebfcf; border-left:5px solid var(--primario); background:linear-gradient(120deg,#f4f9fc,#fff); }
+.cabeceraAtencion { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.cabeceraAtencion h2 { margin:0; }
+.cabeceraAtencion>strong { border-radius:9px; background:var(--primario); color:white; padding:8px 14px; font-size:22px; }
+.documentosAtencion { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:18px 0; }
+.documentosAtencion article { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:16px; background:white; border:1px solid var(--borde); border-radius:10px; min-width:0; }
+.documentosAtencion article>div { min-width:0; }
+.documentosAtencion a { font-weight:650; font-size:13px; text-decoration:none; }
+.documentosAtencion span { display:block; font-size:11px; color:var(--texto-secundario); margin-top:5px; }
+.documentosAtencion p { margin:8px 0; overflow-wrap:anywhere; }
+.documentosAtencion time { font-size:11px; color:var(--texto-secundario); }
+.detalleAtencion { display:inline-flex; justify-content:center; white-space:nowrap; padding:9px 12px; border-radius:7px; border:1px solid var(--borde); background:white; color:var(--primario); font-size:12px; text-decoration:none; }
+@media(max-width:760px) { .documentosAtencion { grid-template-columns:1fr; } }
+@media(max-width:450px) { .documentosAtencion article { flex-direction:column; } }

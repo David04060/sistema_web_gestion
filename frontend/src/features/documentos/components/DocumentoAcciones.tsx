@@ -1,3 +1,4 @@
+import documentoStyles from '../styles/Documentos.module.css';
 import { EstadoCarga } from '../../../components/ui/EstadoCarga';
 import { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -46,16 +47,16 @@ export function DocumentoAcciones({ documento: d, token, actualizar }: {
             setError(e instanceof Error ? e.message : 'No se pudo completar');
         }
     }
-    return <section className={styles.tarjeta}>
+    return <section className={`${styles.tarjeta} ${documentoStyles.panelAcciones}`}>
         <h2>Operaciones autorizadas</h2>
         <EstadoCarga {...opciones} reintentar={opciones.recargar} />
-        {d.permisos.editar && <Link to={`/documentos/${d.id}/editar`}>Corregir datos con motivo</Link>}
+        {d.permisos.editar && <Link className={styles.secundario} to={`/documentos/${d.id}/editar`}>Corregir datos con motivo</Link>}
         {d.destinatario_autorizado_id && <p>Destino autorizado: {opciones.datos?.destinatarios.find(/** Busca el nombre del destinatario autorizado sin alterar el destino seleccionado por Dirección. */  u => u.id === d.destinatario_autorizado_id)?.nombre ?? `Cuenta ${d.destinatario_autorizado_id}`} · {opciones.datos?.destinatarios.find(/** Busca la oficina del destinatario autorizado para presentar la decisión. */  u => u.id === d.destinatario_autorizado_id)?.oficina ?? `Oficina ${d.oficina_destino_autorizada_id}`}
         </p>}
         {d.estado_tramite === 'PENDIENTE_DECISION' && <p>
             {d.destinatario_autorizado_id ? 'Derivacion autorizada: espera la salida fisica.' : 'Espera una decision de Direccion.'}
         </p>}
-        {acciones.length > 0 ? <form onSubmit={handleSubmit(ejecutar)}>
+        {acciones.length > 0 ? <form className={documentoStyles.formularioAccion} onSubmit={handleSubmit(ejecutar)}>
             <div className={styles.campo}>
                 <label htmlFor="operacion">Operacion</label>
                 <select id="operacion" {...register('accion')} defaultValue={acciones[0]?.valor}>

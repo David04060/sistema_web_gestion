@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { registrarSchema, corregirSchema, anularSchema, filtrosSchema } from '../dist/modules/documentos/documentos.schema.js';
 import { derivarSchema, recepcionSchema } from '../dist/modules/movimientos/movimientos.schema.js';
-const documento = { tipo_documental_id: '2', asunto: ' Asunto ', remitente: null, observaciones: null, archivador_id: null };
+const documento = { clasificacion_registro: 'RECIBIDO', tipo_documental_id: '2', asunto: ' Asunto ', remitente: null, observaciones: null, archivador_id: null };
 test('Documentos: solo contenido editable, sin campos generados ni eliminados', /** Verifica el caso «Documentos: solo contenido editable, sin campos generados ni eliminados»; una aserción fallida invalida este resultado. */ () => {
     assert.equal(registrarSchema.parse(documento).asunto, 'Asunto');
     for (const campo of ['codigo', 'fecha_creacion', 'registrado_por_id', 'responsable_actual_id', 'estado_tramite', 'numero_documento', 'fecha_documento', 'numero_registro', 'anio_codigo', 'consecutivo_codigo'])

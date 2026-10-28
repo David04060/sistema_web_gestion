@@ -1,4 +1,7 @@
+import {registrarDelegacionPersonal,delegacionPersonalSchema} from './delegacion-personal.js';
+import type {z} from 'zod';
 import type { PoolClient } from 'pg';
+import { clienteDocumental } from '../../shared/documental/contexto.js';
 import type { ActorDocumental } from '../../shared/documental/transaccion.js';
 import { transaccionDocumental, obtenerActor } from '../../shared/documental/transaccion.js';
 import { HttpError } from '../../shared/http/HttpError.js';
@@ -28,9 +31,10 @@ export async function detalle(actorId: string, id: string) {
     if (!documento)
         throw new HttpError(404, 'Documento inexistente o no autorizado');
     const libre = documento.activo && ['RECIBIDO', 'PENDIENTE_DECISION'].includes(documento.estado_tramite);
-    const custodio = libre && documento.responsable_actual_id === actor.id;
+    const custodio = libre && documento.responsable_actual_id === actor.id
+        && (!!clienteDocumental() || documento.registrado_por_id === actor.id);
     const mesa = actor.rol === 'Secretaria de Dirección' || documento.oficina === 'Mesa de Partes';
-    return { ...documento, ultima_ubicacion: await repository.ultimaUbicacion(id), permisos: { editar: custodio, anular: custodio, autorizar: libre && documento.estado_tramite === 'PENDIENTE_DECISION' && actor.rol === 'Director(a)', salir: custodio && (documento.estado_tramite === 'PENDIENTE_DECISION' ? documento.destinatario_autorizado_id !== null : !mesa), solicitar_decision: custodio && mesa && documento.estado_tramite === 'RECIBIDO' } };
+    return { ...documento, ...await repository.relacionesDocumento(actor,id), ultima_ubicacion: await repository.ultimaUbicacion(id), permisos: { delegar_personal: !clienteDocumental() && actor.rol==='Usuario' && documento.registrado_por_id===actor.id && documento.activo && !documento.entrega, registrar_relacionado: !clienteDocumental() && actor.rol === 'Secretaria de Dirección' && (await repository.rolRegistrador(id)) === 'Secretaria de Dirección', editar: custodio, anular: custodio, asignar_destinatario: !!documento.entrega && documento.activo && documento.entrega.situacion === 'PENDIENTE_DECISION' && (['Director(a)','Secretaria de Dirección'].includes(actor.rol) && (actor.rol==='Director(a)' || documento.registrado_por_id===actor.id || await repository.rolRegistrador(id)==='Director(a)')), confirmar_entrega: !!documento.entrega && documento.activo && documento.entrega.situacion === 'DELEGADO' && actor.rol === 'Secretaria de Dirección' && (documento.registrado_por_id === actor.id || await repository.rolRegistrador(id) === 'Director(a)'), autorizar: !documento.entrega && libre && documento.estado_tramite === 'PENDIENTE_DECISION' && actor.rol === 'Director(a)', salir: (!documento.registro_personal || !!clienteDocumental()) && !documento.entrega && custodio && (documento.estado_tramite === 'PENDIENTE_DECISION' ? documento.destinatario_autorizado_id !== null : !mesa), solicitar_decision: (!documento.registro_personal || !!clienteDocumental()) && !documento.entrega && custodio && mesa && documento.estado_tramite === 'RECIBIDO' } };
 }
 /**
  * Autoriza primero el contenido del documento y solo después solicita su auditoría completa.
@@ -39,7 +43,11 @@ export async function detalle(actorId: string, id: string) {
  */
 export async function historial(actorId: string, id: string) {
     await detalle(actorId, id);
-    return repository.historial(id);
+    const anterior=await repository.historial(id);
+    const {conexionDocumental}=await import('../../shared/documental/contexto.js');
+    const nuevos=(await conexionDocumental().query("SELECT id::text,evento accion,NULL::text usuario_actor_id,actor,to_jsonb(fecha)#>>'{}' fecha,jsonb_strip_nulls(jsonb_build_object('Destinatario',destinatario,'Observaciones',observaciones,'Ubicación',ubicacion)) campos_modificados FROM entregas_secretaria_historial WHERE documento_id=$1 ORDER BY fecha,id",[id])).rows;
+    const personales=clienteDocumental()?[]:(await conexionDocumental().query("SELECT documento_id::text id,'Delegación personal' accion,actor_id::text usuario_actor_id,actor_nombre actor,to_jsonb(registrada_en)#>>'{}' fecha,jsonb_build_object('Destinatario',destinatario) campos_modificados FROM delegaciones_personales WHERE documento_id=$1",[id])).rows;
+    return [...anterior,...nuevos,...personales].sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
 }
 /** Bloquea antes de evaluar permisos, evitando decisiones basadas en una custodia antigua. */
 export async function documentoBloqueado(actor: ActorDocumental, id: string, cliente: PoolClient) {
@@ -58,6 +66,8 @@ export async function documentoBloqueado(actor: ActorDocumental, id: string, cli
  * @param cliente - Conexión PostgreSQL de la transacción actual.
  */
 export async function exigirEditable(actor: ActorDocumental, documento: repository.Documento, cliente: PoolClient) {
+    if (!clienteDocumental() && documento.registrado_por_id !== actor.id)
+        throw new HttpError(403, 'La consulta por autoría no concede edición ni anulación de registros ajenos');
     if (documento.responsable_actual_id !== actor.id)
         throw new HttpError(403, 'Solo el custodio actual puede realizar esta operacion');
     if (await repository.movimientoAbierto(documento.id, cliente))
@@ -77,12 +87,32 @@ export async function opciones(actorId: string) {
  */
 export async function registrar(actorId: string, datos: Registrar) {
     const id = await transaccionDocumental(actorId, 'Registro inicial del documento fisico', /** Verifica oficina y tipo registrable antes de insertar el original con estado inicial del circuito correspondiente. */ async (cliente, actor) => {
+        if (!['Usuario', 'Secretaria de Dirección', 'Director(a)'].includes(actor.rol))
+            throw new HttpError(403, 'El perfil administrativo no registra documentos');
         if (!actor.oficina_id)
             throw new HttpError(409, 'Debe tener una oficina asignada para registrar documentos');
         if (!await repository.tipoRegistrable(datos.tipo_documental_id, cliente))
             throw new HttpError(400, 'Tipo restringido o sin prefijo documental aprobado');
+        if(datos.delegacion_personal && (clienteDocumental()||actor.rol!=='Usuario'))throw new HttpError(403,'Delegación personal no autorizada');
+        if(datos.decision_inicial && (clienteDocumental()||!['Director(a)','Secretaria de Dirección'].includes(actor.rol)))throw new HttpError(403,'Solo Dirección o Secretaría puede indicar una decisión inicial ordinaria');
+        if(!clienteDocumental()&&['Director(a)','Secretaria de Dirección'].includes(actor.rol)&&datos.archivador_id)throw new HttpError(400,'Use la opción de guardar para indicar la ubicación');
+        if (datos.documento_origen_id) {
+            if (clienteDocumental() || actor.rol !== 'Secretaria de Dirección') throw new HttpError(403,'Solo Secretaría registra documentos relacionados');
+            await repository.bloquear(datos.documento_origen_id,cliente);
+            const origen=await repository.obtener(actor,datos.documento_origen_id,cliente);
+            if (!origen || await repository.rolRegistrador(origen.id,cliente) !== 'Secretaria de Dirección') throw new HttpError(404,'Documento de origen inexistente o no autorizado');
+        }
         const mesa = actor.rol === 'Secretaria de Dirección' || await repository.oficinaNombre(actor.oficina_id, cliente) === 'Mesa de Partes';
-        return repository.registrar(actor, datos, mesa ? 'PENDIENTE_DECISION' : 'RECIBIDO', cliente);
+        const id = await repository.registrar(actor, datos, mesa ? 'PENDIENTE_DECISION' : 'RECIBIDO', cliente);
+        if (!clienteDocumental() && ['Secretaria de Dirección','Director(a)'].includes(actor.rol)) await cliente.query('INSERT INTO entregas_secretaria(documento_id) VALUES($1)',[id]);
+        if(datos.decision_inicial){
+            const documento=await documentoBloqueado(actor,id,cliente);
+            if(datos.decision_inicial.accion==='DELEGAR')await aplicarDelegacion(cliente,actor,documento,{...datos.decision_inicial,revision:0});
+            else await aplicarGuardado(cliente,actor,documento,{...datos.decision_inicial,revision:0});
+        }
+        if(datos.delegacion_personal)await registrarDelegacionPersonal(cliente,actor,id,datos.delegacion_personal);
+        if (datos.documento_origen_id) await repository.relacionar(id,datos.documento_origen_id,cliente);
+        return id;
     });
     return detalle(actorId, id);
 }
@@ -118,6 +148,7 @@ export async function anular(actorId: string, id: string, motivo: string) {
 export async function autorizar(actorId: string, id: string, destinatario: string | null, motivo: string) {
     await transaccionDocumental(actorId, motivo, /** Bloquea el documento y exige Dirección, estado pendiente y destino válido antes de escribir o retirar la tríada de autorización. */ async (cliente, actor) => {
         const documento = await documentoBloqueado(actor, id, cliente);
+        if (documento.entrega) throw new HttpError(409, 'Utilice Asignar destinatario');
         if (actor.rol !== 'Director(a)' || !actor.oficina_id || await repository.oficinaNombre(actor.oficina_id, cliente) !== 'Dirección')
             throw new HttpError(403, 'Solo Direccion autoriza o retira la derivacion');
         if (documento.estado_tramite !== 'PENDIENTE_DECISION')
@@ -134,11 +165,82 @@ export async function autorizar(actorId: string, id: string, destinatario: strin
 /** Reinicia el circuito de Direccion cuando Mesa de Partes vuelve a tener el original. */
 export async function solicitarDecision(actorId: string, id: string, motivo: string) {
     await transaccionDocumental(actorId, motivo, /** Exige custodia y circuito de Mesa de Partes antes de volver a solicitar decisión de Dirección. */ async (cliente, actor) => {
+        if(!clienteDocumental()&&actor.rol==='Usuario')throw new HttpError(403,'Utilice la delegación personal');
         const documento = await documentoBloqueado(actor, id, cliente);
         await exigirEditable(actor, documento, cliente);
+        if (documento.entrega) throw new HttpError(409, 'Este registro utiliza asignación y entrega');
         if (documento.estado_tramite !== 'RECIBIDO' || (actor.rol !== 'Secretaria de Dirección' && await repository.oficinaNombre(documento.oficina_responsable_id, cliente) !== 'Mesa de Partes'))
             throw new HttpError(409, 'Esta operacion corresponde a documentos recibidos en Mesa de Partes');
         await repository.solicitarDecision(id, cliente);
     });
     return detalle(actorId, id);
+}
+
+
+interface DestinoDecision {revision:number;oficina_id?:string|null;usuario_id?:string|null;nombre?:string|null;observaciones?:string|null}
+
+/** Misma decisión para el detalle y para el registro, siempre dentro de la transacción del llamador. */
+async function exigirDecision(actor:ActorDocumental,d:repository.Documento,revision:number,c:PoolClient) {
+    if(clienteDocumental()||!d.entrega)throw new HttpError(409,'El registro no pertenece al flujo de decisión');
+    if(!['Director(a)','Secretaria de Dirección'].includes(actor.rol) || (actor.rol==='Secretaria de Dirección' && d.registrado_por_id!==actor.id && await repository.rolRegistrador(d.id,c)!=='Director(a)'))throw new HttpError(403,'Decisión no autorizada');
+    if(d.entrega.situacion!=='PENDIENTE_DECISION'||d.entrega.revision!==revision)throw new HttpError(409,'La decisión ya fue registrada');
+}
+
+async function aplicarDelegacion(c:PoolClient,actor:ActorDocumental,d:repository.Documento,datos:DestinoDecision) {
+    await exigirDecision(actor,d,datos.revision,c);
+    if((!datos.oficina_id&&!datos.usuario_id&&!datos.nombre)||(datos.usuario_id&&datos.nombre))throw new HttpError(400,'Indique oficina o persona');
+    let nombre=datos.nombre;
+    let oficinaNombre:string|null=null;
+    if(datos.oficina_id){
+        const o=(await c.query('SELECT nombre FROM oficinas WHERE id=$1 FOR SHARE',[datos.oficina_id])).rows[0];
+        if(!o)throw new HttpError(400,'Oficina inexistente');oficinaNombre=o.nombre;
+    }
+    if(datos.usuario_id){
+        const u=(await c.query("SELECT oficina_id::text,concat_ws(' ',nombre,apellido) nombre FROM usuarios WHERE id=$1 AND activo FOR SHARE",[datos.usuario_id])).rows[0];
+        if(!u||(datos.oficina_id&&u.oficina_id!==datos.oficina_id))throw new HttpError(400,'Usuario y oficina incompatibles');nombre=u.nombre;
+    }
+    const tipo=datos.usuario_id?'USUARIO':datos.nombre?'PERSONA':'OFICINA';
+    await c.query(`UPDATE entregas_secretaria SET situacion='DELEGADO',tipo=$2,oficina_id=$3,usuario_id=$4,
+        destinatario=$5,asignado_por_id=$6,asignado_por_nombre=(SELECT concat_ws(' ',nombre,apellido) FROM usuarios WHERE id=$6),
+        asignado_en=clock_timestamp(),observaciones_direccion=$7,revision=revision+1 WHERE documento_id=$1`,
+        [d.id,tipo,datos.oficina_id??null,datos.usuario_id??null,[oficinaNombre,nombre].filter(Boolean).join(' · '),actor.id,datos.observaciones??null]);
+}
+
+async function aplicarGuardado(c:PoolClient,actor:ActorDocumental,d:repository.Documento,datos:{estante_id:string;archivador_id:string;revision:number}) {
+    await exigirDecision(actor,d,datos.revision,c);
+    const ubicacion=(await c.query("SELECT concat('Estante ',e.codigo,' / Archivador ',a.numero) nombre FROM archivadores a JOIN estantes e ON e.id=a.estante_id JOIN oficinas o ON o.id=e.oficina_id WHERE a.id=$1 AND e.id=$2 AND e.oficina_id=$3 AND ($4::boolean OR o.nombre='Dirección') FOR SHARE OF a,e,o",[datos.archivador_id,datos.estante_id,actor.oficina_id,actor.rol==='Secretaria de Dirección'])).rows[0];
+    if(!ubicacion)throw new HttpError(400,'Seleccione un estante y archivador de su oficina');
+    await c.query(`UPDATE entregas_secretaria SET situacion=$6,estante_direccion_id=$2,archivador_direccion_id=$3,
+        ubicacion_direccion=$4,asignado_por_id=$5,asignado_por_nombre=(SELECT concat_ws(' ',nombre,apellido) FROM usuarios WHERE id=$5),
+        asignado_en=clock_timestamp(),revision=revision+1 WHERE documento_id=$1`,[d.id,datos.estante_id,datos.archivador_id,ubicacion.nombre,actor.id,actor.rol==='Secretaria de Dirección'?'GUARDADO_SECRETARIA':'GUARDADO_DIRECCION']);
+}
+
+/** Secretaría confirma sus registros o los registrados por Dirección; nunca participa el destinatario. */
+export async function gestionarEntrega(actorId:string,id:string,datos:DestinoDecision & {tipo?:'OFICINA'|'USUARIO'|'PERSONA'}) {
+    await transaccionDocumental(actorId,datos.tipo?'Delegación':'Confirmación registrada de entrega física',async(c,actor)=>{
+        const d=await documentoBloqueado(actor,id,c);
+        if(datos.tipo){await aplicarDelegacion(c,actor,d,datos);return;}
+        if(clienteDocumental()||!d.entrega)throw new HttpError(409,'El registro no pertenece al flujo de decisión');
+        const registradoPorDireccion=await repository.rolRegistrador(id,c)==='Director(a)';
+        if(actor.rol!=='Secretaria de Dirección'||(d.registrado_por_id!==actor.id&&!registradoPorDireccion))throw new HttpError(403,'No tiene permiso para confirmar esta entrega');
+        if(d.entrega.situacion!=='DELEGADO'||d.entrega.revision!==datos.revision)throw new HttpError(409,'La entrega ya no está pendiente');
+        await c.query(`UPDATE entregas_secretaria SET situacion='ENTREGADO',confirmado_por_id=$2,
+            confirmado_por_nombre=(SELECT concat_ws(' ',nombre,apellido) FROM usuarios WHERE id=$2),confirmado_en=clock_timestamp(),
+            revision=revision+1 WHERE documento_id=$1`,[id,actor.id]);
+    });
+    return detalle(actorId,id);
+}
+
+/** Decisión de ubicación sin transferir autoría ni edición de contenido. */
+export async function guardarDireccion(actorId:string,id:string,datos:{estante_id:string;archivador_id:string;revision:number}) {
+    await transaccionDocumental(actorId,'Ubicación en oficina',async(c,actor)=>{
+        await aplicarGuardado(c,actor,await documentoBloqueado(actor,id,c),datos);
+    });
+    return detalle(actorId,id);
+}
+
+/** Delegación personal sin salida, aceptación ni modificación de custodia. */
+export async function delegarPersonal(actorId:string,id:string,datos:z.infer<typeof delegacionPersonalSchema>){
+ await transaccionDocumental(actorId,'Delegación personal',async(c,actor)=>{await documentoBloqueado(actor,id,c);await registrarDelegacionPersonal(c,actor,id,datos);});
+ return detalle(actorId,id);
 }

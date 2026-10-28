@@ -1,5 +1,77 @@
 # Sistema Web Documental — I.E. Enrique Paillardelle
 
+## Desarrollo local — Sistema_Web_Final
+
+El desarrollo usa el proyecto local y la base PostgreSQL local **sistema_web_final**, esquema
+`public`. La conexión se lee de `backend/.env`; se conserva ese archivo privado y no se
+necesitan manifiestos, OID ni configuraciones QA.
+
+Las modificaciones aprobadas ya están aplicadas: clasificación recibido/emitido y decisión de Dirección
+(guardar o delegar), con confirmación de entrega por Secretaría, consulta recíproca y documentos relacionados. No se aplican migraciones al arrancar. Para una instalación local que todavía no las tenga:
+
+```powershell
+Set-Location C:\Users\David\Sistema_Web_Final\backend
+npm run migrate:local
+```
+
+Este comando verifica localhost, nombre de base, puerto y esquema, y aplica exclusivamente
+`20261027-clasificacion-local.sql`, `20261027-entrega-secretaria-local.sql` y
+`20261027-decision-direccion-local.sql`, `20261027-documentos-relacionados-local.sql`,
+`20261027-flujo-propio-direccion-local.sql`, `20261027-decision-secretaria-local.sql` y
+`20261027-delegacion-personal-local.sql` en una transacción.
+Registra sus checksums en `migraciones_locales`; no crea bases ni importa datos. Conserva los registros,
+códigos, historial y secuencias anteriores. No aplica la integración descartada de archivos/ingresos/relevos.
+
+Arranque habitual: mantener estas dos terminales en ejecución.
+
+```powershell
+# Terminal 1 — API en puerto 3000
+Set-Location C:\Users\David\Sistema_Web_Final\backend
+npm run dev
+```
+
+```powershell
+# Terminal 2 — Vite en puerto 5173
+Set-Location C:\Users\David\Sistema_Web_Final\frontend
+npm run dev
+```
+
+Abrir [http://localhost:5173](http://localhost:5173). Vite reenvía `/api` a `http://127.0.0.1:3000`.
+El backend utiliza `tsx watch src/server.ts` y valida cada conexión local antes de prestarla al
+código de aplicación. Si apunta a otro destino o falta el esquema requerido, rechaza el arranque;
+no migra automáticamente y no selecciona una copia como alternativa.
+
+Las cuentas son las existentes en sistema_web_final. Las cuentas de las antiguas pruebas QA no
+se importan. Los nombres anteriores `dev:clasificacion` y `prepare:clasificacion:dev` son alias
+del arranque/migración local actual; ya no crean ni seleccionan copias.
+
+Verificación opcional con ambos servidores encendidos:
+
+```powershell
+Set-Location C:\Users\David\Sistema_Web_Final\backend
+npm run test:local
+```
+
+Esta prueba usa las cuentas locales existentes y crea documentos identificados como verificación local; comprueba registro recibido/emitido,
+las dos decisiones, destinatarios, entrega, privacidad, conflictos y conservación de antecedentes.
+Si Dirección aún no tiene ubicación, crea el estante DIRECCION con archivador 1 usando el módulo existente. No crea usuarios ni bases de prueba. El detalle de la corrección
+está en [DESARROLLO_LOCAL.md](docs/DESARROLLO_LOCAL.md).
+
+La consulta ordinaria es recíproca entre Secretaría y Dirección; compartir consulta no permite editar
+ni anular registros ajenos. Secretaría puede registrar un documento relacionado desde un origen suyo,
+incluso después de finalizar su recorrido. Consultar [DOCUMENTOS_RELACIONADOS_LOCAL.md](docs/DOCUMENTOS_RELACIONADOS_LOCAL.md)
+para el contrato, la auditoría y las comprobaciones ejecutadas.
+
+Los ajustes del listado, los cuadros destacados y la presentación histórica se documentan en
+[PANEL_LISTADO_AUDITORIA_LOCAL.md](docs/PANEL_LISTADO_AUDITORIA_LOCAL.md).
+
+## Publicación del flujo vigente
+
+Clasificación, consulta recíproca Dirección–Secretaría, decisiones y entrega, documentos relacionados,
+delegaciones personales y correcciones H1/H2/H3: véase [PUBLICACION_FLUJO_VIGENTE.md](docs/PUBLICACION_FLUJO_VIGENTE.md).
+Los apartados posteriores del circuito de cinco estados se conservan como antecedentes técnicos;
+no describen las decisiones actuales de los registros ordinarios.
+
 ## Despliegue vigente
 
 Backend convencional Node.js 24 y Express en Render Free; frontend estático en

@@ -5,6 +5,13 @@ import { recorridoAutorizadoSQL } from '../documentos/documentos.repository.js';
 import type { Filtros } from './movimientos.schema.js';
 import type { EstadoMovimiento } from '../../shared/documental/estados.js';
 export interface Movimiento {
+    registrado_por: string | null;
+    decidido_por: string | null;
+    trasladado_por: string | null;
+    recibido_por: string | null;
+    rechazado_por: string | null;
+    devolucion_confirmada_por: string | null;
+    cancelado_por: string | null;
     id: string;
     documento_id: string;
     codigo: string;
@@ -35,11 +42,11 @@ export interface Movimiento {
     fecha_modificacion: string;
 }
 /** Los participantes históricos ven el recorrido, sin serializar asunto, observaciones o archivador. */
-const columnas = `m.id::text,m.documento_id::text,d.codigo,m.oficina_origen_id::text,oo.nombre oficina_origen,m.usuario_origen_id::text,concat_ws(' ',uo.nombre,uo.apellido) usuario_origen,
+const columnas = `nullif(concat_ws(' ',n0.nombre,n0.apellido),'') registrado_por,nullif(concat_ws(' ',n1.nombre,n1.apellido),'') decidido_por,nullif(concat_ws(' ',n2.nombre,n2.apellido),'') trasladado_por,nullif(concat_ws(' ',n3.nombre,n3.apellido),'') recibido_por,nullif(concat_ws(' ',n4.nombre,n4.apellido),'') rechazado_por,nullif(concat_ws(' ',n5.nombre,n5.apellido),'') devolucion_confirmada_por,nullif(concat_ws(' ',n6.nombre,n6.apellido),'') cancelado_por,m.id::text,m.documento_id::text,d.codigo,m.oficina_origen_id::text,oo.nombre oficina_origen,m.usuario_origen_id::text,concat_ws(' ',uo.nombre,uo.apellido) usuario_origen,
  m.oficina_destino_id::text,od.nombre oficina_destino,m.usuario_destino_id::text,concat_ws(' ',ud.nombre,ud.apellido) usuario_destino,m.registrado_por_id::text,m.decidido_por_id::text,m.trasladado_por_id::text,
  m.estado,to_jsonb(m.fecha_salida)#>>'{}' fecha_salida,m.recibido_por_id::text,to_jsonb(m.fecha_recepcion)#>>'{}' fecha_recepcion,m.rechazado_por_id::text,to_jsonb(m.fecha_rechazo)#>>'{}' fecha_rechazo,m.motivo_rechazo,
  m.devolucion_confirmada_por_id::text,to_jsonb(m.fecha_confirmacion_devolucion)#>>'{}' fecha_confirmacion_devolucion,m.cancelado_por_id::text,to_jsonb(m.fecha_cancelacion)#>>'{}' fecha_cancelacion,m.motivo_cancelacion,to_jsonb(m.fecha_creacion)#>>'{}' fecha_creacion,to_jsonb(m.fecha_modificacion)#>>'{}' fecha_modificacion`;
-const relaciones = `FROM movimientos_documentales m JOIN documentos d ON d.id=m.documento_id JOIN tipos_documentales td ON td.id=d.tipo_documental_id JOIN oficinas oo ON oo.id=m.oficina_origen_id JOIN oficinas od ON od.id=m.oficina_destino_id JOIN usuarios uo ON uo.id=m.usuario_origen_id JOIN usuarios ud ON ud.id=m.usuario_destino_id`;
+const relaciones = `FROM movimientos_documentales m JOIN documentos d ON d.id=m.documento_id JOIN tipos_documentales td ON td.id=d.tipo_documental_id JOIN oficinas oo ON oo.id=m.oficina_origen_id JOIN oficinas od ON od.id=m.oficina_destino_id JOIN usuarios uo ON uo.id=m.usuario_origen_id JOIN usuarios ud ON ud.id=m.usuario_destino_id LEFT JOIN usuarios n0 ON n0.id=m.registrado_por_id LEFT JOIN usuarios n1 ON n1.id=m.decidido_por_id LEFT JOIN usuarios n2 ON n2.id=m.trasladado_por_id LEFT JOIN usuarios n3 ON n3.id=m.recibido_por_id LEFT JOIN usuarios n4 ON n4.id=m.rechazado_por_id LEFT JOIN usuarios n5 ON n5.id=m.devolucion_confirmada_por_id LEFT JOIN usuarios n6 ON n6.id=m.cancelado_por_id`;
 /**
  * Devuelve página y conteo desde una única CTE con autorización de recorrido, filtros y bandeja; excluye contenido del documento.
  * @param actor - Cuenta o ID autenticado utilizado para aplicar autorización y auditoría.

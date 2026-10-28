@@ -25,7 +25,17 @@
     "start:neon:qa": "node dist/server.js --neon-qa",
     "check:neon:qa": "node scripts/verificar-neon-qa.mjs",
     "test:neon:qa:documental": "node scripts/probar-neon-qa.mjs flujo-migration.integration.mjs",
-    "test:neon:qa:dashboard": "node scripts/probar-neon-qa.mjs dashboard.integration.mjs"
+    "test:neon:qa:dashboard": "node scripts/probar-neon-qa.mjs dashboard.integration.mjs",
+    "prepare:clasificacion:dev": "npm run migrate:local",
+    "test:clasificacion": "npm run test:local",
+    "dev:clasificacion": "npm run dev",
+    "migrate:local": "node --import tsx scripts/migrar-local.mjs",
+    "test:local": "node --import tsx --test tests/local.integration.mjs",
+    "test:relacionados:local": "node --import tsx --test tests/relacionados.local.integration.mjs",
+    "test:panel-listado:local": "node --import tsx --test tests/panel-listado.local.integration.mjs",
+    "test:direccion:local": "node --import tsx --test tests/direccion-propia.local.integration.mjs",
+    "test:secretaria:local": "node --import tsx --test tests/secretaria-decision.local.integration.mjs",
+    "test:usuario-delegacion:local": "node --import tsx --test tests/usuario-delegacion.local.integration.mjs"
   },
   "keywords": [],
   "author": "",

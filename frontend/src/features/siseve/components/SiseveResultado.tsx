@@ -1,4 +1,5 @@
 import { EstadoBadge } from '../../../components/ui/EstadoBadge';
+import { etiquetaClasificacion } from '../../documentos/clasificacion';
 import type { Resultado } from '../api/siseve.api';
 import type { Preparacion } from './SiseveOperacionForm';
 import { DocumentoHistorial } from '../../documentos/components/DocumentoHistorial';
@@ -26,6 +27,7 @@ export function SiseveResultado({ resultado: r, preparar, acciones }: Props) {
                         <tr>
                             <th>Código</th>
                             <th>Asunto</th>
+                            <th>Clasificación del registro</th>
                             <th>Responsable / oficina</th>
                             <th>Estado</th>
                             <th>Operación</th>
@@ -39,6 +41,7 @@ export function SiseveResultado({ resultado: r, preparar, acciones }: Props) {
                             <td>
                                 {d.asunto}
                             </td>
+                            <td>{etiquetaClasificacion(d.clasificacion_registro)}</td>
                             <td>
                                 {d.responsable} · {d.oficina}
                             </td>
@@ -64,6 +67,7 @@ export function SiseveResultado({ resultado: r, preparar, acciones }: Props) {
                 {d.asunto}
             </p>
             <dl className={styles.datos}>
+                <div><dt>Clasificación del registro</dt><dd>{etiquetaClasificacion(d.clasificacion_registro)}</dd></div>
                 <div>
                     <dt>Responsable</dt>
                     <dd>

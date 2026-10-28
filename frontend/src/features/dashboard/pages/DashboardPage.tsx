@@ -25,7 +25,9 @@ function Entradas({ entradas, vacio }: {
             <Link to={e.ruta}>
                 {e.codigo}
             </Link>
+            {e.clasificacion_registro && <span>{e.clasificacion_registro === 'RECIBIDO' ? 'Recibido' : 'Emitido'}</span>}
             <EstadoBadge estado={e.estado} />
+            {e.activo === false && <span>Anulado</span>}
             <small>
                 {fecha(e.fecha)}
             </small>
@@ -76,7 +78,19 @@ export function DashboardPage({ usuario }: {
         </div>}
         {datos && <>
             <p className={styles.actualizado}>
-                {datos.alcance === 'administrativo' ? 'Resumen de administración institucional.' : datos.alcance === 'institucional' ? 'Resumen institucional de documentos ordinarios.' : 'Resumen de documentos ordinarios según tus permisos.'} Actualizado: {fecha(datos.actualizado)}.</p>
+                {datos.alcance === 'administrativo' ? 'Resumen de administración institucional.' : datos.alcance === 'institucional' ? 'Documentos de Secretaría y Dirección.' : 'Resumen de documentos ordinarios según tus permisos.'} Actualizado: {fecha(datos.actualizado)}.</p>
+            {datos.atencion && <section className={`${styles.tarjeta} ${styles.atencion}`} aria-label={datos.atencion.titulo}>
+                <div className={styles.cabeceraAtencion}><h2>{datos.atencion.titulo}</h2><strong>{datos.atencion.total}</strong></div>
+                <div className={styles.documentosAtencion}>
+                    {datos.atencion.documentos.map(d=><article key={d.id}>
+                        <div><Link to={d.ruta}>{d.codigo}</Link><span>{d.tipo_documental}</span><p>{d.asunto}</p>
+                            {d.destinatario&&<p>Destinatario: {d.destinatario}</p>}<time dateTime={d.fecha}>{fecha(d.fecha)}</time></div>
+                        <Link className={styles.detalleAtencion} to={d.ruta}>Ver detalle</Link>
+                    </article>)}
+                </div>
+                {!datos.atencion.total&&<p className={styles.vacio}>No hay documentos pendientes.</p>}
+                {datos.atencion.total>datos.atencion.documentos.length&&<Link className={styles.detalleAtencion} to={`/documentos?situacion=${datos.atencion.situacion}`}>Ver todos</Link>}
+            </section>}
             <section aria-label="Indicadores" className={styles.indicadores}>
                 {datos.indicadores.map(/** Presenta el indicador y su total calculado por PostgreSQL. */  i => <article className={styles.indicador} key={i.clave}>
                     <div className={styles.iconoTarjeta}>
@@ -103,12 +117,12 @@ export function DashboardPage({ usuario }: {
             {datos.alcance !== 'administrativo' && <>
                 <div className={styles.columnas}>
                     <section className={styles.tarjeta}>
-                        <h2>Documentos por estado</h2>
+                        <h2>Documentos por situación</h2>
                         <p>Incluye registros activos y anulados consultables. SíseVe se consulta en su módulo protegido.</p>
                         <dl className={styles.resumen}>
                             {datos.estados.map(/** Presenta el total del estado con su etiqueta institucional. */  i => <div key={i.clave}>
                                 <dt>
-                                    {etiquetasEstado[i.clave]}
+                                    {etiquetasEstado[i.clave] ?? i.etiqueta}
                                 </dt>
                                 <dd>
                                     {i.total}
@@ -116,7 +130,7 @@ export function DashboardPage({ usuario }: {
                             </div>)}
                         </dl>
                     </section>
-                    <section className={styles.tarjeta}>
+                    {!!datos.operaciones.length && <section className={styles.tarjeta}>
                         <h2>Operaciones pendientes</h2>
                         <dl className={styles.resumen}>
                             {datos.operaciones.map(/** Presenta una operación pendiente con su total autorizado. */  i => <div key={i.clave}>
@@ -128,18 +142,17 @@ export function DashboardPage({ usuario }: {
                                 </dd>
                             </div>)}
                         </dl>
-                        <p>Las autorizaciones conservan el estado Pendiente de decisión hasta la salida física.</p>
-                    </section>
+                    </section>}
                 </div>
                 <div className={styles.columnas}>
-                    <section className={styles.tarjeta}>
+                    {!!datos.operaciones.length && <section className={styles.tarjeta}>
                         <h2>Intervenciones disponibles</h2>
                         <p>Hasta 8 operaciones que requieren tu intervención. Abre el registro para realizar la acción.</p>
                         <Entradas entradas={datos.pendientes} vacio="No tienes operaciones pendientes de intervención." />
-                    </section>
+                    </section>}
                     <section className={styles.tarjeta}>
                         <h2>Actividad documental reciente</h2>
-                        <p>Última modificación de hasta 8 documentos cuyo contenido puedes consultar.</p>
+                        <p>Última actividad de hasta 8 documentos consultables.</p>
                         <Entradas entradas={datos.recientes} vacio="No hay documentos autorizados para mostrar." />
                     </section>
                 </div>

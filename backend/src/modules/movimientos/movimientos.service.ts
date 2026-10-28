@@ -1,3 +1,5 @@
+import {clienteDocumental} from '../../shared/documental/contexto.js';
+import {listarDelegacionesPersonales} from '../documentos/delegacion-personal.js';
 import * as documentos from '../documentos/documentos.repository.js';
 import { documentoBloqueado, exigirEditable } from '../documentos/documentos.service.js';
 import { transaccionDocumental, obtenerActor } from '../../shared/documental/transaccion.js';
@@ -6,7 +8,9 @@ import * as repository from './movimientos.repository.js';
 import type { Filtros } from './movimientos.schema.js';
 /** El repositorio limita tanto filas como conteos a documentos ordinarios autorizados. */
 export async function listar(actorId: string, filtros: Filtros) {
-    return { ...await repository.listar(await obtenerActor(actorId), filtros), pagina: filtros.pagina, limite: filtros.limite };
+    const actor=await obtenerActor(actorId);
+    if(!clienteDocumental()&&actor.rol==='Usuario')return {...await listarDelegacionesPersonales(actor,filtros),pagina:filtros.pagina,limite:filtros.limite};
+    return { ...await repository.listar(actor, filtros), pagina: filtros.pagina, limite: filtros.limite };
 }
 /**
  * Revalida al actor y devuelve el movimiento consultable; utiliza el mismo 404 para inexistencia o falta de autorización.
@@ -26,7 +30,9 @@ export async function derivar(actorId: string, datos: {
     motivo: string;
 }) {
     const id = await transaccionDocumental(actorId, datos.motivo, /** Bloquea el documento, valida custodio y destino y registra movimiento y salida como una sola operación. */ async (cliente, actor) => {
+        if(!clienteDocumental()&&actor.rol==='Usuario')throw new HttpError(403,'Utilice la delegación personal');
         const documento = await documentoBloqueado(actor, datos.documento_id, cliente);
+        if(documento.entrega) throw new HttpError(409,'Este registro utiliza Confirmar entrega');
         await exigirEditable(actor, documento, cliente);
         if (!['RECIBIDO', 'PENDIENTE_DECISION'].includes(documento.estado_tramite))
             throw new HttpError(409, 'El documento no permite salida');
@@ -62,10 +68,12 @@ export async function resolver(actorId: string, id: string, evento: Evento, dato
     motivo?: string;
 }) {
     await transaccionDocumental(actorId, datos.motivo ?? 'Recepcion fisica confirmada por el destinatario', /** Bloquea documento antes de movimiento, reconsulta el estado y confirma el hecho físico solo para el actor correspondiente. */ async (cliente, actor) => {
+        if(!clienteDocumental()&&actor.rol==='Usuario')throw new HttpError(403,'Los movimientos anteriores se conservan como antecedentes');
         let movimiento = await repository.obtener(actor, id, cliente);
         if (!movimiento)
             throw new HttpError(404, 'Movimiento inexistente o no autorizado');
         await documentos.bloquear(movimiento.documento_id, cliente);
+        if ((await cliente.query('SELECT 1 FROM entregas_secretaria WHERE documento_id=$1',[movimiento.documento_id])).rowCount) throw new HttpError(409,'Este registro utiliza asignación y entrega; sus movimientos anteriores son antecedentes');
         await repository.bloquear(id, cliente);
         movimiento = await repository.obtener(actor, id, cliente);
         if (!movimiento)

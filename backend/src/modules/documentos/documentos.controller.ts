@@ -1,8 +1,9 @@
+import {delegacionPersonalSchema} from './delegacion-personal.js';
 import type { Response } from 'express';
 import type { RequestAutenticada } from '../../middlewares/auth.middleware.js';
 import { validar } from '../../shared/http/validar.js';
 import { parametroIdSchema } from '../../shared/admin/admin.schema.js';
-import { filtrosSchema, registrarSchema, corregirSchema, anularSchema, autorizarSchema } from './documentos.schema.js';
+import { guardarDireccionSchema, asignarSchema, confirmarEntregaSchema, filtrosSchema, registrarSchema, corregirSchema, anularSchema, autorizarSchema } from './documentos.schema.js';
 import * as service from './documentos.service.js';
 /**
  * Consulta el listado mediante el servicio del módulo, validando con Zod las entradas que utiliza; adapta el resultado a la respuesta HTTP sin consultar SQL.
@@ -85,3 +86,16 @@ export async function retirarAutorizacion(req: RequestAutenticada, res: Response
 export async function solicitarDecision(req: RequestAutenticada, res: Response) {
     res.json({ documento: await service.solicitarDecision(req.usuario!.id, validar(parametroIdSchema, req.params).id, validar(anularSchema, req.body).motivo) });
 }
+
+export async function asignarDestinatario(req: RequestAutenticada,res: Response) {
+ res.json({documento:await service.gestionarEntrega(req.usuario!.id,validar(parametroIdSchema,req.params).id,validar(asignarSchema,req.body))});
+}
+export async function confirmarEntrega(req: RequestAutenticada,res: Response) {
+ res.json({documento:await service.gestionarEntrega(req.usuario!.id,validar(parametroIdSchema,req.params).id,validar(confirmarEntregaSchema,req.body))});
+}
+
+export async function guardarDireccion(req: RequestAutenticada,res: Response) {
+ res.json({documento:await service.guardarDireccion(req.usuario!.id,validar(parametroIdSchema,req.params).id,validar(guardarDireccionSchema,req.body))});
+}
+
+export async function delegarPersonal(req:RequestAutenticada,res:Response){res.json({documento:await service.delegarPersonal(req.usuario!.id,validar(parametroIdSchema,req.params).id,validar(delegacionPersonalSchema,req.body))});}

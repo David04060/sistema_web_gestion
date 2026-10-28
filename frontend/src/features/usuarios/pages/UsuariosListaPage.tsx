@@ -83,7 +83,7 @@ export function UsuariosListaPage() {
         <section className={styles.tarjeta}>
             <EstadoCarga cargando={consulta.cargando} error={consulta.error} reintentar={consulta.recargar} />
             {consulta.datos && <>
-                {consulta.datos.usuarios.length ? <div className={styles.tabla}>
+                {consulta.datos.usuarios.length ? <div className={`${styles.tabla} ${styles.tablaUsuarios}`}>
                     <table>
                         <caption className="sr-only">Cuentas registradas</caption>
                         <thead>
@@ -98,26 +98,26 @@ export function UsuariosListaPage() {
                         </thead>
                         <tbody>
                             {consulta.datos.usuarios.map(/** Presenta una cuenta de la página autorizada sin hashes ni versión de autenticación. */  usuario => <tr key={usuario.id}>
-                                <td>
+                                <td data-label="Nombre">
                                     <Link to={`/usuarios/${usuario.id}`}>
                                         {usuario.nombre} {usuario.apellido}
                                     </Link>
                                 </td>
-                                <td>
+                                <td data-label="Usuario">
                                     {usuario.nombre_usuario}
                                 </td>
-                                <td>
+                                <td data-label="Rol">
                                     {usuario.rol}
                                 </td>
-                                <td>
+                                <td data-label="Oficina">
                                     {usuario.oficina ?? 'Sin asignar'}
                                 </td>
-                                <td>
+                                <td data-label="Estado">
                                     <span className={`${styles.estado} ${!usuario.activo ? styles.inactivo : ''}`}>
                                         {usuario.activo ? 'Activo' : 'Inactivo'}
                                     </span>
                                 </td>
-                                <td>
+                                <td data-label="Acciones">
                                     <Link to={`/usuarios/${usuario.id}`}>Consultar</Link>
                                 </td>
                             </tr>)}
