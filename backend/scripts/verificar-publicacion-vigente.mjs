@@ -1,11 +1,14 @@
-import fs from 'node:fs';import assert from 'node:assert/strict';import jwt from 'jsonwebtoken';import {randomUUID} from 'node:crypto';
+import fs from 'node:fs';import {parse} from 'dotenv';import assert from 'node:assert/strict';import jwt from 'jsonwebtoken';import {randomUUID} from 'node:crypto';
 import {abrirProduccionLectura} from './production-config.mjs';
 /** Comprobación remota de solo lectura. No sustituye el login manual ni crea fixtures. */
 const s=await abrirProduccionLectura();try{
- const c=s.cliente,cfg=s.configuracion,base='https://sistema-documental-hw7t.onrender.com';let solicitudes=0;const cuentas=[];
+ const c=s.cliente,cfg=s.configuracion;
+ const httpCfg=parse(fs.readFileSync(process.env.PRODUCTION_HTTP_CONFIG_FILE??'../.private/production/render.env'));
+ assert.equal(httpCfg.NEON_BRANCH_ID,cfg.NEON_BRANCH_ID);assert.equal(httpCfg.NEON_HOST,cfg.NEON_HOST);
+ const base='https://sistema-documental-hw7t.onrender.com';let solicitudes=0;const cuentas=[];
  const usuarios=(await c.query("SELECT u.id::text,u.nombre_usuario,u.version_autenticacion,r.nombre rol FROM usuarios u JOIN roles r ON r.id=u.rol_id WHERE u.activo ORDER BY u.id")).rows;
  const docs=(await c.query("SELECT d.id::text,d.codigo,d.registrado_por_id::text,td.requiere_clave,lower(btrim(td.nombre))='síseve' siseve FROM documentos d JOIN tipos_documentales td ON td.id=d.tipo_documental_id ORDER BY d.id")).rows;
- for(const u of usuarios){const token=jwt.sign({version:u.version_autenticacion},cfg.JWT_SECRET,{algorithm:'HS256',subject:u.id,issuer:'sistema-web-documental',audience:'sistema-web-documental-api',expiresIn:300,jwtid:randomUUID()});
+ for(const u of usuarios){const token=jwt.sign({version:u.version_autenticacion},httpCfg.JWT_SECRET,{algorithm:'HS256',subject:u.id,issuer:'sistema-web-documental',audience:'sistema-web-documental-api',expiresIn:300,jwtid:randomUUID()});
   async function get(path,status=200){solicitudes++;const r=await fetch(base+path,{headers:{Authorization:'Bearer '+token,Origin:'https://sistema-documental-p.pages.dev'},signal:globalThis.AbortSignal.timeout(55000)});assert.equal(r.status,status,u.nombre_usuario+' '+path);return r.json();}
   const me=await get('/api/auth/me');assert.ok(me.usuario);
   const autores=usuarios.filter(a=>a.id===u.id||(u.rol==='Director(a)'&&a.rol==='Secretaria de Dirección')||(u.rol==='Secretaria de Dirección'&&a.rol==='Director(a)')).map(a=>a.id);
