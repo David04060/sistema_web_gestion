@@ -1,3 +1,4 @@
+import { clientePdf,subirPdf,comprobarSeleccion } from '../../documentos/api/pdf.api';
 import siseveStyles from '../styles/Siseve.module.css';
 import { useState } from 'react';
 import { useAuth } from '../../auth/hooks/useAuth';
@@ -54,12 +55,17 @@ export function SisevePage() {
      * Envía una operación con su clave adicional y conserva únicamente resultados autorizados; ante un fallo descarta datos y preparación anteriores.
      * @param d - Datos tipados del registro o formulario de esta operación.
      */
-    async function ejecutar(d: Solicitud) {
+    async function ejecutar(d: Solicitud,pdf?:File|null) {
         setError('');
         setResultado(null);
         setOcupado(true);
         try {
+            if(pdf)comprobarSeleccion(pdf);
             const r = await api.ejecutarSolicitud(sesion.token, d, acceso.datos!.tipo_documental_id, documento?.documento.id === d.id ? documento.documento.destinatario_autorizado_id : null);
+            if(pdf&&d.operacion==='registrar'&&'documento' in r){
+                try { await subirPdf(clientePdf(sesion.token,r.documento.id,()=>d.clave),pdf,null); }
+                catch(e){setError(`Documento registrado. PDF no confirmado: ${e instanceof Error?e.message:'Reintente desde el detalle'}`);}
+            }
             setResultado(r);
             if ('tipos' in r)
                 setCatalogos(r);
@@ -93,7 +99,7 @@ export function SisevePage() {
         </p>}
         {acceso.datos && (acceso.datos.autorizado ? <>
             <SiseveOperacionForm key={preparacion.revision} preparacion={preparacion} operaciones={operaciones} catalogos={catalogos} destinoAutorizado={documento?.documento.id === preparacion.id ? documento.documento.destinatario_autorizado_id : null} ocupado={ocupado} ejecutar={ejecutar} />
-            {resultado && <SiseveResultado resultado={resultado} preparar={preparar} acciones={operaciones.filter(/** Selecciona acciones documentales o físicas para el resultado, excluyendo las consultas generales. */  o => !['listar', 'opciones', 'detalle', 'historial', 'movimientos', 'movimiento', 'registrar'].includes(o.id))} />}
+            {resultado && <SiseveResultado token={sesion.token} resultado={resultado} preparar={preparar} acciones={operaciones.filter(/** Selecciona acciones documentales o físicas para el resultado, excluyendo las consultas generales. */  o => !['listar', 'opciones', 'detalle', 'historial', 'movimientos', 'movimiento', 'registrar'].includes(o.id))} />}
         </> : <section className={styles.tarjeta}>
             <h2>Acceso no autorizado</h2>
             <p>Su cuenta no tiene una autorización individual activa. Conocer la contraseña compartida no sustituye este permiso.</p>

@@ -1,3 +1,4 @@
+import { ArchivoPdf } from '../components/ArchivoPdf';
 import documentoStyles from '../styles/Documentos.module.css';
 import {EntregaSecretaria,situacionesEntrega} from '../components/EntregaSecretaria';
 import { EstadoBadge } from '../../../components/ui/EstadoBadge';
@@ -111,6 +112,7 @@ export function DocumentoDetallePage() {
                     <Link className={styles.secundario} to="/documentos">Volver al listado</Link>
                 </div>
             </section>
+            <ArchivoPdf key={id} token={token} id={id} />
             {d.documento_origen && <section className={`${styles.tarjeta} ${documentoStyles.origen}`}>
                 <h2>Documento de origen</h2>
                 <Link to={`/documentos/${d.documento_origen.id}`}>{d.documento_origen.codigo}</Link>

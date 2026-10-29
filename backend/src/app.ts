@@ -1,3 +1,4 @@
+import { pdfRouter } from './modules/documentos-pdf/pdf.routes.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.routes.js';
 import { siseveRouter } from './modules/siseve/siseve.routes.js';
 import { documentosRouter } from './modules/documentos/documentos.routes.js';
@@ -30,6 +31,7 @@ app.get("/api/health", /** Responde al chequeo de disponibilidad HTTP sin consul
 app.use('/api/dashboard', dashboardRouter);
 app.use("/api/tipos-documentales", tiposDocumentalesRouter);
 app.use("/api/ubicaciones", ubicacionesRouter);
+app.use("/api/documentos", pdfRouter);
 app.use("/api/documentos", documentosRouter);
 app.use("/api/siseve", siseveRouter);
 app.use("/api/movimientos", movimientosRouter);

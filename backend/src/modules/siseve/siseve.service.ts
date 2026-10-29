@@ -1,3 +1,5 @@
+import { pdf,limpiarPdf } from '../documentos-pdf/pdf.service.js';
+import * as ps from '../documentos-pdf/pdf.schema.js';
 import { sinDatosSchema } from './siseve.schema.js';
 import { obtenerActor } from '../../shared/documental/transaccion.js';
 import { escrituraAdministrativa } from '../../shared/admin/admin.repository.js';
@@ -66,7 +68,7 @@ export async function cambiarClave(actorId: string, contrasena: string) {
  * @throws HttpError 403 con mensaje uniforme si falta configuración, permiso o clave válida; propaga las restricciones de la operación solicitada.
  */
 export async function operar(actorId: string, solicitud: Operacion) {
-    return transaccionDocumental(actorId, 'Operacion documental restringida', /** Verifica permiso individual y clave en esta petición antes de habilitar el contexto restringido temporal. */ async (cliente) => {
+    const resultado = await transaccionDocumental(actorId, 'Operacion documental restringida', /** Verifica permiso individual y clave en esta petición antes de habilitar el contexto restringido temporal. */ async (cliente) => {
         const tipo = await repository.tipo(cliente);
         const acceso = tipo ? await repository.acceso(cliente, tipo.id, actorId) : { autorizado: false, hash: undefined };
         const coincide = await verificarContrasena(solicitud.clave, acceso.hash ?? hashFalso);
@@ -74,6 +76,8 @@ export async function operar(actorId: string, solicitud: Operacion) {
             throw new HttpError(403, 'No se pudo autorizar la operacion restringida');
         return ejecutarRestringido(cliente, tipo.id, /** Reutiliza los servicios documentales ordinarios únicamente dentro del contexto restringido de esta operación. */ () => ejecutar(actorId, solicitud));
     });
+    if (['pdf-confirmar','pdf-eliminar'].includes(solicitud.operacion)) await limpiarPdf(1,solicitud.id).catch(() => {});
+    return resultado;
 }
 /** Reutiliza los mismos servicios y contratos: la clave adicional no altera custodia ni transiciones. */
 async function ejecutar(actorId: string, s: Operacion): Promise<unknown> {
@@ -85,6 +89,11 @@ async function ejecutar(actorId: string, s: Operacion): Promise<unknown> {
      */
     const id = () => validar(idSchema, s.id);
     switch (s.operacion) {
+        case 'pdf-consultar': validar(sinDatosSchema,datos); return pdf.consultar(actorId,id());
+        case 'pdf-iniciar': return pdf.iniciar(actorId,id(),validar(ps.iniciarSchema,datos));
+        case 'pdf-confirmar': return pdf.confirmar(actorId,id(),validar(ps.confirmarSchema,datos).carga);
+        case 'pdf-eliminar': return pdf.eliminar(actorId,id(),validar(ps.eliminarSchema,datos).revision);
+        case 'pdf-abrir': return pdf.abrir(actorId,id(),validar(ps.abrirSchema,datos).descargar);
         case 'listar': return documentos.listar(actorId, validar(ds.filtrosSchema, datos));
         case 'detalle': return { documento: await documentos.detalle(actorId, id()) };
         case 'historial': return { historial: await documentos.historial(actorId, id()) };

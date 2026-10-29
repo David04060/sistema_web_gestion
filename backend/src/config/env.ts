@@ -27,6 +27,17 @@ export const perfilNeon = perfil === 'neon' || perfilQa;
 const archivo = perfilQa ? '.env.neon.qa' : perfilNeon ? ".env.neon" : (process.env.DOTENV_CONFIG_PATH ?? ".env");
 // Render suministra secretos y PORT; nunca carga ni necesita archivos privados del equipo.
 const carga = administrado ? {} : config({ path: archivo, quiet: true, override: perfilNeon });
+// Complemento privado exclusivamente local; nunca importa credenciales R2 de QA en Neon/Render.
+if (!administrado && !perfilNeon && process.env.NODE_ENV !== 'test') {
+    try {
+        const pdf = parse(readFileSync('.env.r2-pdf'));
+        for (const nombre of ['R2_PDF_ACCOUNT_ID', 'R2_PDF_BUCKET', 'R2_PDF_ACCESS_KEY_ID', 'R2_PDF_SECRET_ACCESS_KEY', 'R2_PDF_PREFIX']) {
+            if (process.env[nombre] === undefined && pdf[nombre] !== undefined) process.env[nombre] = pdf[nombre];
+        }
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+}
 if (perfilNeon && carga.error) {
     console.error("No se pudo cargar el archivo privado .env.neon.");
     process.exit(1);

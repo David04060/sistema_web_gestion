@@ -1,9 +1,11 @@
 import { app } from "./app.js";
 import { env } from "./config/env.js";
+import { iniciarMantenimientoPdf } from './modules/documentos-pdf/pdf.maintenance.js';
 import { verificarBaseDatos, cerrarBaseDatos, } from "./config/database.js";
 /** Verifica la base antes de escuchar y registra un apagado ordenado de HTTP y PostgreSQL. */
 async function iniciarServidor(): Promise<void> {
     await verificarBaseDatos();
+    const detenerMantenimientoPdf = iniciarMantenimientoPdf();
     const servidor = app.listen(env.PORT, '0.0.0.0', /** Informa que HTTP empezó a escuchar después de verificar la base de datos. */ () => {
         console.log(`Backend ejecutándose en http://localhost:${env.PORT}`);
     });
@@ -23,6 +25,7 @@ async function iniciarServidor(): Promise<void> {
         if (cerrando)
             return;
         cerrando = true;
+        detenerMantenimientoPdf();
         console.log("Cerrando servidor...");
         servidor.close(/** Libera PostgreSQL cuando HTTP termina de cerrar e informa errores sin reabrir conexiones. */ async (error) => {
             if (error) {

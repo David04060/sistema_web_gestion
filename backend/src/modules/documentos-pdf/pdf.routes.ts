@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { requiereAuth } from '../../middlewares/auth.middleware.js';
+import * as controller from './pdf.controller.js';
+export const pdfRouter=Router();
+pdfRouter.use(requiereAuth,(_req,res,next)=>{res.setHeader('Cache-Control','no-store, private');next();});
+pdfRouter.get('/:id/pdf',controller.consultar);
+pdfRouter.post('/:id/pdf/cargas',controller.iniciar);
+pdfRouter.post('/:id/pdf/confirmar',controller.confirmar);
+pdfRouter.post('/:id/pdf/eliminar',controller.eliminar);
+pdfRouter.post('/:id/pdf/abrir',controller.abrir);

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import siseveStyles from '../styles/Siseve.module.css';
 import { useForm, useWatch } from 'react-hook-form';
 import { solicitudSchema, type Solicitud } from '../schemas/siseve.schema';
@@ -23,10 +24,11 @@ interface Props {
     }> | null;
     ocupado: boolean;
     destinoAutorizado: string | null;
-    ejecutar: (datos: Solicitud) => Promise<void>;
+    ejecutar: (datos: Solicitud,pdf?:File|null) => Promise<void>;
 }
 /** La contraseña se limpia antes de enviar; cada acción vuelve a exigir entrada explícita. */
 export function SiseveOperacionForm({ preparacion: p, operaciones, catalogos, ocupado, destinoAutorizado, ejecutar }: Props) {
+    const [pdf,setPdf]=useState<File|null>(null);
     const { register, handleSubmit, control, resetField, setError, formState: { errors } } = useForm<Solicitud>({ defaultValues: { operacion: p.operacion, clasificacion_registro: '', id: p.id, asunto: p.asunto ?? '', remitente: p.remitente ?? '', observaciones: p.observaciones ?? '', clave: '', archivador_id: '', usuario_destino_id: '', motivo: '', q: '', estado: '', pagina: String(p.pagina ?? 1), confirmado: false } });
     const operacion = useWatch({ control, name: 'operacion' });
     const consulta = ['listar', 'detalle', 'historial', 'opciones', 'movimientos', 'movimiento'].includes(operacion);
@@ -48,10 +50,12 @@ export function SiseveOperacionForm({ preparacion: p, operaciones, catalogos, oc
         }
         resetField('clave');
         resetField('confirmado');
-        await ejecutar(r.data);
+        await ejecutar(r.data,operacion==='registrar'?pdf:null);
+        setPdf(null);
     }
     return <section className={styles.tarjeta}>
         <h2>Verificar y ejecutar una operación</h2>
+        {operacion==='registrar'&&<label>PDF opcional (máximo 15 MB)<input type="file" accept="application/pdf,.pdf" disabled={ocupado} onChange={e=>setPdf(e.target.files?.[0]??null)}/></label>}
         <form className={siseveStyles.formulario} onSubmit={handleSubmit(enviar)} autoComplete="off">
             <div className={styles.datos}>
                 <div className={styles.campo}>

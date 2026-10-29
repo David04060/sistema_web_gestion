@@ -1,3 +1,4 @@
+import { ArchivoPdf } from '../../documentos/components/ArchivoPdf';
 import { EstadoBadge } from '../../../components/ui/EstadoBadge';
 import { etiquetaClasificacion } from '../../documentos/clasificacion';
 import type { Resultado } from '../api/siseve.api';
@@ -6,6 +7,7 @@ import { DocumentoHistorial } from '../../documentos/components/DocumentoHistori
 import { fechaLocal } from '../../../lib/fechas';
 import styles from '../../../components/ui/Admin.module.css';
 interface Props {
+    token: string;
     acciones: {
         id: string;
         nombre: string;
@@ -14,7 +16,7 @@ interface Props {
     preparar: (datos: Omit<Preparacion, 'revision'>) => void;
 }
 /** Solo representa resultados validados de la última operación; los botones preparan otra verificación. */
-export function SiseveResultado({ resultado: r, preparar, acciones }: Props) {
+export function SiseveResultado({ resultado: r, preparar, acciones,token }: Props) {
     if ('documentos' in r)
         return <section className={styles.tarjeta}>
             <h2>Documentos SíseVe autorizados</h2>
@@ -60,6 +62,7 @@ export function SiseveResultado({ resultado: r, preparar, acciones }: Props) {
     if ('documento' in r) {
         const d = r.documento;
         return <section className={styles.tarjeta}>
+            <ArchivoPdf key={d.id} token={token} id={d.id} restringido/>
             <h2>
                 {d.codigo}
             </h2>

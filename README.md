@@ -1,5 +1,13 @@
 # Sistema Web Documental — I.E. Enrique Paillardelle
 
+## PDF documentales privados — implementación preparada
+
+Registro con PDF opcional, adjunto posterior, consulta, reemplazo y eliminación
+con permisos documentales existentes y Cloudflare R2 privado. La migración aditiva
+005 y la configuración R2 requieren revisión y aplicación manual antes de habilitar
+la funcionalidad. Véase [ARCHIVOS_PDF_R2.md](docs/ARCHIVOS_PDF_R2.md) para arquitectura,
+autorización, tratamiento de fallos, pruebas y publicación pendiente.
+
 ## Desarrollo local — Sistema_Web_Final
 
 El desarrollo usa el proyecto local y la base PostgreSQL local **sistema_web_final**, esquema

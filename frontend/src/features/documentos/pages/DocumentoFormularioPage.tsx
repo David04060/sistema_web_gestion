@@ -1,3 +1,5 @@
+import { clientePdf,subirPdf,comprobarSeleccion } from '../api/pdf.api';
+import { ArchivoPdf } from '../components/ArchivoPdf';
 import {DelegacionPersonalCampos,destinoPersonalVacio,construirDestinoPersonal} from '../components/DelegacionPersonalCampos';
 import {DecisionDireccionCampos,decisionVacia,construirDecision,type DecisionDireccion} from '../components/DecisionDireccionCampos';
 import documentoStyles from '../styles/Documentos.module.css';
@@ -44,6 +46,8 @@ function Formulario({ token, id, inicial, opciones, clasificacion, origenId }: {
 }) {
     const navigate = useNavigate();
     const [error, setError] = useState('');
+    const [pdf,setPdf]=useState<File|null>(null);
+    const [registrado,setRegistrado]=useState<string|null>(null);
     const [delegar,setDelegar]=useState(false);
     const [personal,setPersonal]=useState(destinoPersonalVacio);
     const [decision,setDecision]=useState<DecisionDireccion>(decisionVacia);
@@ -65,14 +69,19 @@ function Formulario({ token, id, inicial, opciones, clasificacion, origenId }: {
         }
         const contenido = { asunto: valores.asunto, remitente: valores.remitente || null, observaciones: valores.observaciones || null };
         try {
+            if(pdf)comprobarSeleccion(pdf);
             const decisionInicial=!id&&opciones.puede_decidir_registro?construirDecision(decision):undefined;
             const r = await api.guardar(token, id, id ? { ...contenido, motivo: valores.motivo } : { ...contenido, tipo_documental_id: valores.tipo_documental_id, archivador_id: opciones.puede_decidir_registro?null:valores.archivador_id || null, ...(decisionInicial?{decision_inicial:decisionInicial}:{}), ...(opciones.puede_delegar_personal&&delegar?{delegacion_personal:construirDestinoPersonal(personal)}:{}), clasificacion_registro: clasificacion, ...(origenId?{documento_origen_id:origenId}:{}) });
+            if(!id&&pdf){
+                try{await subirPdf(clientePdf(token,r.documento.id),pdf,null);}catch(e){setRegistrado(r.documento.id);setError(`Documento registrado. El PDF no se confirmó: ${e instanceof Error?e.message:'Reintente desde el detalle'}`);return;}
+            }
             navigate(`/documentos/${r.documento.id}`, { replace: true });
         }
         catch (e) {
             setError(e instanceof Error ? e.message : 'No se pudo guardar');
         }
     }
+    if(registrado)return <><p role="status">Documento registrado correctamente.</p>{error&&<p role="alert">{error}</p>}<ArchivoPdf token={token} id={registrado}/><Link to={`/documentos/${registrado}`}>Ir al documento registrado</Link></>;
     return <section className={styles.tarjeta}>
         <p><strong>Clasificación del registro: {etiquetaClasificacion(id ? inicial?.clasificacion_registro ?? null : clasificacion)}</strong></p>
         {!id && !opciones.puede_registrar ? <p role="alert">Necesita una oficina asignada para registrar documentos.</p> : <form className={documentoStyles.formulario} onSubmit={handleSubmit(guardar)}>
@@ -112,6 +121,7 @@ function Formulario({ token, id, inicial, opciones, clasificacion, origenId }: {
             </div>
             {!id&&opciones.puede_decidir_registro&&<div className={documentoStyles.decisionRegistro}><DecisionDireccionCampos valor={decision} onChange={setDecision} opciones={opciones} permitirPendiente prefijo="registro-"/></div>}
             {!id&&opciones.puede_delegar_personal&&<div className={documentoStyles.decisionRegistro}><label><input type="checkbox" checked={delegar} onChange={e=>setDelegar(e.target.checked)}/> Registrar delegación</label>{delegar&&<DelegacionPersonalCampos valor={personal} onChange={setPersonal} opciones={opciones}/>}</div>}
+            {!id&&<label>PDF opcional (máximo 15 MB)<input type="file" accept="application/pdf,.pdf" onChange={e=>setPdf(e.target.files?.[0]??null)} disabled={isSubmitting}/></label>}
             {id && <div className={styles.campo}>
                 <label htmlFor="motivo">Motivo de correccion</label>
                 <textarea id="motivo" {...register('motivo')} required maxLength={1000} />
