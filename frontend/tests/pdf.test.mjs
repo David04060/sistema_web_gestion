@@ -1,4 +1,5 @@
 import { File } from 'node:buffer';
+import { TextDecoder } from 'node:util';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { build } from 'vite';
@@ -63,5 +64,17 @@ test('SíseVe descarta una respuesta pendiente si se pierde el contexto visible'
         await new Promise(resolve=>setImmediate(resolve));
         vigente=false;completar(Response.json({resultado:vacio}));
         await assert.rejects(pendiente,/perdió su contexto/);
+    }finally{globalThis.fetch=original;}
+});
+
+test('Visor interno: lectura privada, errores y pérdida de contexto sin exponer credenciales',async()=>{
+    const original=globalThis.fetch;
+    try {
+        globalThis.fetch=async(url,opciones)=>{assert.equal(url,'https://r2.invalid/privado');assert.equal(opciones.credentials,'omit');assert.equal(opciones.referrerPolicy,'no-referrer');assert.equal(opciones.cache,'no-store');assert.equal(opciones.headers,undefined);return new Response('%PDF-1.7');};
+        assert.equal(new TextDecoder().decode(await api.obtenerContenidoPdf('https://r2.invalid/privado',()=>true)),'%PDF-1.7');
+        await assert.rejects(api.obtenerContenidoPdf('https://r2.invalid/privado',()=>false),/perdió su contexto/);
+        globalThis.fetch=async()=>new Response('',{status:403});await assert.rejects(api.obtenerContenidoPdf('https://r2.invalid/privado',()=>true),/No se pudo obtener/);
+        globalThis.fetch=async()=>new Response('',{headers:{'content-length':String(15*1024*1024+1)}});await assert.rejects(api.obtenerContenidoPdf('https://r2.invalid/privado',()=>true),/supera el tamaño/);
+        globalThis.fetch=async()=>new Response('');await assert.rejects(api.obtenerContenidoPdf('https://r2.invalid/privado',()=>true),/tamaño inválido/);
     }finally{globalThis.fetch=original;}
 });

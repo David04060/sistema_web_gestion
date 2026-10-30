@@ -1,0 +1,23 @@
+.archivo button { min-height:42px; padding:10px 16px; border:1px solid #c9d6e6; border-radius:9px; background:#f5f8fc; color:#24456d; font:inherit; font-size:13px; font-weight:600; cursor:pointer; transition:background .15s,border-color .15s; }
+.archivo button:hover:not(:disabled) { background:#e7effa; border-color:#7d9cc3; }
+.archivo button:focus-visible { outline:3px solid #92b9eb; outline-offset:3px; }
+.archivo button:disabled { opacity:.5; cursor:not-allowed; }
+.archivo label { display:grid; gap:9px; margin:18px 0 12px; font-size:13px; color:#43546b; }
+.archivo input[type=file] { box-sizing:border-box; width:100%; min-width:0; padding:10px; border:1px dashed #aabdd5; border-radius:9px; background:#fafcff; }
+.archivo input::file-selector-button { padding:8px 12px; margin-right:12px; border:0; border-radius:6px; background:#e3ecf8; color:#24456d; cursor:pointer; }
+.archivo p { overflow-wrap:anywhere; }
+@media(max-width:600px) { .archivo button { flex:1 1 100%; width:100%; } .archivo input::file-selector-button { display:block; margin-bottom:8px; } }
+.selectorOculto { display:none; }
+.resumen { display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; }
+.resumen p { margin:0; min-width:0; font-weight:600; color:#344862; }
+.cabecera { display:flex; align-items:center; gap:18px; margin-bottom:18px; }
+.cabecera h3 { margin:0; min-width:0; overflow-wrap:anywhere; font-size:15px; }
+.herramientas { display:flex; flex-wrap:wrap; gap:10px; padding:14px; background:#f4f7fb; border:1px solid #dce5ef; border-radius:10px; margin-bottom:16px; }
+.archivo .peligro { color:#a12e36; border-color:#e7c4c8; background:#fff8f8; }
+.archivo .peligro:hover:not(:disabled) { background:#fce8ea; border-color:#c57c83; }
+.visor { border:1px solid #dce3ed; border-radius:10px; overflow:hidden; background:#e9eef4; }
+.paginas { display:flex; align-items:center; justify-content:center; gap:14px; padding:12px; flex-wrap:wrap; background:#f8fafc; }
+.paginas span { font-size:13px; color:#43546b; }
+.papel { padding:18px; overflow:auto; max-height:75vh; text-align:center; }
+.papel canvas { display:block; max-width:100%; height:auto; margin:0 auto; background:white; box-shadow:0 3px 14px #20304724; }
+@media(max-width:600px) { .cabecera { align-items:stretch; flex-direction:column; gap:12px; } .herramientas { padding:10px; } .paginas { gap:8px; } .paginas button { width:auto; flex:0 1 auto; } .papel { padding:8px; } }

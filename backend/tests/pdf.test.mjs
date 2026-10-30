@@ -83,6 +83,7 @@ test('Ciclo PDF con PostgreSQL y R2 simulados: permisos, carreras, rollback y li
         consultadas.push(sql);
         const rows=[];
         if(sql.includes('SELECT u.id::text,u.oficina_id'))rows.push(actores[p[0]]);
+        else if(sql.startsWith('SELECT situacion,tipo,usuario_id')){ /* Fixture ordinario sin decisión institucional. */ }
         else if(sql.includes('FROM documentos d JOIN tipos_documentales')){
             if((!restringido||clienteDocumental()) && ['1','3'].includes(p[0]))rows.push({...doc});
         }

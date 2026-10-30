@@ -3,7 +3,7 @@ import { EstadoCarga } from '../../../components/ui/EstadoCarga';
 import { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useConsulta } from '../../../hooks/useConsulta';
 import * as api from '../api/documentos.api';
 import * as movimientos from '../../movimientos/api/movimientos.api';
@@ -50,7 +50,6 @@ export function DocumentoAcciones({ documento: d, token, actualizar }: {
     return <section className={`${styles.tarjeta} ${documentoStyles.panelAcciones}`}>
         <h2>Operaciones autorizadas</h2>
         <EstadoCarga {...opciones} reintentar={opciones.recargar} />
-        {d.permisos.editar && <Link className={styles.secundario} to={`/documentos/${d.id}/editar`}>Corregir datos con motivo</Link>}
         {d.destinatario_autorizado_id && <p>Destino autorizado: {opciones.datos?.destinatarios.find(/** Busca el nombre del destinatario autorizado sin alterar el destino seleccionado por Dirección. */  u => u.id === d.destinatario_autorizado_id)?.nombre ?? `Cuenta ${d.destinatario_autorizado_id}`} · {opciones.datos?.destinatarios.find(/** Busca la oficina del destinatario autorizado para presentar la decisión. */  u => u.id === d.destinatario_autorizado_id)?.oficina ?? `Oficina ${d.oficina_destino_autorizada_id}`}
         </p>}
         {d.estado_tramite === 'PENDIENTE_DECISION' && <p>

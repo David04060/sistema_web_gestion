@@ -3,7 +3,8 @@ import type { z } from 'zod';
 import type { PoolClient } from 'pg';
 import { pool } from '../../config/database.js';
 import { obtenerActor, transaccionDocumental, type ActorDocumental } from '../../shared/documental/transaccion.js';
-import { conexionDocumental } from '../../shared/documental/contexto.js';
+import { conexionDocumental, clienteDocumental } from '../../shared/documental/contexto.js';
+import { puedeGestionarPdfInstitucional, type DecisionPdf } from './pdf.permissions.js';
 import * as documentos from '../documentos/documentos.service.js';
 import * as documentosRepo from '../documentos/documentos.repository.js';
 import { HttpError } from '../../shared/http/HttpError.js';
@@ -13,22 +14,35 @@ import * as repo from './pdf.repository.js';
 
 /** Instancia por operación; las pruebas inyectan almacenamiento sin conectar a R2. */
 export function servicioPdf(almacen: () => AlmacenPdf = crearAlmacenR2) {
+    async function exigirGestion(actor: ActorDocumental,d: documentosRepo.Documento,c: PoolClient) {
+        if (!clienteDocumental() && d.registro_personal && d.responsable_actual_id!==actor.id)
+            throw new HttpError(403,'La consulta institucional no permite modificar este PDF');
+        if (clienteDocumental() || !['Director(a)','Secretaria de Dirección'].includes(actor.rol)) {
+            await documentos.exigirEditable(actor,d,c); return;
+        }
+        const decision=(await c.query<DecisionPdf>('SELECT situacion,tipo,usuario_id::text FROM entregas_secretaria WHERE documento_id=$1',[d.id])).rows[0];
+        if (!puedeGestionarPdfInstitucional(actor,d,decision)) throw new HttpError(403,'No tiene permiso para gestionar el PDF de este documento');
+        if (await documentosRepo.movimientoAbierto(d.id,c)) throw new HttpError(409,'Existe una circulación física abierta');
+    }
     async function consultar(actorId: string, id: string) {
         const actor = await obtenerActor(actorId);
-        const d = await documentosRepo.obtener(actor, id);
+        const d = await documentosRepo.obtenerParaPdf(actor, id);
         if (!d) throw new HttpError(404, 'Documento inexistente o no autorizado');
         let modificar = d.activo && ['RECIBIDO','PENDIENTE_DECISION'].includes(d.estado_tramite);
         if (modificar) {
             // Misma autoría/custodia/circulación que las escrituras, sin ampliar permisos por oficina.
-            try { await documentos.exigirEditable(actor, d, conexionDocumental() as PoolClient); }
+            try { await exigirGestion(actor, d, conexionDocumental() as PoolClient); }
             catch (e) { if (e instanceof HttpError && [403,409].includes(e.status)) modificar = false; else throw e; }
         }
         const p = await repo.vigente(id);
         return { archivo: p ? { revision:p.revision,nombre:p.nombre,tamano:p.tamano,cargado_en:p.cargado_en } : null, modificar, limpieza_pendiente: await repo.pendientes(id) };
     }
     async function editable(c: PoolClient, actor: ActorDocumental, id: string) {
-        const d = await documentos.documentoBloqueado(actor, id, c);
-        await documentos.exigirEditable(actor,d,c);
+        await documentosRepo.bloquear(id,c);
+        const d = await documentosRepo.obtenerParaPdf(actor,id,c);
+        if (!d) throw new HttpError(404,'Documento inexistente o no autorizado');
+        if (!d.activo) throw new HttpError(409,'El documento está anulado');
+        await exigirGestion(actor,d,c);
         if (!['RECIBIDO','PENDIENTE_DECISION'].includes(d.estado_tramite)) throw new HttpError(409, 'Estado documental incompatible');
     }
     async function iniciar(actorId: string, id: string, datos: z.infer<typeof iniciarSchema>) {

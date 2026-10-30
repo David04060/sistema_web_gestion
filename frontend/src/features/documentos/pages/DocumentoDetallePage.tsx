@@ -109,6 +109,7 @@ export function DocumentoDetallePage() {
                 <div className={styles.acciones}>
                     <Link className={styles.boton} to={`/movimientos?documento_id=${d.id}`}>{d.registro_personal?'Consultar delegación':'Consultar movimientos anteriores'}</Link>
                     {d.permisos.registrar_relacionado && <Link className={styles.boton} to={`/documentos/nuevo?origen=${d.id}`}>Registrar documento relacionado</Link>}
+                    {d.permisos.editar && <Link className={styles.secundario} to={`/documentos/${d.id}/editar`}>Corregir datos</Link>}
                     <Link className={styles.secundario} to="/documentos">Volver al listado</Link>
                 </div>
             </section>
@@ -138,7 +139,7 @@ export function DocumentoDetallePage() {
             }} />}
             <section className={styles.tarjeta}>
                 <h2>Historial</h2>
-                {d.entrega ? <><DocumentoHistorial historial={(consulta.datos?.historial ?? []).filter(h=>['Registro','Asignación','Delegación','Delegación personal','Guardado en Dirección','Guardado en Secretaría','Entrega confirmada'].includes(h.accion))} /><details><summary>Antecedentes y auditoría de datos</summary><DocumentoHistorial historial={(consulta.datos?.historial ?? []).filter(h=>!['Registro','Asignación','Delegación','Guardado en Dirección','Guardado en Secretaría','Entrega confirmada'].includes(h.accion))} /></details></> : <DocumentoHistorial historial={consulta.datos?.historial ?? []} />}
+                <DocumentoHistorial historial={consulta.datos?.historial ?? []} />
             </section>
         </>}
     </main>;

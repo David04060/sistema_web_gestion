@@ -4,6 +4,16 @@ export const MAX_PDF = 15 * 1024 * 1024;
 export const estadoPdfSchema = z.object({ archivo:z.object({ revision:z.string(),nombre:z.string(),tamano:z.number(),cargado_en:z.string() }).nullable(),modificar:z.boolean(),limpieza_pendiente:z.number() });
 export type EstadoPdf = z.infer<typeof estadoPdfSchema>;
 export type PeticionPdf = <T>(accion:string,datos:unknown,schema:z.ZodType<T>) => Promise<T>;
+/** Lee el objeto privado sin credenciales institucionales y descarta respuestas de un contexto vencido. */
+export async function obtenerContenidoPdf(url:string,vigente:()=>boolean):Promise<Uint8Array<ArrayBuffer>> {
+    const response=await fetch(url,{credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store'});
+    if(!response.ok)throw new Error('No se pudo obtener el PDF. Vuelva a intentarlo.');
+    if(Number(response.headers.get('content-length'))>MAX_PDF)throw new Error('El PDF supera el tamaño permitido.');
+    const contenido=new Uint8Array(await response.arrayBuffer());
+    if(!vigente())throw new Error('La operación PDF perdió su contexto; consulte nuevamente.');
+    if(!contenido.length||contenido.length>MAX_PDF)throw new Error('El PDF tiene un tamaño inválido.');
+    return contenido;
+}
 /** Mantiene la clave SíseVe únicamente durante esta petición; cada fase vuelve a verificarla. */
 export function clientePdf(token:string,id:string,clave?:()=>string|Promise<string>,vigente:()=>boolean=()=>true): PeticionPdf {
     return async(accion,datos,schema) => {

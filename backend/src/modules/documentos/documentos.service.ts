@@ -34,7 +34,8 @@ export async function detalle(actorId: string, id: string) {
     const custodio = libre && documento.responsable_actual_id === actor.id
         && (!!clienteDocumental() || documento.registrado_por_id === actor.id);
     const mesa = actor.rol === 'Secretaria de Dirección' || documento.oficina === 'Mesa de Partes';
-    return { ...documento, ...await repository.relacionesDocumento(actor,id), ultima_ubicacion: await repository.ultimaUbicacion(id), permisos: { delegar_personal: !clienteDocumental() && actor.rol==='Usuario' && documento.registrado_por_id===actor.id && documento.activo && !documento.entrega, registrar_relacionado: !clienteDocumental() && actor.rol === 'Secretaria de Dirección' && (await repository.rolRegistrador(id)) === 'Secretaria de Dirección', editar: custodio, anular: custodio, asignar_destinatario: !!documento.entrega && documento.activo && documento.entrega.situacion === 'PENDIENTE_DECISION' && (['Director(a)','Secretaria de Dirección'].includes(actor.rol) && (actor.rol==='Director(a)' || documento.registrado_por_id===actor.id || await repository.rolRegistrador(id)==='Director(a)')), confirmar_entrega: !!documento.entrega && documento.activo && documento.entrega.situacion === 'DELEGADO' && actor.rol === 'Secretaria de Dirección' && (documento.registrado_por_id === actor.id || await repository.rolRegistrador(id) === 'Director(a)'), autorizar: !documento.entrega && libre && documento.estado_tramite === 'PENDIENTE_DECISION' && actor.rol === 'Director(a)', salir: (!documento.registro_personal || !!clienteDocumental()) && !documento.entrega && custodio && (documento.estado_tramite === 'PENDIENTE_DECISION' ? documento.destinatario_autorizado_id !== null : !mesa), solicitar_decision: (!documento.registro_personal || !!clienteDocumental()) && !documento.entrega && custodio && mesa && documento.estado_tramite === 'RECIBIDO' } };
+    const contenido = clienteDocumental()?{editar:custodio,anular:custodio}:await repository.permisosContenido(actor,id);
+    return { ...documento, ...await repository.relacionesDocumento(actor,id), ultima_ubicacion: await repository.ultimaUbicacion(id), permisos: { delegar_personal: !clienteDocumental() && actor.rol==='Usuario' && documento.registrado_por_id===actor.id && documento.activo && !documento.entrega, registrar_relacionado: !clienteDocumental() && actor.rol === 'Secretaria de Dirección' && (await repository.rolRegistrador(id)) === 'Secretaria de Dirección', editar: contenido.editar, anular: contenido.anular, asignar_destinatario: !!documento.entrega && documento.activo && documento.entrega.situacion === 'PENDIENTE_DECISION' && (['Director(a)','Secretaria de Dirección'].includes(actor.rol) && (actor.rol==='Director(a)' || documento.registrado_por_id===actor.id || await repository.rolRegistrador(id)==='Director(a)')), confirmar_entrega: !!documento.entrega && documento.activo && documento.entrega.situacion === 'DELEGADO' && actor.rol === 'Secretaria de Dirección' && (documento.registrado_por_id === actor.id || await repository.rolRegistrador(id) === 'Director(a)'), autorizar: !documento.entrega && libre && documento.estado_tramite === 'PENDIENTE_DECISION' && actor.rol === 'Director(a)', salir: (!documento.registro_personal || !!clienteDocumental()) && !documento.entrega && custodio && (documento.estado_tramite === 'PENDIENTE_DECISION' ? documento.destinatario_autorizado_id !== null : !mesa), solicitar_decision: (!documento.registro_personal || !!clienteDocumental()) && !documento.entrega && custodio && mesa && documento.estado_tramite === 'RECIBIDO' } };
 }
 /**
  * Autoriza primero el contenido del documento y solo después solicita su auditoría completa.
@@ -122,7 +123,8 @@ export async function corregir(actorId: string, id: string, datos: Contenido & {
 }) {
     await transaccionDocumental(actorId, datos.motivo, /** Bloquea y comprueba custodia antes de corregir exclusivamente el contenido con auditoría atómica. */ async (cliente, actor) => {
         const documento = await documentoBloqueado(actor, id, cliente);
-        await exigirEditable(actor, documento, cliente);
+        if(clienteDocumental())await exigirEditable(actor,documento,cliente);
+        else if(!(await repository.permisosContenido(actor,id,cliente)).editar)throw new HttpError(403,'No tiene permiso para corregir este documento');
         await repository.corregir(id, datos, cliente);
     });
     return detalle(actorId, id);
@@ -131,7 +133,8 @@ export async function corregir(actorId: string, id: string, datos: Contenido & {
 export async function anular(actorId: string, id: string, motivo: string) {
     await transaccionDocumental(actorId, motivo, /** Bloquea y comprueba custodia antes de anular lógicamente conservando el historial. */ async (cliente, actor) => {
         const documento = await documentoBloqueado(actor, id, cliente);
-        await exigirEditable(actor, documento, cliente);
+        if(clienteDocumental())await exigirEditable(actor,documento,cliente);
+        else if(!(await repository.permisosContenido(actor,id,cliente)).anular)throw new HttpError(403,'No tiene permiso para anular este documento');
         await repository.anular(id, cliente);
     });
     return detalle(actorId, id);

@@ -38,13 +38,8 @@ export const contenidoAutorizadoSQL = () => {
       SELECT 1 FROM usuarios lector JOIN roles rol_lector ON rol_lector.id=lector.rol_id
       WHERE lector.id=$1::bigint AND lector.activo
       AND rol_lector.nombre IN ('Usuario','Secretaria de Dirección','Director(a)')
-      AND (d.registrado_por_id=lector.id OR EXISTS (
-        SELECT 1 FROM usuarios autor JOIN roles rol_autor ON rol_autor.id=autor.rol_id
-        WHERE autor.id=d.registrado_por_id AND (
-          (rol_lector.nombre='Director(a)' AND $2::boolean AND rol_autor.nombre='Secretaria de Dirección')
-          OR (rol_lector.nombre='Secretaria de Dirección' AND rol_autor.nombre='Director(a)')
-        )
-      ))
+      AND ((rol_lector.nombre='Director(a)' AND $2::boolean) OR rol_lector.nombre='Secretaria de Dirección'
+        OR d.registrado_por_id=lector.id OR d.responsable_actual_id=lector.id)
     ))`;
 
 };
@@ -81,6 +76,14 @@ export async function listar(actor: ActorDocumental, f: Filtros) {
  */
 export async function obtener(actor: ActorDocumental, id: string, cliente?: PoolClient) {
     return (await (cliente ?? conexionDocumental()).query<Documento>(`SELECT ${columnas} ${relaciones} WHERE ${contenidoAutorizadoSQL()} AND d.id=$3::bigint`, [actor.id, actor.rol === 'Director(a)', id])).rows[0];
+}
+/** Lectura exclusiva del PDF: Dirección conserva consulta institucional ordinaria, sin abrir tipos protegidos. */
+export async function obtenerParaPdf(actor: ActorDocumental, id: string, cliente?: PoolClient) {
+    return obtener(actor,id,cliente);
+}
+/** Permisos ordinarios compartidos con el trigger PostgreSQL; consulta dentro del bloqueo de escritura. */
+export async function permisosContenido(actor:ActorDocumental,id:string,cliente=conexionDocumental()) {
+    return (await cliente.query<{editar:boolean;anular:boolean}>('SELECT editar,anular FROM public.fn_documento_permisos_contenido($1::bigint,$2::bigint)',[id,actor.id])).rows[0]??{editar:false,anular:false};
 }
 /** Solo devuelve metadatos mínimos de acceso al recorrido; no expone contenido al participante histórico. */
 export async function accesoRecorrido(actor: ActorDocumental, id: string, cliente?: PoolClient) {

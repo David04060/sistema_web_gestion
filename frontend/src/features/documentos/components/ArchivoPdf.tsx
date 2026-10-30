@@ -1,14 +1,17 @@
-import { useEffect,useRef,useState } from 'react';
+import { lazy,Suspense,useEffect,useRef,useState } from 'react';
 import { z } from 'zod';
-import { clientePdf,estadoPdfSchema,subirPdf,type EstadoPdf } from '../api/pdf.api';
+import { clientePdf,estadoPdfSchema,subirPdf,obtenerContenidoPdf,comprobarSeleccion,type EstadoPdf } from '../api/pdf.api';
 import styles from '../../../components/ui/Admin.module.css';
-import { fechaLocal } from '../../../lib/fechas';
+const VisorPdf=lazy(()=>import('./VisorPdf'));
+import pdfStyles from './ArchivoPdf.module.css';
 /** Consulta y modificaciones separadas; SíseVe pide una clave nueva para cada fase. */
 export function ArchivoPdf({token,id,restringido=false}:{token:string;id:string;restringido?:boolean}) {
     const [estado,setEstado]=useState<EstadoPdf>();
     const [ocupado,setOcupado]=useState(false);
     const [error,setError]=useState(''); const [mensaje,setMensaje]=useState('');
-    const [archivo,setArchivo]=useState<File|null>(null);
+    const selector=useRef<HTMLInputElement>(null);
+    const [bytes,setBytes]=useState<Uint8Array>();
+    const [seleccion,setSeleccion]=useState<{archivo:File;bytes:Uint8Array;revision:string|null}>();
     const [solicitaClave,setSolicitaClave]=useState(false);
     const [clave,setClave]=useState('');
     const resolverClave=useRef<((valor:string)=>void)|null>(null);
@@ -17,7 +20,7 @@ export function ArchivoPdf({token,id,restringido=false}:{token:string;id:string;
     useEffect(()=>{
         let vigente=true;
         if(!restringido)clientePdf(token,id)('consultar',{},estadoPdfSchema).then(r=>{if(vigente)setEstado(r);},e=>{if(vigente)setError(e instanceof Error?e.message:'No se pudo consultar el PDF');});
-        const ocultar=()=>{if(restringido&&document.hidden){contexto.current++;setEstado(undefined);setClave('');setMensaje('');setArchivo(null);resolverClave.current?.('');resolverClave.current=null;setSolicitaClave(false);}};
+        const ocultar=()=>{if(restringido&&document.hidden){contexto.current++;setEstado(undefined);setClave('');setMensaje('');setBytes(undefined);setSeleccion(undefined);resolverClave.current?.('');resolverClave.current=null;setSolicitaClave(false);}};
         document.addEventListener('visibilitychange',ocultar);
         return()=>{vigente=false;contexto.current++;document.removeEventListener('visibilitychange',ocultar);resolverClave.current?.('');};
     },[token,id,restringido]);
@@ -28,38 +31,72 @@ export function ArchivoPdf({token,id,restringido=false}:{token:string;id:string;
         try {await operacion();}catch(e){if(restringido)setEstado(undefined);setError(e instanceof Error?e.message:'No se pudo completar la operación');}finally{setOcupado(false);}
     }
     async function consultar(){setEstado(await pedir('consultar',{},estadoPdfSchema));}
+    async function previsualizar(archivo:File){
+        comprobarSeleccion(archivo);
+        const generacion=contexto.current;
+        const contenido=new Uint8Array(await archivo.arrayBuffer());
+        if(generacion!==contexto.current)throw new Error('La selección perdió su contexto.');
+        setSeleccion({archivo,bytes:contenido,revision:estado?.archivo?.revision??null});
+    }
     async function cargar(){
-        if(!archivo||!estado)return;
-        if(estado.archivo&&!window.confirm('¿Reemplazar el PDF? Se eliminará físicamente el anterior y no podrá recuperarse.'))return;
-        await subirPdf(pedir,archivo,estado.archivo?.revision??null);
-        setArchivo(null);
+        if(!estado||!seleccion)return;
+        await subirPdf(pedir,seleccion.archivo,seleccion.revision);
+        setSeleccion(undefined);
+        setBytes(undefined);
         setMensaje('Nuevo PDF confirmado.');
         await consultar();
     }
     async function eliminar(){
         if(!estado?.archivo||!window.confirm('¿Eliminar permanentemente el PDF adjunto? El registro documental se conservará.'))return;
         await pedir('eliminar',{revision:estado.archivo.revision,confirmar:true},z.object({confirmado:z.boolean()}).or(estadoPdfSchema));
-        await consultar();setMensaje('PDF desvinculado. Consulte el estado de eliminación física indicado debajo.');
+        setBytes(undefined);await consultar();setMensaje('PDF desvinculado. Consulte el estado de eliminación física indicado debajo.');
     }
     async function abrir(descargar:boolean){
-        // Reservar la pestaña dentro del clic evita que Chrome bloquee la apertura tras esperar a la API.
-        const ventana=window.open('about:blank','_blank');
-        if(!ventana)throw new Error('Permita abrir la pestaña del PDF en su navegador y vuelva a intentarlo.');
-        ventana.opener=null;
-        try {
+        const generacion=contexto.current;
         const r=await pedir('abrir',{descargar},z.object({url:z.string().url(),vence_en:z.number()}));
-        const politica=ventana.document.createElement('meta');politica.name='referrer';politica.content='no-referrer';ventana.document.head.appendChild(politica);
-        ventana.location.replace(r.url);
-        } catch(error) { ventana.close();throw error; }
+        const contenido=await obtenerContenidoPdf(r.url,()=>generacion===contexto.current&&(!restringido||!document.hidden));
+        if(descargar){
+            const url=URL.createObjectURL(new Blob([contenido],{type:'application/pdf'}));
+            const enlace=document.createElement('a');enlace.href=url;enlace.download=estado?.archivo?.nombre??'documento.pdf';
+            document.body.appendChild(enlace);enlace.click();enlace.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+        }else setBytes(contenido);
     }
-    return <section className={styles.tarjeta} aria-busy={ocupado}>
+    return <section className={`${styles.tarjeta} ${pdfStyles.archivo}`} aria-busy={ocupado}>
         <h2>Archivo PDF</h2>
         {solicitaClave&&<form onSubmit={e=>{e.preventDefault();resolverClave.current?.(clave);resolverClave.current=null;setClave('');setSolicitaClave(false);}}><label>Contraseña SíseVe para esta operación<input type="password" autoComplete="off" value={clave} onChange={e=>setClave(e.target.value)} required maxLength={1024}/></label><button type="submit">Verificar y continuar</button><button type="button" onClick={()=>{resolverClave.current?.('');resolverClave.current=null;setClave('');setSolicitaClave(false);}}>Cancelar</button></form>}
-        {!estado?<button type="button" disabled={ocupado} onClick={()=>void ejecutar(consultar)}>Consultar archivo PDF</button>:<>
-            {estado.archivo?<><p>{estado.archivo.nombre} · {(estado.archivo.tamano/1024/1024).toFixed(2)} MB · {fechaLocal(estado.archivo.cargado_en)}</p><div className={styles.acciones}><button type="button" disabled={ocupado} onClick={()=>void ejecutar(()=>abrir(false))}>Visualizar</button><button type="button" disabled={ocupado} onClick={()=>void ejecutar(()=>abrir(true))}>Descargar</button></div></>:<p>Sin PDF adjunto</p>}
-            {estado.modificar&&<><label>PDF (máximo 15 MB)<input type="file" accept="application/pdf,.pdf" disabled={ocupado} onChange={e=>setArchivo(e.target.files?.[0]??null)}/></label><div className={styles.acciones}><button type="button" disabled={ocupado||!archivo} onClick={()=>void ejecutar(cargar)}>{estado.archivo?'Reemplazar PDF':'Adjuntar PDF'}</button>{estado.archivo&&<button type="button" disabled={ocupado} onClick={()=>void ejecutar(eliminar)}>Eliminar PDF</button>}</div></>}
-            {estado.limpieza_pendiente>0?<p role="status">Eliminación física pendiente. El mantenimiento debe reintentar la limpieza; todavía no se considera completada.</p>:<p>No hay eliminaciones físicas pendientes.</p>}
-            <button type="button" disabled={ocupado} onClick={()=>void ejecutar(consultar)}>Actualizar archivo PDF</button>
+        <input ref={selector} className={pdfStyles.selectorOculto} type="file" accept="application/pdf,.pdf" disabled={ocupado}
+            aria-label={estado?.archivo?'Seleccionar nuevo PDF':'Seleccionar PDF para subir'}
+            onChange={e=>{const archivo=e.target.files?.[0];e.target.value='';if(archivo)void ejecutar(()=>previsualizar(archivo));}}/>
+        {seleccion?<>
+            <h3>Previsualización: {seleccion.archivo.name}</h3>
+            <p>El archivo todavía no se ha subido.{seleccion.revision?' Al confirmar se reemplazará el PDF vigente y se eliminará el anterior.':''}</p>
+            <div className={pdfStyles.herramientas}>
+                <button type="button" disabled={ocupado} onClick={()=>void ejecutar(cargar)}>{seleccion.revision?'Confirmar reemplazo':'Confirmar subida'}</button>
+                <button type="button" disabled={ocupado} onClick={()=>setSeleccion(undefined)}>Cancelar</button>
+            </div>
+            <Suspense fallback={<p role="status">Preparando previsualización…</p>}><VisorPdf bytes={seleccion.bytes}/></Suspense>
+        </>:!estado?(error||restringido)&&<button type="button" disabled={ocupado} onClick={()=>void ejecutar(consultar)}>Consultar archivo PDF</button>:<>
+            {bytes&&estado.archivo?<>
+                <header className={pdfStyles.cabecera}>
+                    <button type="button" disabled={ocupado} onClick={()=>setBytes(undefined)}>Volver al documento</button>
+                    <h3>{estado.archivo.nombre}</h3>
+                </header>
+                <div className={pdfStyles.herramientas} aria-label="Acciones del archivo PDF">
+                    <button type="button" disabled={ocupado} onClick={()=>void ejecutar(()=>abrir(true))}>Descargar PDF</button>
+                    {estado.modificar&&<>
+                        <button type="button" disabled={ocupado} onClick={()=>selector.current?.click()}>Actualizar PDF</button>
+                        <button type="button" className={pdfStyles.peligro} disabled={ocupado} onClick={()=>void ejecutar(eliminar)}>Eliminar PDF</button>
+                    </>}
+                </div>
+                <Suspense fallback={<p role="status">Preparando visor PDF…</p>}><VisorPdf bytes={bytes}/></Suspense>
+            </>:estado.archivo?<div className={pdfStyles.resumen}>
+                <p>{estado.archivo.nombre}</p>
+                <button type="button" disabled={ocupado} onClick={()=>void ejecutar(()=>abrir(false))}>Visualizar archivo PDF</button>
+            </div>:<>
+                <p>Sin PDF adjunto</p>
+                {estado.modificar&&<button type="button" disabled={ocupado} onClick={()=>selector.current?.click()}>Subir archivo PDF</button>}
+            </>}
+            {estado.limpieza_pendiente>0&&<p role="status">Eliminación física pendiente. El mantenimiento reintentará la limpieza.</p>}
         </>}
         {ocupado&&<p role="status">Procesando PDF…</p>}{error&&<p role="alert" className={styles.error}>{error}</p>}{mensaje&&<p role="status">{mensaje}</p>}
     </section>;
