@@ -1,140 +1,28 @@
-import { useCallback, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { useAuth } from '../../auth/hooks/useAuth';
-import { useConsulta } from '../../../hooks/useConsulta';
-import { fechaLocal } from '../../../lib/fechas';
-import * as api from '../api/usuarios.api';
-import { restablecerSchema } from '../schemas/usuarios.schema';
-import { Confirmacion } from '../../../components/ui/Confirmacion';
-import { EstadoCarga } from '../../../components/ui/EstadoCarga';
+import {useCallback,useRef,useState} from 'react';
+import {Link,useParams} from 'react-router-dom';
+import {config} from '../../../api/documental';
+import {useAuth} from '../../auth/hooks/useAuth';
+import {useConsulta} from '../../../hooks/useConsulta';
+import {EstadoCarga} from '../../../components/ui/EstadoCarga';
 import styles from '../../../components/ui/Admin.module.css';
-/** Estado y contraseña se cambian por operaciones explícitas, confirmadas y auditadas. */
-export function UsuarioDetallePage() {
-    const { id = '' } = useParams();
-    const auth = useAuth();
-    const token = auth.sesion!.token;
-    const consulta = useCallback(/** Consulta la proyección administrativa de la cuenta seleccionada. */() => api.detalle(token, id), [id, token]);
-    const { datos, cargando, error, recargar } = useConsulta(consulta);
-    const location = useLocation();
-    const [mensaje, setMensaje] = useState(typeof location.state?.mensaje === 'string' ? location.state.mensaje : '');
-    const [errorAccion, setErrorAccion] = useState('');
-    const [ocupado, setOcupado] = useState(false);
-    const [pendiente, setPendiente] = useState<{
-        tipo: 'estado';
-    } | {
-        tipo: 'contrasena';
-        contrasena: string;
-    } | null>(null);
-    const { register, handleSubmit, setError, reset, formState: { errors } } = useForm<{
-        contrasena: string;
-    }>({ defaultValues: { contrasena: '' } });
-    /**
-     * Ejecuta la acción administrativa pendiente; recarga el detalle de otra cuenta o cierra la sesión si se modificó la propia.
-     */
-    async function ejecutar() {
-        if (!pendiente || !datos || ocupado)
-            return;
-        setOcupado(true);
-        setErrorAccion('');
-        setMensaje('');
-        try {
-            if (pendiente.tipo === 'estado') {
-                await api.cambiarEstado(token, id, !datos.usuario.activo);
-                setMensaje(datos.usuario.activo ? 'Cuenta desactivada. Sus sesiones anteriores ya no son válidas.' : 'Cuenta activada correctamente.');
-            }
-            else {
-                const respuesta = await api.restablecer(token, id, pendiente.contrasena);
-                reset({ contrasena: '' });
-                setMensaje(respuesta.mensaje);
-            }
-            if (id === auth.sesion?.usuario.id)
-                auth.cerrarSesion();
-            else
-                recargar();
-        }
-        catch (fallo) {
-            setErrorAccion(fallo instanceof Error ? fallo.message : 'No se pudo completar la operación.');
-        }
-        finally {
-            setOcupado(false);
-            setPendiente(null);
-        }
-    }
-    return <main className={styles.pagina}>
-        <div className={styles.titulo}>
-            <div>
-                <h1>Información de la cuenta</h1>
-            </div>
-            <Link className={styles.secundario} to="/usuarios">Volver al listado</Link>
-        </div>
-        {mensaje && <p role="status" className={styles.exito}>
-            {mensaje}
-        </p>}
-        {errorAccion && <p role="alert" className={styles.error}>
-            {errorAccion}
-        </p>}
-        <EstadoCarga cargando={cargando} error={error} reintentar={recargar} />
-        {datos && <>
-            <section className={styles.tarjeta}>
-                <h2>
-                    {datos.usuario.nombre} {datos.usuario.apellido}
-                </h2>
-                <dl className={styles.datos}>
-                    {[
-                        ['Nombre de usuario', datos.usuario.nombre_usuario], ['Correo electrónico', datos.usuario.email ?? 'No registrado'],
-                        ['Teléfono', datos.usuario.telefono ?? 'No registrado'], ['Rol', datos.usuario.rol], ['Oficina', datos.usuario.oficina ?? 'Sin asignar'],
-                        ['Estado', datos.usuario.activo ? 'Activo' : 'Inactivo'], ['Registro', fechaLocal(datos.usuario.fecha_creacion)],
-                        ['Última modificación', fechaLocal(datos.usuario.fecha_modificacion)],
-                    ].map(/** Presenta un dato público de la cuenta como término y descripción. */([nombre, valor]) => <div key={nombre}>
-                        <dt>
-                            {nombre}
-                        </dt>
-                        <dd>
-                            {valor}
-                        </dd>
-                    </div>)}
-                </dl>
-                <div className={styles.acciones}>
-                    <Link className={styles.boton} to={`/usuarios/${id}/editar`}>Editar datos y asignaciones</Link>
-                    <button className={datos.usuario.activo ? styles.peligro : styles.secundario} disabled={ocupado} onClick={/** Prepara el cambio de actividad de la cuenta para confirmación explícita. */() => setPendiente({ tipo: 'estado' })}>
-                        {datos.usuario.activo ? 'Desactivar cuenta' : 'Activar cuenta'}
-                    </button>
-                </div>
-            </section>
-            <section className={styles.tarjeta}>
-                <h2>Restablecer contraseña</h2>
-                <p>La nueva contraseña invalidará las sesiones anteriores. Mínimo 8 caracteres.</p>
-                <form onSubmit={handleSubmit(/** Valida la nueva contraseña y prepara su restablecimiento sin enviarlo antes de confirmar. */  valores => {
-                    const resultado = restablecerSchema.safeParse(valores);
-                    if (!resultado.success) {
-                        setError('contrasena', { message: resultado.error.issues[0]?.message });
-                        return;
-                    }
-                    setPendiente({ tipo: 'contrasena', contrasena: resultado.data.contrasena });
-                })} noValidate>
-                    <div className={styles.campo}>
-                        <label htmlFor="nueva-contrasena">Nueva contraseña</label>
-                        <input id="nueva-contrasena" type="password" autoComplete="new-password" maxLength={1024} {...register('contrasena')} disabled={ocupado} aria-invalid={!!errors.contrasena} />
-                        {errors.contrasena && <p role="alert" className={styles.error}>
-                            {errors.contrasena.message}
-                        </p>}
-                    </div>
-                    <button className={styles.secundario} disabled={ocupado}>Restablecer contraseña</button>
-                </form>
-            </section>
-        </>}
-        {pendiente && datos && <Confirmacion titulo={pendiente.tipo === 'estado' ? (datos.usuario.activo ? 'Desactivar cuenta' : 'Activar cuenta') : 'Restablecer contraseña'} ocupado={ocupado} cancelar={/** Descarta la acción pendiente sin modificar la cuenta. */() => setPendiente(null)} confirmar={/** Ejecuta la acción administrativa después de su confirmación. */() => {
-            void ejecutar();
-        }}>
-            <p>Cuenta: <strong>
-                {datos.usuario.nombre_usuario}
-            </strong>.</p>
-            <p>
-                {pendiente.tipo === 'contrasena' ? 'Se reemplazará la contraseña y se invalidarán los JWT anteriores.' :
-                    datos.usuario.activo ? 'Se impedirá el acceso y se conservarán su historial y autoría.' : 'La cuenta volverá a poder iniciar sesión.'}
-            </p>
-            {id === auth.sesion?.usuario.id && <p>Esta es tu cuenta. Si la operación se completa, se cerrará tu sesión.</p>}
-        </Confirmacion>}
-    </main>;
+export function UsuarioDetallePage(){
+ const {id=''}=useParams(),{token,usuario:actor}=useAuth().sesion!;
+ const consulta=useConsulta(useCallback(()=>config.usuario(token,id),[token,id]));
+ const [clave,setClave]=useState(''),[motivo,setMotivo]=useState(''),[error,setError]=useState(''),[mensaje,setMensaje]=useState(''),[ocupado,setOcupado]=useState(false),enviando=useRef(false),[confirmacion,setConfirmacion]=useState<'clave'|'actividad'|null>(null);
+ const u=consulta.datos?.usuario,editable=!!u&&(u.rol_id!==1||actor.rol==='Superadministrador');
+ async function ejecutar(e:React.FormEvent,tipo:'clave'|'actividad',confirmado=false){
+ e.preventDefault();if(!u||enviando.current)return;
+ if(!confirmado){setConfirmacion(tipo);return;}setConfirmacion(null);
+ enviando.current=true;setOcupado(true);setError('');setMensaje('');
+ try{await config.guardar(token,'usuarios/'+id+'/'+tipo,tipo==='clave'?{contrasena:clave}:{activo:!u.activo,motivo:motivo.trim()});setClave('');setMotivo('');setMensaje(tipo==='clave'?'Contraseña actualizada.':u.activo?'Cuenta desactivada.':'Cuenta activada.');consulta.recargar();}
+ catch(e){setError(e instanceof Error?e.message:'No se pudo actualizar');}
+ finally{enviando.current=false;setOcupado(false);}
+ }
+ return <main className={styles.pagina}><h1>Cuenta</h1><EstadoCarga {...consulta} reintentar={consulta.recargar}/>
+ {error&&<p className={styles.error} role="alert">{error}</p>}{mensaje&&<p className={styles.exito} role="status">{mensaje}</p>}
+ {u&&<>{confirmacion&&<section className={styles.aviso} aria-label="Confirmar cambio de cuenta"><p>{confirmacion==='clave'?'¿Cambiar la contraseña y cerrar las sesiones de esta cuenta?':u.activo?'¿Desactivar esta cuenta y cerrar sus sesiones?':'¿Activar esta cuenta?'}</p><div className={styles.acciones}><button type="button" className={styles.boton} disabled={ocupado} onClick={e=>void ejecutar(e,confirmacion,true)}>{confirmacion==='clave'?'Cambiar contraseña':u.activo?'Desactivar cuenta':'Activar cuenta'}</button><button type="button" className={styles.secundario} disabled={ocupado} onClick={()=>setConfirmacion(null)}>Cancelar cambio</button></div></section>}<section className={styles.tarjeta}><h2>{u.nombre} {u.apellido}</h2><dl className={styles.datos}><div><dt>Usuario</dt><dd>{u.nombre_usuario}</dd></div><div><dt>Rol</dt><dd>{u.rol}</dd></div><div><dt>Oficina</dt><dd>{u.oficina??'Sin oficina'}</dd></div><div><dt>Correo</dt><dd>{u.email??'—'}</dd></div><div><dt>Teléfono</dt><dd>{u.telefono??'—'}</dd></div><div><dt>Estado</dt><dd>{u.activo?'Activa':'Inactiva'}</dd></div></dl><div className={styles.acciones}>{editable&&<Link className={styles.boton} to={'/usuarios/'+id+'/editar'}>Editar cuenta y asignación</Link>}<Link className={styles.secundario} to="/usuarios">Volver</Link></div></section>
+ {editable&&u.rol_id!==1&&<section className={styles.tarjeta}><h2>Actividad de la cuenta</h2><form onSubmit={e=>void ejecutar(e,'actividad')}><label className={styles.campo}>Motivo<input required disabled={ocupado||confirmacion!==null} maxLength={1000} value={motivo} onChange={e=>setMotivo(e.target.value)}/></label><button className={u.activo?styles.peligro:styles.boton} disabled={ocupado||consulta.actualizando}>{u.activo?'Desactivar cuenta':'Activar cuenta'}</button></form></section>}
+ {editable&&<section className={styles.tarjeta}><h2>Cambiar contraseña</h2><form onSubmit={e=>void ejecutar(e,'clave')}><label className={styles.campo}>Nueva contraseña (8–128 caracteres)<input type="password" required disabled={ocupado||confirmacion!==null} minLength={8} maxLength={128} autoComplete="new-password" value={clave} onChange={e=>setClave(e.target.value)}/></label><button className={styles.secundario} disabled={ocupado}>Cambiar contraseña</button></form></section>}
+ </>}
+ </main>;
 }

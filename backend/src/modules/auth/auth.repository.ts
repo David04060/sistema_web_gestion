@@ -2,13 +2,16 @@ import { pool } from "../../config/database.js";
 import type { UsuarioAuth } from "./auth.types.js";
 const COLUMNAS = `
   u.id::text,
+  u.rol_id,
+  u.oficina_id::text,
+  (SELECT m.ambito_id::text FROM miembros_ambito m WHERE m.usuario_id=u.id) ambito_id,
   u.nombre,
   u.apellido,
   u.nombre_usuario,
   u.email,
   u.contrasena_hash,
   u.activo,
-  r.nombre AS rol,
+  CASE r.codigo WHEN 'SUPERADMINISTRADOR' THEN 'Superadministrador' WHEN 'ADMINISTRADOR' THEN 'Administrador' WHEN 'DIRECTOR' THEN 'Director(a)' WHEN 'SECRETARIA_DIRECCION' THEN 'Secretaria de Dirección' ELSE 'Usuario' END AS rol,
   o.nombre AS oficina,
   u.version_autenticacion
 `;

@@ -1,27 +1,31 @@
-.pagina { min-height:100svh; display:grid; place-items:center; padding:36px 24px; background:var(--fondo); }
-.contenedor { width:min(100%,1050px); display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--borde); border-radius:20px; background:white; overflow:hidden; box-shadow:0 20px 70px #263c4e08; }
-.encabezado { grid-row:1 / 3; position:relative; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; text-align:left; margin:0; padding:64px 48px 220px; background:var(--superficie-secundaria); overflow:hidden; }
-.encabezado::after { content:''; position:absolute; bottom:58px; left:58px; width:190px; height:118px; background:linear-gradient(var(--borde),var(--borde)) 24px 36px/92px 3px no-repeat,linear-gradient(var(--borde),var(--borde)) 24px 49px/125px 3px no-repeat,linear-gradient(var(--borde),var(--borde)) 24px 62px/108px 3px no-repeat,white; border:1px solid #ccd9d7; border-radius:10px; transform:rotate(-7deg); box-shadow:14px -12px 0 -1px #e8efed,14px -12px 0 0 #cbd9d5,28px -24px 0 -1px #e0eae6,28px -24px 0 0 #cbd9d5; }
-.logo { width:46px; height:48px; display:grid; place-items:center; margin-bottom:30px; border-radius:12px; background:var(--primario); color:white; font-size:17px; font-weight:750; }
-.institucion { color:#000000; font-size:10px; line-height:1.8; letter-spacing:1.2px; font-weight:700; }
-.encabezado h1 { font-size:35px; font-weight:650; line-height:1.2; margin:18px 0; max-width:300px; }
-.encabezado p { color:#536b68; font-size:14px; line-height:1.8; margin:0; max-width:285px; }
-.tarjeta { padding:64px 48px 28px; background:white; border:0; }
-.tarjeta h2 { font-size:26px; font-weight:650; margin:0 0 10px; }
-.descripcion { color:var(--texto-secundario); line-height:1.7; font-size:13px; margin:0 0 30px; }
-.campo { display:grid; gap:8px; margin-bottom:22px; }
-.campo label { font-size:12px; font-weight:600; }
-.campo input { width:100%; min-width:0; padding:13px 12px; min-height:46px; border:1px solid var(--texto-secundario); border-radius:var(--radio-control); color:var(--texto); background:white; font-size:13px; }
+.pagina { min-height:100svh; display:grid; place-items:center; padding:84px 32px 48px; background:var(--fondo); position:relative; }
+.apariencia { position:absolute; right:32px; top:24px; }
+.contenedor { width:min(100%,1120px); display:grid; grid-template-columns:1.03fr 1fr; border:1px solid var(--borde); border-radius:22px; background:var(--superficie); overflow:hidden; box-shadow:0 16px 60px #082b4910; }
+.encabezado { grid-row:1/3; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding:60px 48px; background:var(--superficie-secundaria); border-top:5px solid var(--acento); }
+.logo { width:104px; height:104px; object-fit:contain; border-radius:14px; margin-bottom:32px; }
+.institucion { color:var(--primario); font-size:.75rem; line-height:1.8; letter-spacing:.12em; font-weight:700; }
+.encabezado h1 { font-size:clamp(2rem,3.2vw,2.75rem); font-weight:700; line-height:1.15; margin:20px 0; max-width:390px; }
+.encabezado p { color:var(--texto-secundario); font-size:1rem; line-height:1.8; margin:0; max-width:370px; }
+.sello { display:flex; align-items:center; gap:14px; border-top:1px solid var(--borde); padding-top:28px; margin-top:40px; color:var(--primario); font-size:.875rem; font-weight:600; }
+.sello small { display:block; font-size:.8125rem; margin-top:5px; color:var(--texto-secundario); font-weight:400; }
+.tarjeta { padding:64px 48px 24px; background:var(--superficie); min-width:0; }
+.eyebrow { display:block; font-size:.6875rem; color:var(--texto-secundario); letter-spacing:.1em; font-weight:700; margin-bottom:14px; }
+.tarjeta h2 { font-size:1.875rem; font-weight:700; margin:0 0 12px; }
+.descripcion { color:var(--texto-secundario); line-height:1.7; font-size:.9375rem; margin:0 0 32px; }
+.campo { display:grid; gap:9px; margin-bottom:24px; }
+.campo label { font-size:.875rem; font-weight:600; }
+.campo input { width:100%; min-width:0; padding:14px; min-height:50px; border:1px solid var(--borde-control); border-radius:var(--radio-control); color:var(--texto); background:var(--superficie); font-size:1rem; }
 .campo input[aria-invalid='true'] { border-color:var(--error); }
-.campo input::placeholder { color:var(--texto-secundario); }
-.contrasena { display:flex; border:1px solid var(--texto-secundario); border-radius:var(--radio-control); }
+.contrasena { display:flex; border:1px solid var(--borde-control); border-radius:var(--radio-control); }
 .contrasena input { border:0; }
-.contrasena:focus-within { border-color:var(--primario); }
-.mostrar { background:transparent; border:0; padding:0 12px; color:#000000; font-size:11px; font-weight:600; }
-.ingresar { width:100%; border:0; background:var(--primario); border-radius:var(--radio-control); color:white; padding:14px; font-weight:600; font-size:13px; margin-top:8px; }
+.contrasena:focus-within { outline:3px solid var(--info); outline-offset:3px; }
+.contrasena input:focus-visible { outline:none; }
+.mostrar { background:transparent; border:0; padding:0 14px; color:var(--primario); font-size:.8125rem; font-weight:600; min-width:70px; }
+.ingresar { width:100%; min-height:50px; border:0; background:var(--primario); border-radius:var(--radio-control); color:var(--sobre-primario); padding:14px; font-weight:600; font-size:.9375rem; margin-top:8px; }
 .ingresar:hover:not(:disabled) { background:var(--primario-hover); }
-.error,.exito { padding:12px; border:1px solid transparent; border-radius:8px; margin:8px 0; font-size:12px; overflow-wrap:anywhere; }
-.error { color:#9a2f24; background:#fff4f2; border-color:#f1d1ca; }
-.exito { color:#245e27; background:#f0f8ef; border-color:#d4e7d1; }
-.pie { margin:0; padding:0 48px 34px; font-size:10px; color:var(--texto-secundario); text-align:center; line-height:1.7; }
-@media(max-width:750px) { .pagina { padding:24px 16px; } .contenedor { max-width:450px; grid-template-columns:1fr; border-radius:14px; } .encabezado { grid-row:auto; padding:28px; } .encabezado::after { display:none; } .logo { margin-bottom:18px; width:38px; height:40px; font-size:14px; } .encabezado h1 { font-size:26px; max-width:none; margin:12px 0; } .encabezado p { font-size:12px; max-width:none; } .tarjeta { padding:28px; } .tarjeta h2 { font-size:23px; } .pie { padding:0 28px 24px; } }
+.error,.exito { padding:12px; border:1px solid transparent; border-radius:8px; margin:8px 0; font-size:.875rem; overflow-wrap:anywhere; }
+.error { color:var(--error); background:var(--error-fondo); border-color:var(--error-borde); }
+.exito { color:var(--exito); background:var(--exito-fondo); border-color:var(--exito-borde); }
+.pie { margin:0; padding:0 48px 38px; font-size:.75rem; color:var(--texto-secundario); text-align:left; line-height:1.8; }
+@media(max-width:850px) { .pagina { padding:84px 20px 32px; } .contenedor { max-width:520px; grid-template-columns:1fr; border-radius:16px; } .encabezado { grid-row:auto; padding:28px 32px; } .logo { width:72px; height:72px; margin-bottom:20px; } .encabezado h1 { font-size:1.875rem; max-width:none; margin:12px 0; } .encabezado p { font-size:.875rem; max-width:none; } .sello { display:none; } .tarjeta { padding:32px; } .pie { padding:0 32px 28px; } }
+@media(max-width:400px) { .pagina { padding-inline:12px; } .encabezado,.tarjeta { padding:24px; } .pie { padding:0 24px 24px; } .institucion { font-size:.6875rem; } .apariencia { right:16px; } }

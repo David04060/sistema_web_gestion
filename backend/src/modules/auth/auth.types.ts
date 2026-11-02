@@ -1,6 +1,9 @@
 /** Modelo interno del repositorio. El hash y la versión nunca se serializan al cliente. */
 export interface UsuarioAuth {
     id: string;
+    rol_id?:number;
+    oficina_id?:string|null;
+    ambito_id?:string|null;
     nombre: string;
     apellido: string;
     nombre_usuario: string;

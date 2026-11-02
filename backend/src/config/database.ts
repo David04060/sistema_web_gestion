@@ -1,12 +1,14 @@
-import { verificarConexionLocal } from './local.js';
+import { validarUrlLocal, verificarConexionLocal } from './local.js';
 import pg from "pg";
 import { env, perfilNeon } from "./env.js";
-import { validarIdentidadPostgres, type IdentidadPostgres } from './neon.js';
+import { type IdentidadPostgres } from './neon.js';
 const { Pool } = pg;
+// Validar antes de abrir un socket, también al ejecutar pruebas o NODE_ENV=production.
+if(!perfilNeon)validarUrlLocal(env.DATABASE_URL);
 /** Pool compartido: las credenciales provienen del entorno y nunca se registran. */
 export const pool = new Pool({
     connectionString: env.DATABASE_URL,
-    verify: !perfilNeon && env.NODE_ENV === 'development'
+    verify: !perfilNeon
         ? (cliente, listo) => { void verificarConexionLocal(cliente, env.DATABASE_URL).then(() => listo(), error => listo(error instanceof Error ? error : new Error('Conexión local inválida'))); }
         : undefined,
     max: 10,
@@ -28,9 +30,8 @@ export async function verificarBaseDatos() {
         };
         const socket = transporte.connection?.stream;
         const tls = socket?.encrypted === true && socket.authorized === true;
-        validarIdentidadPostgres(resultado.rows[0], tls, perfilNeon,
-            perfilNeon ? process.env.NEON_BRANCH_ID : undefined);
-        if (!perfilNeon && env.NODE_ENV === 'development') {
+        if(perfilNeon)throw new Error('La adaptación documental nueva solo está habilitada en local');
+        if (!perfilNeon) {
             console.log('PostgreSQL local verificado:', await verificarConexionLocal(cliente, env.DATABASE_URL));
         } else console.log("Conexión PostgreSQL verificada correctamente.");
         const identidad = resultado.rows[0]!;

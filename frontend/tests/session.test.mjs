@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { resolve } from 'node:path';
 import { build } from 'vite';
 // El código productivo siempre usa la API real. Solo estas pruebas inyectan reloj,
-// almacenamiento y transporte para reproducir fallos y vencimiento sin esperar 15 minutos.
+// almacenamiento y transporte para reproducir fallos y vencimiento sin esperar una hora.
 const result = await build({
     configFile: false, logLevel: 'silent',
     plugins: [{
@@ -223,7 +223,7 @@ function preparar({ token = null, perfil, login, guardarFalla = false } = {}) {
     let consultas = 0;
     const temporizadores = new Map();
     let siguiente = 0;
-    const tokenLogin = jwt(base / 1000 + 900);
+    const tokenLogin = jwt(base / 1000 + 3600);
     const session = new AuthSession({
         storage: {
             /** Devuelve el JWT controlado por el caso sin acceder al almacenamiento real del navegador. */
@@ -250,7 +250,7 @@ function preparar({ token = null, perfil, login, guardarFalla = false } = {}) {
         /** Retira el temporizador simulado de la colección del caso. */
         cancelar: id => temporizadores.delete(id),
         api: {
-            iniciarSesion: login ?? ( /** Devuelve el login ficticio del caso con el mismo contrato y vencimiento de la API. */async () => ({ token: tokenLogin, usuario, tipo: 'Bearer', expiresIn: 900 })),
+            iniciarSesion: login ?? ( /** Devuelve el login ficticio del caso con el mismo contrato y vencimiento de la API. */async () => ({ token: tokenLogin, usuario, tipo: 'Bearer', expiresIn: 3600 })),
             /** Simula /me con el perfil o comportamiento configurado por el caso y permite contar sus solicitudes. */
             obtenerMiUsuario: async (token) => {
                 consultas++;
@@ -299,16 +299,22 @@ test('Restauración bloquea vistas hasta que /me responde y conserva exp origina
     assert.equal(f.session.getSnapshot().sesion.venceEn, base + 100000);
     assert.equal(f.token, token);
 });
-test('Login persiste solo después de /me y recargar no concede otros 900 segundos', /** Verifica el caso «Login persiste solo después de /me y recargar no concede otros 900 segundos»; una aserción fallida invalida este resultado. */ async () => {
+test('Login de una hora conserva el vencimiento original al recargar y cierra al cumplirlo', async () => {
     const f = preparar();
     await f.session.recuperar();
     await f.session.ingresar({ identificador: 'prueba', contrasena: 'prueba' });
     assert.equal(f.session.getSnapshot().estado, 'autenticado');
     assert.ok(f.token);
     const vencimiento = f.session.getSnapshot().sesion.venceEn;
-    f.avanzar(450000);
+    assert.equal(vencimiento, base + 3600000);
+    f.avanzar(1800000);
     await f.session.recuperar();
     assert.equal(f.session.getSnapshot().sesion.venceEn, vencimiento);
+    assert.equal(f.session.getSnapshot().estado, 'autenticado');
+    f.avanzar(1800000);
+    f.ejecutar();
+    assert.equal(f.session.getSnapshot().estado, 'anonimo');
+    assert.equal(f.token, null);
 });
 test('Credenciales incorrectas no almacenan token', /** Verifica el caso «Credenciales incorrectas no almacenan token»; una aserción fallida invalida este resultado. */ async () => {
     const f = preparar({

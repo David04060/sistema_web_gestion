@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { apiRequest } from '../../../api/client';
 export const MAX_PDF = 15 * 1024 * 1024;
-export const estadoPdfSchema = z.object({ archivo:z.object({ revision:z.string(),nombre:z.string(),tamano:z.number(),cargado_en:z.string() }).nullable(),modificar:z.boolean(),limpieza_pendiente:z.number() });
+export const estadoPdfSchema = z.object({ archivo:z.object({ revision:z.uuid(),nombre:z.string(),tamano_bytes:z.number().int().positive(),actualizado_en:z.string() }).nullable(),modificar:z.boolean(),limpieza_pendiente:z.number() }).transform(v=>({...v,archivo:v.archivo?{revision:v.archivo.revision,nombre:v.archivo.nombre,tamano:v.archivo.tamano_bytes,cargado_en:v.archivo.actualizado_en}:null}));
 export type EstadoPdf = z.infer<typeof estadoPdfSchema>;
 export type PeticionPdf = <T>(accion:string,datos:unknown,schema:z.ZodType<T>) => Promise<T>;
 /** Lee el objeto privado sin credenciales institucionales y descarta respuestas de un contexto vencido. */
@@ -14,19 +14,15 @@ export async function obtenerContenidoPdf(url:string,vigente:()=>boolean):Promis
     if(!contenido.length||contenido.length>MAX_PDF)throw new Error('El PDF tiene un tamaño inválido.');
     return contenido;
 }
-/** Mantiene la clave SíseVe únicamente durante esta petición; cada fase vuelve a verificarla. */
+/** Revalida el contexto en cada fase; no utiliza el circuito restringido retirado. */
 export function clientePdf(token:string,id:string,clave?:()=>string|Promise<string>,vigente:()=>boolean=()=>true): PeticionPdf {
     return async(accion,datos,schema) => {
         if(!vigente())throw new Error('La operación PDF perdió su contexto; consulte nuevamente.');
-        if (clave) {
-            const secreto=await clave();
-            if(!vigente())throw new Error('La operación PDF perdió su contexto; consulte nuevamente.');
-            const r=await apiRequest('/api/siseve/operaciones',z.object({resultado:schema}),{method:'POST',body:JSON.stringify({clave:secreto,operacion:`pdf-${accion}`,id,datos})},token);
-            if(!vigente())throw new Error('La operación PDF perdió su contexto; consulte nuevamente.');
-            return r.resultado;
-        }
+        if (clave) throw new Error('El circuito restringido fue retirado del sistema.');
         const ruta = accion==='consultar'?'':accion==='iniciar'?'/cargas':`/${accion}`;
-        return apiRequest(`/api/documentos/${encodeURIComponent(id)}/pdf${ruta}`,schema,accion==='consultar'?{}:{method:'POST',body:JSON.stringify(datos)},token);
+        const resultado=await apiRequest(`/api/documentos/${encodeURIComponent(id)}/pdf${ruta}`,schema,accion==='consultar'?{}:{method:'POST',body:JSON.stringify(datos)},token);
+        if(!vigente())throw new Error('La operación PDF perdió su contexto; consulte nuevamente.');
+        return resultado;
     };
 }
 /** Validación orientativa; el servidor vuelve a comprobar bytes, tamaño, tipo y estructura. */

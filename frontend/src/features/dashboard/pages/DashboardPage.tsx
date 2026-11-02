@@ -1,162 +1,37 @@
-import { Icono } from '../../../components/icons/Icono';
-import { EstadoBadge } from '../../../components/ui/EstadoBadge';
-import { useCallback, useEffect, useRef } from 'react';
-import { observarRegreso } from '../../../lib/regresoVisible';
-import { Link } from 'react-router-dom';
-import type { Usuario } from '../../auth/schemas/auth.schema';
-import { useAuth } from '../../auth/hooks/useAuth';
-import { useConsulta } from '../../../hooks/useConsulta';
-import { consultarDashboard } from '../api/dashboard.api';
-import type { Dashboard } from '../schemas/dashboard.schema';
-import styles from '../styles/Dashboard.module.css';
-import { etiquetasEstado } from '../../../lib/estados-documentales';
-/**
- * Presenta la fecha del indicador según la configuración regional peruana, conservando el instante recibido.
- * @param valor - Valor recibido que debe validarse, transformar o presentar.
- */
-const fecha = (valor: string) => new Date(valor).toLocaleString('es-PE');
-/** Listas acotadas por SQL; no se agregan documentos ni se calculan totales en React. */
-function Entradas({ entradas, vacio }: {
-    entradas: Dashboard['recientes'];
-    vacio: string;
-}) {
-    return entradas.length ? <ul className={styles.lista}>
-        {entradas.map(/** Presenta una entrada autorizada con ruta, código, estado y fecha sin calcular agregados. */  e => <li key={e.ruta}>
-            <Link to={e.ruta}>
-                {e.codigo}
-            </Link>
-            {e.clasificacion_registro && <span>{e.clasificacion_registro === 'RECIBIDO' ? 'Recibido' : 'Emitido'}</span>}
-            <EstadoBadge estado={e.estado} />
-            {e.activo === false && <span>Anulado</span>}
-            <small>
-                {fecha(e.fecha)}
-            </small>
-        </li>)}
-    </ul> : <p className={styles.vacio}>
-        {vacio}
-    </p>;
-}
-/** Panel con contrato validado y actualización al regresar, enfocar o solicitar recarga. */
-export function DashboardPage({ usuario }: {
-    usuario: Usuario;
-}) {
-    const { sesion } = useAuth();
-    const token = sesion?.token ?? '';
-    const consultar = useCallback(/** Consulta los indicadores autorizados con el JWT vigente. */() => consultarDashboard(token), [token]);
-    const { datos, cargando, actualizando, error, recargar } = useConsulta(consultar);
-    const ultimaCarga = useRef(Date.now());
-    useEffect(/** Registra la actualización del panel al recuperar foco o visibilidad. */() => {
-        /**
-         * Solicita indicadores actualizados al volver a una pestaña visible; el servidor vuelve a aplicar el alcance autorizado.
-         */
-        return observarRegreso(() => {
-            if (Date.now() - ultimaCarga.current < 30000) return;
-            ultimaCarga.current = Date.now();
-            recargar();
-        });
-    }, [recargar]);
-    useEffect(() => { if (datos) ultimaCarga.current = Date.now(); }, [datos]);
-    return <main className={styles.contenido}>
-        <span className={styles.etiqueta}>Panel principal · Gestión documental</span>
-        <div className={styles.cabecera}>
-            <div>
-                <h1>Bienvenido, {usuario.nombre}
-                </h1>
-                <p>
-                    {usuario.rol} · {usuario.oficina ?? 'Sin oficina asignada'}
-                </p>
-            </div>
-            <button type="button" onClick={recargar} disabled={cargando || actualizando}>Actualizar panel</button>
-        </div>
-        {cargando && <p role="status">Consultando indicadores…</p>}
-        {actualizando && <p role="status" className={styles.actualizado}>Actualizando indicadores…</p>}
-        {error && <div role="alert" className={styles.tarjeta}>
-            <p>
-                {error}
-            </p>
-            <button type="button" onClick={recargar}>Reintentar</button>
-        </div>}
-        {datos && <>
-            <p className={styles.actualizado}>
-                {datos.alcance === 'administrativo' ? 'Resumen de administración institucional.' : datos.alcance === 'institucional' ? 'Documentos de Secretaría y Dirección.' : 'Resumen de documentos ordinarios según tus permisos.'} Actualizado: {fecha(datos.actualizado)}.</p>
-            {datos.atencion && <section className={`${styles.tarjeta} ${styles.atencion}`} aria-label={datos.atencion.titulo}>
-                <div className={styles.cabeceraAtencion}><h2>{datos.atencion.titulo}</h2><strong>{datos.atencion.total}</strong></div>
-                <div className={styles.documentosAtencion}>
-                    {datos.atencion.documentos.map(d=><article key={d.id}>
-                        <div><Link to={d.ruta}>{d.codigo}</Link><span>{d.tipo_documental}</span><p>{d.asunto}</p>
-                            {d.destinatario&&<p>Destinatario: {d.destinatario}</p>}<time dateTime={d.fecha}>{fecha(d.fecha)}</time></div>
-                        <Link className={styles.detalleAtencion} to={d.ruta}>Ver detalle</Link>
-                    </article>)}
-                </div>
-                {!datos.atencion.total&&<p className={styles.vacio}>No hay documentos pendientes.</p>}
-                {datos.atencion.total>datos.atencion.documentos.length&&<Link className={styles.detalleAtencion} to={`/documentos?situacion=${datos.atencion.situacion}`}>Ver todos</Link>}
-            </section>}
-            <section aria-label="Indicadores" className={styles.indicadores}>
-                {datos.indicadores.map(/** Presenta el indicador y su total calculado por PostgreSQL. */  i => <article className={styles.indicador} key={i.clave}>
-                    <div className={styles.iconoTarjeta}>
-                        <Icono nombre={datos.alcance === 'administrativo' ? 'usuarios' : 'documentos'} tamano={16} />
-                    </div>
-                    <span>
-                        {i.etiqueta}
-                    </span>
-                    <strong>
-                        {i.total}
-                    </strong>
-                </article>)}
-            </section>
-            <section className={styles.tarjeta}>
-                <h2>Accesos rápidos</h2>
-                <nav aria-label="Accesos rápidos" className={styles.accesos}>
-                    {datos.accesos.map(/** Presenta un acceso rápido incluido en la respuesta autorizada del backend. */  a => <Link key={a.ruta} to={a.ruta}>
-                        <Icono nombre="tipos" tamano={18} />
-                        {a.etiqueta}
-                        <Icono nombre="flecha" tamano={16} />
-                    </Link>)}
-                </nav>
-            </section>
-            {datos.alcance !== 'administrativo' && <>
-                <div className={styles.columnas}>
-                    <section className={styles.tarjeta}>
-                        <h2>Documentos por situación</h2>
-                        <p>Incluye registros activos y anulados consultables. SíseVe se consulta en su módulo protegido.</p>
-                        <dl className={styles.resumen}>
-                            {datos.estados.map(/** Presenta el total del estado con su etiqueta institucional. */  i => <div key={i.clave}>
-                                <dt>
-                                    {etiquetasEstado[i.clave] ?? i.etiqueta}
-                                </dt>
-                                <dd>
-                                    {i.total}
-                                </dd>
-                            </div>)}
-                        </dl>
-                    </section>
-                    {!!datos.operaciones.length && <section className={styles.tarjeta}>
-                        <h2>Operaciones pendientes</h2>
-                        <dl className={styles.resumen}>
-                            {datos.operaciones.map(/** Presenta una operación pendiente con su total autorizado. */  i => <div key={i.clave}>
-                                <dt>
-                                    {i.etiqueta}
-                                </dt>
-                                <dd>
-                                    {i.total}
-                                </dd>
-                            </div>)}
-                        </dl>
-                    </section>}
-                </div>
-                <div className={styles.columnas}>
-                    {!!datos.operaciones.length && <section className={styles.tarjeta}>
-                        <h2>Intervenciones disponibles</h2>
-                        <p>Hasta 8 operaciones que requieren tu intervención. Abre el registro para realizar la acción.</p>
-                        <Entradas entradas={datos.pendientes} vacio="No tienes operaciones pendientes de intervención." />
-                    </section>}
-                    <section className={styles.tarjeta}>
-                        <h2>Actividad documental reciente</h2>
-                        <p>Última actividad de hasta 8 documentos consultables.</p>
-                        <Entradas entradas={datos.recientes} vacio="No hay documentos autorizados para mostrar." />
-                    </section>
-                </div>
-            </>}
-        </>}
-    </main>;
+import {useCallback} from 'react';
+import {Link} from 'react-router-dom';
+import {api,etiquetas} from '../../../api/documental';
+import {rolesRegistro,esAdministracion} from '../../../lib/perfiles';
+import {useAuth} from '../../auth/hooks/useAuth';
+import type {Usuario} from '../../auth/schemas/auth.schema';
+import {useConsulta} from '../../../hooks/useConsulta';
+import {EstadoCarga} from '../../../components/ui/EstadoCarga';
+import {TextoExpandible} from '../../../components/ui/TextoExpandible';
+import {GraficosDashboard} from '../components/GraficosDashboard';
+import {fechaLocal} from '../../../lib/fechas';
+import styles from '../../../components/ui/Admin.module.css';
+
+export function DashboardPage(_props:{usuario?:Usuario}={}){
+ const {token,usuario}=useAuth().sesion!;
+ const consulta=useConsulta(useCallback(()=>api.dashboard(token),[token]));
+ const datos=consulta.datos,admin=esAdministracion(usuario.rol);
+ const estados=datos?('estados' in datos?datos.estados:'documentos' in datos?datos.documentos??[]:[]):[];
+ return <main className={styles.pagina}>
+ <header className={styles.titulo}><div><h1>Tu espacio de trabajo</h1><p>Hola, {usuario.nombre}. Este es tu panel de {usuario.rol}.</p></div>
+ {rolesRegistro.includes(usuario.rol)&&<Link className={styles.boton} to="/documentos/nuevo">Registrar documento</Link>}</header>
+ <EstadoCarga {...consulta} reintentar={consulta.recargar}/>
+ {datos&&<>
+ {'usuarios' in datos&&<section className={styles.indicadores} aria-label="Resumen administrativo"><article className={styles.indicador}><span>Cuentas visibles</span><strong>{datos.usuarios}</strong><Link to="/usuarios">Administrar usuarios</Link></article><article className={styles.indicador}><span>Oficinas registradas</span><strong>{datos.oficinas}</strong><Link to="/oficinas">Administrar oficinas</Link></article></section>}
+ {('estados' in datos||'documentos' in datos)&&<section className={styles.tarjeta}><h2>Resumen documental</h2><p>{usuario.rol==='Usuario'?'Registros de tu ámbito personal.':'Documentos que puedes consultar según tu perfil.'}</p>{estados.length?<div className={styles.indicadores}>{estados.map(s=><Link className={styles.indicador} key={s.situacion} to={'/documentos?situacion='+s.situacion}><span>{etiquetas[s.situacion]}</span><strong>{s.total}</strong><span>Consultar registros →</span></Link>)}</div>:<p className={styles.vacio}>Todavía no hay documentos visibles.</p>}</section>}
+ <section className={styles.tarjeta}><h2>Accesos rápidos</h2><div className={styles.acciones}>
+ {usuario.rol!=='Administrador'&&<Link className={styles.secundario} to="/documentos">Consultar documentos</Link>}
+ {usuario.rol==='Superadministrador'&&<Link className={styles.secundario} to="/documentos?situacion=ANULADO">Consultar anulados</Link>}
+ {admin&&<><Link className={styles.secundario} to="/usuarios">Usuarios y asignaciones</Link><Link className={styles.secundario} to="/oficinas">Editar oficinas</Link><Link className={styles.secundario} to="/campos-opcionales">Campos opcionales</Link></>}
+ {rolesRegistro.includes(usuario.rol)&&<Link className={styles.secundario} to="/tipos-documentales">Mis tipos documentales</Link>}
+ {(admin||usuario.oficina_id)&&<Link className={styles.secundario} to="/ubicaciones">{admin?'Ubicaciones por cuenta':'Mis ubicaciones'}</Link>}
+ </div></section>
+ {datos.estadisticas&&<GraficosDashboard estadisticas={datos.estadisticas} rol={usuario.rol}/>}
+ {'recientes' in datos&&<section className={styles.tarjeta}><h2>Documentos recientes</h2>{datos.recientes.length?<ul className={styles.recientes}>{datos.recientes.map(d=><li key={d.id}><div><Link to={'/documentos/'+d.id}>{d.codigo_visible}</Link><TextoExpandible texto={d.asunto}/></div><span>{etiquetas[d.situacion]} · {fechaLocal(d.creado_en)}</span></li>)}</ul>:<p className={styles.vacio}>Aún no hay registros recientes.</p>}</section>}
+ </>}
+ </main>;
 }

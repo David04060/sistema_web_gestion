@@ -1,146 +1,92 @@
-import { ArchivoPdf } from '../components/ArchivoPdf';
-import documentoStyles from '../styles/Documentos.module.css';
-import {EntregaSecretaria,situacionesEntrega} from '../components/EntregaSecretaria';
-import { EstadoBadge } from '../../../components/ui/EstadoBadge';
-import { etiquetaClasificacion } from '../clasificacion';
-import { DocumentoHistorial } from '../components/DocumentoHistorial';
-import { DocumentoAcciones } from '../components/DocumentoAcciones';
-import { useCallback, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useCallback, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { api, etiquetas, rutaUnidades, type DocumentoActual } from '../../../api/documental';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { useConsulta } from '../../../hooks/useConsulta';
 import { EstadoCarga } from '../../../components/ui/EstadoCarga';
+import { ArchivoPdf } from '../components/ArchivoPdf';
+import { DestinoDocumental, destinoVacio, datosDestino } from '../components/DestinoDocumental';
 import { fechaLocal } from '../../../lib/fechas';
-import * as api from '../api/documentos.api';
 import styles from '../../../components/ui/Admin.module.css';
-/** El historial completo se obtiene solo después de autorizar el contenido en Express. */
+import {HistorialDocumento} from '../components/HistorialDocumento';
+import {ApiError} from '../../../api/client';
+import {AuditoriaDocumento} from '../components/AuditoriaDocumento';
 export function DocumentoDetallePage() {
-    const { id = '' } = useParams();
-    const token = useAuth().sesion!.token;
-    const consulta = useConsulta(useCallback(/** Consulta detalle e historial autorizados en paralelo para componer la pantalla. */ async () => {
-        const [detalle, historial] = await Promise.all([api.detalle(token, id), api.historial(token, id)]);
-        return { ...detalle, ...historial };
-    }, [token, id]));
-    // La confirmación pertenece a la página: sobrevive al desmontaje del formulario al recargar.
-    const [confirmacion, setConfirmacion] = useState({ id: '', mensaje: '' });
-    const d = consulta.datos?.documento;
-    return <main className={styles.pagina}>
-        <h1>Documento</h1>
-        {confirmacion.id === id && <p role="status" className={styles.exito}>
-            {confirmacion.mensaje}
-        </p>}
-        <EstadoCarga {...consulta} reintentar={consulta.recargar} />
-        {d && <>
-            <section className={styles.tarjeta}>
-                <h2>
-                    {d.codigo}
-                </h2>
-                <p>
-                    {d.asunto}
-                </p>
-                <dl className={styles.datos}>
-                    <div><dt>Clasificación del registro</dt><dd>{etiquetaClasificacion(d.clasificacion_registro)}</dd></div>
-                    <div>
-                        <dt>Tipo</dt>
-                        <dd>
-                            {d.tipo_documental}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Registrado por</dt>
-                        <dd>
-                            {d.registrador}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Fecha de registro</dt>
-                        <dd>
-                            {fechaLocal(d.fecha_creacion)}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Responsable actual</dt>
-                        <dd>
-                            {d.responsable}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Oficina</dt>
-                        <dd>
-                            {d.oficina}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>{d.entrega||d.registro_personal?'Situación':'Estado de circulación'}</dt>
-                        <dd>
-                            {d.entrega?situacionesEntrega[d.entrega.situacion]:d.registro_personal?'Sin delegación':<EstadoBadge estado={d.estado_tramite} />}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Estado del registro</dt>
-                        <dd>
-                            {d.activo ? 'Vigente' : 'Anulado'}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Ubicación registrada</dt>
-                        <dd>
-                            {d.entrega?.ubicacion_direccion ?? (d.archivador_id ? `Estante ${d.estante} · Archivador ${d.archivador_numero}` : d.estado_tramite === 'EN_TRASLADO' ? 'Original en traslado; sin ubicacion fisica confirmada' : d.estado_tramite === 'RECHAZADO' ? 'Rechazado; recuperacion fisica pendiente' : 'Sin archivador registrado')}
-                        </dd>
-                    </div>
-                    {d.ultima_ubicacion && <div>
-                        <dt>Ultima ubicacion auditada (antecedente)</dt>
-                        <dd>
-                            {d.ultima_ubicacion.nombre} · {fechaLocal(d.ultima_ubicacion.fecha)}. No confirma la posicion actual del original.</dd>
-                    </div>}
-                    <div>
-                        <dt>Remitente</dt>
-                        <dd>
-                            {d.remitente ?? 'No registrado'}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Observaciones</dt>
-                        <dd>
-                            {d.observaciones ?? 'Sin observaciones'}
-                        </dd>
-                    </div>
-                </dl>
-                <div className={styles.acciones}>
-                    <Link className={styles.boton} to={`/movimientos?documento_id=${d.id}`}>{d.registro_personal?'Consultar delegación':'Consultar movimientos anteriores'}</Link>
-                    {d.permisos.registrar_relacionado && <Link className={styles.boton} to={`/documentos/nuevo?origen=${d.id}`}>Registrar documento relacionado</Link>}
-                    {d.permisos.editar && <Link className={styles.secundario} to={`/documentos/${d.id}/editar`}>Corregir datos</Link>}
-                    <Link className={styles.secundario} to="/documentos">Volver al listado</Link>
-                </div>
-            </section>
-            <ArchivoPdf key={id} token={token} id={id} />
-            {d.documento_origen && <section className={`${styles.tarjeta} ${documentoStyles.origen}`}>
-                <h2>Documento de origen</h2>
-                <Link to={`/documentos/${d.documento_origen.id}`}>{d.documento_origen.codigo}</Link>
-                <p>{d.documento_origen.tipo_documental}</p><p>{d.documento_origen.asunto}</p>
-                <p>{d.documento_origen.relacion_por} · {fechaLocal(d.documento_origen.relacion_fecha)}</p>
-            </section>}
-            <section className={styles.tarjeta}>
-                <h2>Documentos relacionados</h2>
-                <div className={documentoStyles.relacionados}>
-                    {d.documentos_relacionados.map(r=><article key={r.id}>
-                        <div className={documentoStyles.cabeceraRelacion}><Link to={`/documentos/${r.id}`}>{r.codigo}</Link><span>{etiquetaClasificacion(r.clasificacion_registro)}</span></div>
-                        <p className={documentoStyles.tipoRelacion}>{r.tipo_documental}</p><p>{r.asunto}</p>
-                        <time dateTime={r.fecha_creacion}>{fechaLocal(r.fecha_creacion)}</time>
-                        <Link className={styles.secundario} to={`/documentos/${r.id}`}>Ver detalle</Link>
-                    </article>)}
-                </div>
-                {!d.documentos_relacionados.length&&<p>Sin documentos relacionados.</p>}
-            </section>
-            {(d.entrega||d.registro_personal) && <EntregaSecretaria documento={d} token={token} actualizar={mensaje=>{setConfirmacion({id,mensaje});consulta.recargar();}} />}
-            {!d.entrega && !d.registro_personal && <DocumentoAcciones documento={d} token={token} actualizar={/** Conserva el mensaje de la acción para este ID y vuelve a consultar permisos y detalle. */ mensaje => {
-                setConfirmacion({ id, mensaje });
-                consulta.recargar();
-            }} />}
-            <section className={styles.tarjeta}>
-                <h2>Historial</h2>
-                <DocumentoHistorial historial={consulta.datos?.historial ?? []} />
-            </section>
-        </>}
-    </main>;
+    const { id = '' } = useParams(), { token } = useAuth().sesion!;
+    const navegacion=useLocation(),mensajeRuta=(navegacion.state as {mensaje?:unknown}|null)?.mensaje;
+    const consulta = useConsulta(useCallback(async () => ({ detalle: await api.detalle(token, id), historial: await api.historial(token, id) }), [token, id]));
+    const [confirmado,setConfirmado]=useState<{contexto:string;documento:DocumentoActual;mensaje:string}>();
+    const [revisionAuditoria,setRevisionAuditoria]=useState(0);
+    const contexto=token+':'+id;
+    const base=consulta.datos?.detalle.documento;
+    const vigente=confirmado?.contexto===contexto?confirmado:undefined;
+    const d = base&&vigente&&BigInt(vigente.documento.revision)>=BigInt(base.revision)?vigente.documento:base;
+    function actualizar(documento:DocumentoActual,mensaje:string){setConfirmado({contexto,documento,mensaje});consulta.recargar();}
+    return <main className={styles.pagina}><h1>Documento</h1>{typeof mensajeRuta==='string'&&!vigente&&<p className={styles.exito} role="status">{mensajeRuta}</p>}{vigente&&<p className={styles.exito} role="status">{vigente.mensaje}</p>}<EstadoCarga {...consulta} reintentar={consulta.recargar}/>
+ {d && <><section className={styles.tarjeta}><h2>{d.codigo_visible}</h2><p>{d.asunto}</p><dl className={styles.datos}>
+ <div><dt>Registrado por</dt><dd>{d.registrado_por_nombre}</dd></div><div><dt>Clasificación</dt><dd>{d.clasificacion === 'RECIBIDO' ? 'Recibido' : d.clasificacion === 'EMITIDO' ? 'Emitido' : 'Sin clasificar'}</dd></div><div><dt>Tipo registrado</dt><dd>{d.tipo_nombre_guardado}</dd></div><div><dt>Situación</dt><dd>{etiquetas[d.situacion]}</dd></div><div><dt>Fecha de registro</dt><dd>{fechaLocal(d.creado_en)}</dd></div><div><dt>Remitente</dt><dd>{d.remitente || '—'}</dd></div><div><dt>Observaciones</dt><dd>{d.observaciones || '—'}</dd></div>
+ <div><dt>Ubicación registrada</dt><dd>{d.ubicacion ? d.ubicacion.oficina_nombre_guardado + ' / ' + d.ubicacion.ruta_ubicacion_guardada : 'Sin ubicación registrada'}</dd></div>
+ {d.delegacion && <><div><dt>Delegado a</dt><dd>{d.delegacion.nombre_persona_guardado}</dd></div><div><dt>Indicado por</dt><dd>{d.delegacion.actor} · {fechaLocal(d.delegacion.delegado_en)}</dd></div>{d.delegacion.observaciones && <div><dt>Observaciones de delegación</dt><dd>{d.delegacion.observaciones}</dd></div>}</>}
+ {d.valores.map(v => <div key={v.campo_id}><dt>{v.nombre_guardado}</dt><dd>{v.valor || '—'}</dd></div>)}</dl>
+ <div className={styles.acciones}>{d.permisos.corregir && <Link className={styles.boton} to={'/documentos/' + d.id + '/editar'}>Corregir datos</Link>}{d.permisos.relacionar && <Link className={styles.secundario} to={'/documentos/nuevo?origen=' + d.id}>Registrar documento relacionado</Link>}<Link className={styles.secundario} to="/documentos">Volver al listado</Link></div>
+ </section><ArchivoPdf key={'pdf-'+d.id + '-' + d.revision} token={token} id={d.id} alCambiar={()=>{setRevisionAuditoria(v=>v+1);consulta.recargar();}}/>
+ {(d.permisos.delegar || d.permisos.ubicar || d.permisos.anular) && <Acciones key={'acciones-'+d.id + '-' + d.revision} token={token} documento={d} actualizar={actualizar}/>}
+ <section className={styles.tarjeta}><h2>Documentos relacionados</h2>{d.relacionados.length ? <ul>{d.relacionados.map(v => <li key={v.id}><Link to={'/documentos/' + v.id}>{v.codigo_visible}</Link> — {v.asunto}{v.id === v.origen_id ? ' (origen)' : ''}</li>)}</ul> : <p>Sin documentos relacionados.</p>}</section>
+ <HistorialDocumento historial={consulta.datos?.historial.historial??[]}/><AuditoriaDocumento key={'auditoria-'+d.id} token={token} id={d.id} revision={d.revision+':'+revisionAuditoria}/></>}
+
+ </main>;
+}
+function Acciones({ token, documento: d, actualizar }: {
+    token: string;
+    documento: DocumentoActual;
+    actualizar: (documento:DocumentoActual,mensaje:string) => void;
+}) {
+    const navegar = useNavigate(), [destino, setDestino] = useState(destinoVacio), [unidad, setUnidad] = useState(''), [motivo, setMotivo] = useState(''), [error, setError] = useState(''), [ocupado, setOcupado] = useState(false);
+    const enviando=useRef(false),[confirmacion,setConfirmacion]=useState<'delegar'|'anular'|null>(null);
+    const necesitaOpciones = d.permisos.delegar || d.permisos.ubicar;
+    const opciones = useConsulta(useCallback(() => api.opciones(token), [token]), { habilitada: necesitaOpciones });
+    async function ejecutar(tipo: 'delegar' | 'ubicar' | 'anular',confirmado=false) {
+        if(enviando.current)return;
+        setError('');
+        if((tipo==='delegar'||tipo==='anular')&&!confirmado){setConfirmacion(tipo);return;}
+        setConfirmacion(null);
+        enviando.current=true;
+        setOcupado(true);
+        try {
+            if (tipo === 'delegar') {
+                const resultado=await api.delegar(token,d.id,{revision:d.revision,...datosDestino(destino)});
+                actualizar(resultado.documento,'Delegación confirmada correctamente.');
+                return;
+            }
+            if (tipo === 'ubicar') {
+                if (!unidad)
+                    throw Error('Selecciona una unidad propia.');
+                const resultado=await api.ubicar(token, d.id, { revision: d.revision, unidad_id: unidad });
+                actualizar(resultado.documento,'Ubicación guardada correctamente.');
+                return;
+            }
+            if (tipo === 'anular') {
+                if (!motivo.trim())
+                    throw Error('El motivo es obligatorio.');
+                await api.anular(token, d.id, { revision: d.revision, motivo: motivo.trim() });
+                navegar('/documentos', { replace: true,state:{mensaje:'Registro anulado. Se conserva su historial.'} });
+                return;
+            }
+        }
+        catch (e) {
+            const detalle=e instanceof Error?e.message:'No se pudo completar la operación';
+            const estado=e instanceof ApiError&&e.status>0?' (HTTP '+e.status+')':'';
+            setError(detalle+estado+(tipo==='delegar'?' La selección se conserva para reintentar.':''));
+            enviando.current=false;
+        }
+        finally {
+            if(tipo!=='delegar')enviando.current=false;
+            if(!enviando.current)setOcupado(false);
+        }
+    }
+    return <section className={styles.tarjeta}><h2>Acciones autorizadas</h2>{confirmacion&&<section className={styles.aviso} aria-label="Confirmar acción documental"><p>{confirmacion==='delegar'?'¿Confirmar la delegación a la persona seleccionada?':'¿Anular este registro? Se conservará su historia y solo podrá consultarlo Superadministración.'}</p><div className={styles.acciones}><button type="button" className={styles.boton} disabled={ocupado} onClick={()=>void ejecutar(confirmacion,true)}>{confirmacion==='delegar'?'Delegar documento':'Anular registro'}</button><button type="button" className={styles.secundario} disabled={ocupado} onClick={()=>setConfirmacion(null)}>Cancelar</button></div></section>}{necesitaOpciones && <EstadoCarga {...opciones} reintentar={opciones.recargar}/>}
+ {d.permisos.delegar && opciones.datos && <details><summary>Delegar documento</summary><form onSubmit={e => { e.preventDefault(); void ejecutar('delegar'); }}><fieldset className={styles.grupoDestino} disabled={ocupado||confirmacion!==null}><DestinoDocumental valor={destino} cambiar={setDestino} opciones={opciones.datos}/></fieldset><button className={styles.boton} disabled={ocupado}>{ocupado?'Procesando…':'Confirmar delegación'}</button></form></details>}
+ {d.permisos.ubicar && opciones.datos && <details><summary>Guardar en una ubicación propia</summary><form onSubmit={e => { e.preventDefault(); void ejecutar('ubicar'); }}><label className={styles.campo}>Unidad<select required value={unidad} onChange={e => setUnidad(e.target.value)}><option value="">Seleccionar unidad</option>{opciones.datos.unidades.map(u => <option key={u.id} value={u.id}>{rutaUnidades(opciones.datos?.unidades ?? [], u.id)}</option>)}</select></label>{!opciones.datos.unidades.length && <p>Primero crea una <Link to="/ubicaciones">unidad de ubicación</Link>.</p>}<button className={styles.boton} disabled={ocupado || !unidad}>Guardar ubicación</button></form></details>}
+ {d.permisos.anular && <details><summary>Anular registro</summary><form onSubmit={e => { e.preventDefault(); void ejecutar('anular'); }}><label className={styles.campo}>Motivo de anulación<textarea required maxLength={1000} value={motivo} onChange={e => setMotivo(e.target.value)}/></label><button className={styles.peligro} disabled={ocupado}>Anular registro</button></form></details>}{ocupado&&<p role="status">Procesando…</p>}{error && <p className={styles.error} role="alert">{error}</p>}
+ </section>;
 }

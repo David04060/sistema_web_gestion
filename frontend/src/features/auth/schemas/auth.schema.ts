@@ -8,6 +8,9 @@ export const usuarioSchema = z.object({
     email: z.string().nullable(),
     rol: z.string(),
     oficina: z.string().nullable(),
+    rol_id:z.number().int().min(1).max(5).optional(),
+    oficina_id:z.string().regex(/^[1-9][0-9]*$/).nullable().optional().default(null),
+    ambito_id:z.string().regex(/^[1-9][0-9]*$/).nullable().optional().default(null),
 });
 /** Mantiene los límites del backend; nunca recorta ni normaliza la contraseña. */
 export const loginSchema = z.object({

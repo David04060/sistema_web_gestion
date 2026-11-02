@@ -45,26 +45,19 @@ test('La interfaz propaga rechazo de confirmación y no anuncia éxito por un PU
     globalThis.fetch=async()=>new Response('');
     try{await assert.rejects(api.subirPdf(async accion=>{if(accion==='confirmar')throw Error('conflicto');return {carga:'id',url:'https://r2.invalid/upload',headers:{}};},file,null),/conflicto/);}finally{globalThis.fetch=original;}
 });
-test('SíseVe exige clave por fase y la envía exclusivamente al backend en body',async()=>{
-    const original=globalThis.fetch;const peticiones=[];let claves=0;
-    globalThis.fetch=async(ruta,opciones)=>{peticiones.push({ruta,opciones});return Response.json({resultado:vacio});};
-    try{
-        const pedir=api.clientePdf('jwt-fixture','7',async()=>{claves++;return 'clave-fixture';});
-        for(const accion of ['consultar','eliminar'])await pedir(accion,{},api.estadoPdfSchema);
-        assert.equal(claves,2);
-        for(const p of peticiones){assert.equal(p.ruta,'/api/siseve/operaciones');assert.equal(JSON.parse(p.opciones.body).clave,'clave-fixture');assert.equal(p.ruta.includes('clave'),false);}
-    }finally{globalThis.fetch=original;}
+test('Circuito retirado: no envía solicitudes de claves ni endpoints antiguos',async()=>{
+ const original=globalThis.fetch;let peticiones=0;globalThis.fetch=async()=>{peticiones++;return Response.json(vacio);};
+ try{await assert.rejects(api.clientePdf('token','1',()=> 'no-usar')('consultar',{},api.estadoPdfSchema),/retirado/);assert.equal(peticiones,0);}finally{globalThis.fetch=original;}
 });
-test('SíseVe descarta una respuesta pendiente si se pierde el contexto visible',async()=>{
-    const original=globalThis.fetch;let completar;let vigente=true;
-    globalThis.fetch=()=>new Promise(resolve=>{completar=resolve;});
-    try{
-        const pedir=api.clientePdf('jwt','1',()=> 'clave-fixture',()=>vigente);
-        const pendiente=pedir('consultar',{},api.estadoPdfSchema);
-        await new Promise(resolve=>setImmediate(resolve));
-        vigente=false;completar(Response.json({resultado:vacio}));
-        await assert.rejects(pendiente,/perdió su contexto/);
-    }finally{globalThis.fetch=original;}
+test('PDF descarta respuestas ordinarias de un contexto vencido',async()=>{
+ const original=globalThis.fetch;let completar,vigente=true;
+ globalThis.fetch=()=>new Promise(r=>{completar=r;});
+ try{const pedir=api.clientePdf('token','1',undefined,()=>vigente),pendiente=pedir('consultar',{},api.estadoPdfSchema);await new Promise(r=>setImmediate(r));vigente=false;completar(Response.json(vacio));await assert.rejects(pendiente,/perdió su contexto/);}finally{globalThis.fetch=original;}
+});
+test('Metadatos PDF usan el contrato nuevo y rechazan el antiguo',()=>{
+ const archivo={revision:'00000000-0000-4000-8000-000000000001',nombre:'archivo.pdf',tamano_bytes:80,actualizado_en:'2026-11-01T12:00:00Z'};
+ const estado=api.estadoPdfSchema.parse({...vacio,archivo});assert.equal(estado.archivo.tamano,80);assert.equal(estado.archivo.cargado_en,archivo.actualizado_en);
+ assert.equal(api.estadoPdfSchema.safeParse({...vacio,archivo:{revision:archivo.revision,nombre:'a.pdf',tamano:80,cargado_en:archivo.actualizado_en}}).success,false);
 });
 
 test('Visor interno: lectura privada, errores y pérdida de contexto sin exponer credenciales',async()=>{

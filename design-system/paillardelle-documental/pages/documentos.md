@@ -1,0 +1,3 @@
+# Documentos y PDF — variación del MASTER
+
+Consultar ../MASTER.md primero. Listado admite ancho de 1800 px por número real de columnas. Filtros en tarjeta aparte; código/asunto con ejemplo y etiqueta. A 900 px cada fila pasa a tarjeta completa, tipo y ubicación incluidos. Resumen del asunto a tres líneas con expansión; detalle, observaciones, relacionados, historial y auditoría conservan texto completo. Registro/corrección a dos columnas; asunto/observaciones a ancho completo. PDF opcional con nombre/tamaño y aviso de selección local antes del envío. Canvas sin recoloración; contenedor y herramientas usan tokens de ambos modos. No introducir claves de montaje que dependan del tema. Datos, permisos, revisión, endpoints y rutas existentes se conservan.

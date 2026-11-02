@@ -1,0 +1,58 @@
+[
+  {
+    "ancho": 320,
+    "cliente": 305,
+    "contenido": 305,
+    "fuente": "\"IBM Plex Sans\", Arial, system-ui, sans-serif",
+    "tema": "claro"
+  },
+  {
+    "ancho": 320,
+    "cliente": 305,
+    "contenido": 305,
+    "fuente": "\"IBM Plex Sans\", Arial, system-ui, sans-serif",
+    "tema": "oscuro"
+  },
+  {
+    "ancho": 375,
+    "cliente": 360,
+    "contenido": 360,
+    "fuente": "\"IBM Plex Sans\", Arial, system-ui, sans-serif",
+    "tema": "claro"
+  },
+  {
+    "ancho": 375,
+    "cliente": 360,
+    "contenido": 360,
+    "fuente": "\"IBM Plex Sans\", Arial, system-ui, sans-serif",
+    "tema": "oscuro"
+  },
+  {
+    "ancho": 768,
+    "cliente": 753,
+    "contenido": 753,
+    "fuente": "\"IBM Plex Sans\", Arial, system-ui, sans-serif",
+    "tema": "claro"
+  },
+  {
+    "ancho": 768,
+    "cliente": 753,
+    "contenido": 753,
+    "fuente": "\"IBM Plex Sans\", Arial, system-ui, sans-serif",
+    "tema": "oscuro"
+  },
+  {
+    "ancho": 1440,
+    "cliente": 1425,
+    "contenido": 1425,
+    "fuente": "\"IBM Plex Sans\", Arial, system-ui, sans-serif",
+    "tema": "claro"
+  },
+  {
+    "ancho": 1440,
+    "cliente": 1425,
+    "contenido": 1425,
+    "fuente": "\"IBM Plex Sans\", Arial, system-ui, sans-serif",
+    "tema": "oscuro"
+  }
+]

@@ -1,37 +1,20 @@
 import { Suspense } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { AccesoSiseveProvider } from '../../features/siseve/context/AccesoSiseveProvider';
-import { useAccesoSiseve } from '../../features/siseve/hooks/useAccesoSiseve';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 import { useMenuMovil } from '../../hooks/useMenuMovil';
 import { Icono, type IconName } from '../icons/Icono';
 import { ErrorRuta } from '../ui/ErrorRuta';
 import { CargaRuta } from '../ui/CargaRuta';
 import styles from './AdminLayout.module.css';
+import {enlacesPerfil} from '../../lib/perfiles';
+import logo from '../../assets/logo-institucion.jpg';
+import {SelectorTema} from '../ui/SelectorTema';
 interface Enlace {
     ruta: string;
     titulo: string;
     icono: IconName;
 }
-const gestion: Enlace[] = [
-    { ruta: '/dashboard', titulo: 'Dashboard', icono: 'panel' },
-    { ruta: '/documentos', titulo: 'Documentos', icono: 'documentos' },
-    { ruta: '/movimientos', titulo: 'Movimientos', icono: 'movimientos' },
-    { ruta: '/tipos-documentales', titulo: 'Tipos documentales', icono: 'tipos' },
-    { ruta: '/ubicaciones', titulo: 'Ubicaciones', icono: 'ubicaciones' },
-];
-const administracion: Enlace[] = [
-    { ruta: '/usuarios', titulo: 'Usuarios', icono: 'usuarios' },
-    { ruta: '/roles', titulo: 'Roles', icono: 'roles' },
-    { ruta: '/oficinas', titulo: 'Oficinas', icono: 'oficinas' },
-    { ruta: '/siseve/administracion', titulo: 'Administrar SíseVe', icono: 'seguridad' },
-];
-/** Envuelve el layout privado con una única consulta de metadatos de acceso propio a SíseVe. */
-export function AdminLayout() {
-    return <AccesoSiseveProvider>
-        <ContenidoAdminLayout />
-    </AccesoSiseveProvider>;
-}
+export function AdminLayout(){return <ContenidoAdminLayout/>;}
 /**
  * Presenta enlaces ya seleccionados por el layout y cierra el menú al navegar.
  * @param props - Grupo autorizado y callback de cierre del diálogo móvil.
@@ -41,7 +24,7 @@ function GrupoEnlaces({ enlaces, cerrar }: {
     enlaces: Enlace[];
     cerrar: () => void;
 }) {
-    return enlaces.map(/** Presenta una ruta; SíseVe exige coincidencia exacta para no activar también su administración. */  enlace => (<NavLink key={enlace.ruta} to={enlace.ruta} end={enlace.ruta === '/siseve'} onClick={cerrar}>
+    return enlaces.map(/** Presenta cada ruta habilitada para el perfil. */  enlace => (<NavLink key={enlace.ruta} to={enlace.ruta} end={enlace.ruta === '/dashboard'} onClick={cerrar}>
         <Icono nombre={enlace.icono} />
         <span>
             {enlace.titulo}
@@ -51,33 +34,20 @@ function GrupoEnlaces({ enlaces, cerrar }: {
 /** Compone navegación y cuenta activa; delega el modal al hook y conserva los límites de error y carga por ruta. */
 function ContenidoAdminLayout() {
     const auth = useAuth();
-    const siseve = useAccesoSiseve();
     const location = useLocation();
     const { dialogo, abrir, cerrar } = useMenuMovil();
     const usuario = auth.sesion!.usuario;
-    const enlaces = [
-        ...gestion,
-        ...(siseve.datos?.autorizado ? [{ ruta: '/siseve', titulo: 'SíseVe', icono: 'seguridad' as const }] : []),
-    ];
-    const titulo = [...administracion, ...enlaces].find(
-        /** Identifica el módulo por la ruta exacta o una de sus páginas descendientes. */
-        enlace => location.pathname === enlace.ruta || location.pathname.startsWith(enlace.ruta + '/'))?.titulo ?? 'Gestión documental';
+    const enlaces = enlacesPerfil(usuario.rol,usuario.oficina_id);
+    const titulo = enlaces.find(e=>location.pathname===e.ruta||location.pathname.startsWith(e.ruta+'/'))?.titulo??'Gestión documental';
     const marca = <div className={styles.marca}>
-        <span className={styles.icono} aria-hidden="true">EP</span>
+        <img className={styles.icono} src={logo} alt="Escudo de la I.E. Enrique Paillardelle" width="48" height="48" />
         <div>
             <strong>Gestión Documental</strong>
             <small>Enrique Paillardelle</small>
         </div>
     </div>;
     // Las condiciones del menú son presentación: cada endpoint revalida el acceso.
-    const navegacion = <>
-        <span className={styles.grupo}>Espacio de trabajo</span>
-        <GrupoEnlaces enlaces={enlaces} cerrar={cerrar} />
-        {usuario.rol === 'Administrador' && <>
-            <span className={styles.grupo}>Administración</span>
-            <GrupoEnlaces enlaces={administracion} cerrar={cerrar} />
-        </>}
-    </>;
+    const navegacion = <><span className={styles.grupo}>Espacio de trabajo</span><GrupoEnlaces enlaces={enlaces} cerrar={cerrar}/></>;
     return <div className={styles.sistema}>
         <a className={styles.saltar} href="#contenido-principal">Saltar al contenido</a>
         <aside className={styles.sidebar}>
@@ -105,6 +75,7 @@ function ContenidoAdminLayout() {
                     </div>
                 </div>
                 <div className={styles.cuenta}>
+                    <SelectorTema />
                     <span className={styles.avatar} aria-hidden="true">
                         {usuario.nombre.slice(0, 1)}
                         {usuario.apellido.slice(0, 1)}

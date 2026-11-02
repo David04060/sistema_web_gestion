@@ -1,0 +1,20 @@
+[
+  {
+    "familia": "publicsans",
+    "caracteres": "ÁÉÍÓÚáéíóúÑñüÜ¿¡0123456789%/.,;:()—–",
+    "faltantes": [],
+    "licencia_incluida": true
+  },
+  {
+    "familia": "sourcesans3",
+    "caracteres": "ÁÉÍÓÚáéíóúÑñüÜ¿¡0123456789%/.,;:()—–",
+    "faltantes": [],
+    "licencia_incluida": true
+  },
+  {
+    "familia": "ibmplexsans",
+    "caracteres": "ÁÉÍÓÚáéíóúÑñüÜ¿¡0123456789%/.,;:()—–",
+    "faltantes": [],
+    "licencia_incluida": true
+  }
+]

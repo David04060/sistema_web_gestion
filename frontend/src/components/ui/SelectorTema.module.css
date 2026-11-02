@@ -1,0 +1,6 @@
+.selector { display:inline-flex; gap:4px; padding:4px; border:1px solid var(--borde); border-radius:10px; background:var(--superficie-secundaria); flex-shrink:0; }
+.selector button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:36px; padding:7px 10px; border:1px solid transparent; border-radius:7px; background:transparent; color:var(--texto-secundario); font-size:.8125rem; font-weight:600; }
+.selector button[aria-pressed='true'] { color:var(--primario); background:var(--superficie); border-color:var(--borde); box-shadow:var(--sombra); }
+.selector button:hover { color:var(--primario); }
+@media(pointer:coarse) { .selector button { min-height:44px; } }
+@media(max-width:390px) { .selector button { padding-inline:8px; } .selector svg { display:none; } }

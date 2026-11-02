@@ -1,0 +1,27 @@
+:root {
+ --primario:#075a91; --primario-hover:#064574; --sobre-primario:#ffffff;
+ --fondo:#f3f6fa; --superficie:#ffffff; --superficie-secundaria:#edf2f8; --superficie-hover:#e6eef7;
+ --borde:#d1dce8; --borde-control:#7b8da3; --texto:#18283d; --texto-secundario:#52647b;
+ --acento:#edca39; --acento-suave:#fff8d9; --info:#075a91; --info-fondo:#eaf3fc; --info-borde:#b7d3ed;
+ --exito:#22623e; --exito-fondo:#edf8f0; --exito-borde:#b6d8c1;
+ --advertencia:#795313; --advertencia-fondo:#fff8e5; --advertencia-borde:#deca91;
+ --error:#a72e38; --error-fondo:#fff1f2; --error-borde:#e6b7bd;
+ --neutro-fondo:#edf0f5; --neutro-texto:#536174; --neutro-borde:#cfd7e2;
+ --visor-fondo:#dce5ef; --scrim:#07142699;
+ --radio:14px; --radio-control:8px; --sombra:0 2px 8px #18365105;
+ --espacio-1:4px; --espacio-2:8px; --espacio-3:12px; --espacio-4:16px; --espacio-6:24px; --espacio-8:32px;
+ font-family:'Segoe UI',Arial,system-ui,sans-serif; font-size:16px; color:var(--texto); background:var(--fondo); color-scheme:light;
+ font-synthesis:none; text-rendering:optimizeLegibility; -webkit-font-smoothing:antialiased;
+}
+:root[data-tema="oscuro"] {
+ --primario:#8bcdff; --primario-hover:#b8dfff; --sobre-primario:#08263f;
+ --fondo:#101b2b; --superficie:#17263a; --superficie-secundaria:#20334b; --superficie-hover:#29415c;
+ --borde:#364d68; --borde-control:#7f98b5; --texto:#edf3fb; --texto-secundario:#b3c4d9;
+ --acento:#f0d45f; --acento-suave:#3b3520; --info:#9dd2ff; --info-fondo:#20394f; --info-borde:#426887;
+ --exito:#9ce0b6; --exito-fondo:#183c32; --exito-borde:#3c705a;
+ --advertencia:#f2d489; --advertencia-fondo:#3d3320; --advertencia-borde:#806c3c;
+ --error:#ffb6be; --error-fondo:#442832; --error-borde:#85505c;
+ --neutro-fondo:#26374c; --neutro-texto:#c2cedf; --neutro-borde:#4b607a;
+ --visor-fondo:#0c1522; --scrim:#030a14bb; --sombra:0 2px 8px #00000012;
+ color-scheme:dark;
+}

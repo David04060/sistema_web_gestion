@@ -1,0 +1,47 @@
+[
+  {
+    "familia": "Public Sans",
+    "archivo": "fuentes/publicsans/familia.ttf",
+    "sha256": "d75a7dc1a27eb9e336d5b33f55489d2ecb5621bf694d5c43b2415bce2ca830a8",
+    "bytes": 103316,
+    "proyecto": "https://github.com/uswds/public-sans",
+    "distribucion": "https://github.com/google/fonts/tree/main/ofl/publicsans",
+    "licencia": "SIL Open Font License 1.1",
+    "pesos_muestra": [
+      400,
+      500,
+      600,
+      700
+    ]
+  },
+  {
+    "familia": "Source Sans 3",
+    "archivo": "fuentes/sourcesans3/familia.ttf",
+    "sha256": "042fe2cc0b933e328410d7acbd0aa6a1873dca5aef81875f4bc214b08825c7b9",
+    "bytes": 646340,
+    "proyecto": "https://github.com/adobe-fonts/source-sans",
+    "distribucion": "https://github.com/google/fonts/tree/main/ofl/sourcesans3",
+    "licencia": "SIL Open Font License 1.1",
+    "pesos_muestra": [
+      400,
+      500,
+      600,
+      700
+    ]
+  },
+  {
+    "familia": "IBM Plex Sans",
+    "archivo": "fuentes/ibmplexsans/familia.ttf",
+    "sha256": "3b031aa4216174205bd8471f88a49b91f093169e9e87bd5262242bc5967fe2e3",
+    "bytes": 537244,
+    "proyecto": "https://github.com/IBM/plex",
+    "distribucion": "https://github.com/google/fonts/tree/main/ofl/ibmplexsans",
+    "licencia": "SIL Open Font License 1.1",
+    "pesos_muestra": [
+      400,
+      500,
+      600,
+      700
+    ]
+  }
+]

@@ -1,0 +1,10 @@
+const params = new URLSearchParams(location.search);
+const familias = {a:'Public Sans', b:'Source Sans 3', c:'IBM Plex Sans'};
+const familia = familias[params.get('propuesta')] || familias.a;
+document.documentElement.dataset.tema = params.get('tema') === 'oscuro' ? 'oscuro' : 'claro';
+document.documentElement.style.setProperty('--familia', '"'+familia+'"');
+document.title = familia + ' · muestra institucional';
+const resultado = document.querySelector('.resultado');
+document.querySelector('form').addEventListener('submit', event => {event.preventDefault();resultado.textContent='Interacción de muestra. No se consultan ni modifican documentos.';});
+document.querySelector('form').addEventListener('reset', () => {resultado.textContent='Búsqueda de muestra restablecida.';});
+document.querySelector('#pdf').addEventListener('click', () => {resultado.textContent='Botón de muestra del visor PDF. No abre archivos del sistema.';});

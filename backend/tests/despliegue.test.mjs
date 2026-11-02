@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 // HTTP real sin conexiones SQL: las solicitudes de login son inválidas antes del servicio.
-process.env.DATABASE_URL = 'postgresql://fixture:fixture@127.0.0.1:1/fixture';
+process.env.DATABASE_URL = 'postgresql://fixture:fixture@127.0.0.1:1/sistema_web_documental_final';
 process.env.JWT_SECRET = 'secreto-exclusivo-de-pruebas-locales-000000';
 process.env.CORS_ORIGINS = 'https://qa-pages.example';
 process.env.TRUST_PROXY_HOPS = '1';
@@ -38,7 +38,7 @@ test('CORS, protección de rutas y límite por IP detrás de un proxy', async t 
             }
         });
         await t.test('rutas protegidas siguen requiriendo JWT', async () => {
-            for (const ruta of ['/api/auth/me', '/api/documentos', '/api/siseve/acceso', '/api/dashboard']) {
+            for (const ruta of ['/api/auth/me', '/api/documentos', '/api/campos-opcionales', '/api/dashboard']) {
                 assert.equal((await fetch(base + ruta)).status, 401);
             }
         });

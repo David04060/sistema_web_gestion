@@ -4,38 +4,17 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "dev:neon": "tsx watch src/server.ts --neon",
-    "start:neon": "node dist/server.js --neon",
-    "check:neon": "node scripts/verificar-conexion.mjs --neon",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "test": "npm run build && node --test tests/*.test.mjs",
-    "check:db": "npm run build && node scripts/verificar-db.mjs",
-    "test:admin": "npm run build && node --test tests/admin.integration.mjs",
-    "test:catalogos": "npm run build && node --test tests/catalogos.integration.mjs",
-    "test:documentos-consultas": "npm run build && node --test tests/documentos.consultas.integration.mjs",
-    "test:migracion-documental": "npm run build && node --test tests/flujo-migration.integration.mjs",
-    "test:siseve": "npm run test:migracion-documental",
-    "test:dashboard": "npm run build && node --test tests/dashboard.integration.mjs",
-    "test:revision-final": "npm run build && node --test tests/revision-final.integration.mjs",
-    "dev:neon:qa": "tsx watch src/server.ts --neon-qa",
-    "start:neon:qa": "node dist/server.js --neon-qa",
-    "check:neon:qa": "node scripts/verificar-neon-qa.mjs",
-    "test:neon:qa:documental": "node scripts/probar-neon-qa.mjs flujo-migration.integration.mjs",
-    "test:neon:qa:dashboard": "node scripts/probar-neon-qa.mjs dashboard.integration.mjs",
-    "prepare:clasificacion:dev": "npm run migrate:local",
-    "test:clasificacion": "npm run test:local",
-    "dev:clasificacion": "npm run dev",
-    "migrate:local": "node --import tsx scripts/migrar-local.mjs",
-    "test:local": "node --import tsx --test tests/local.integration.mjs",
-    "test:relacionados:local": "node --import tsx --test tests/relacionados.local.integration.mjs",
-    "test:panel-listado:local": "node --import tsx --test tests/panel-listado.local.integration.mjs",
-    "test:direccion:local": "node --import tsx --test tests/direccion-propia.local.integration.mjs",
-    "test:secretaria:local": "node --import tsx --test tests/secretaria-decision.local.integration.mjs",
-    "test:usuario-delegacion:local": "node --import tsx --test tests/usuario-delegacion.local.integration.mjs"
+    "test": "npm run build && node --test tests/auth.test.mjs tests/cuerpos-comprimidos.test.mjs tests/despliegue.test.mjs tests/documental-nuevo.test.mjs tests/pdf-storage.test.mjs tests/dashboard-estadisticas.local.test.mjs tests/dashboard-api.local.test.mjs",
+    "test:documental": "npm run build && node --test tests/documental-nuevo.test.mjs",
+    "test:mejoras:local": "npm run build && node --test tests/mejoras-local.test.mjs",
+    "test:revision:local": "npm run build && node --test tests/revision-integral-local.test.mjs tests/administracion-local.test.mjs tests/mejoras-local.test.mjs tests/delegacion-local.test.mjs",
+    "schema:documentar": "node scripts/documentar-base-documental.mjs",
+    "hash:local": "npm run build && node scripts/generar-hash-local.mjs"
   },
   "keywords": [],
   "author": "",
@@ -66,5 +45,8 @@
   },
   "engines": {
     "node": "24.x"
+  },
+  "overrides": {
+    "minimatch": "11.0.1"
   }
 }

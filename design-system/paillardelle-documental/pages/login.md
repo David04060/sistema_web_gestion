@@ -1,0 +1,3 @@
+# Acceso — variación del MASTER
+
+Consultar ../MASTER.md primero. Escritorio: panel institucional a la izquierda y formulario destacado a la derecha, ancho total 1120 px. Logo original 104 px completo. Borde amarillo superior únicamente en panel de identidad. Sin fotografía ni imagen externa; no ilustraciones decorativas. A 850 px pasa a columna, logo 72 px y descripción breve; formulario y ayuda siguen inmediatamente. Apariencia en esquina superior con espacio reservado. Etiquetas Usuario o correo electrónico y Contraseña, autocomplete para gestores, alternar visibilidad sin borrar valor. Enviar/validar conserva contrato existente. Ayuda dirige a administración sin prometer recuperación inexistente.

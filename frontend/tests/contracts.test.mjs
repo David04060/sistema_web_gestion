@@ -19,7 +19,7 @@ const { apiRequest } = await importarModulo('src/api/client.ts');
 const { z } = await import('zod');
 test('Contratos y errores HTTP del frontend sin servidor ni credenciales reales', /** Verifica el caso «Contratos y errores HTTP del frontend sin servidor ni credenciales reales»; una aserción fallida invalida este resultado. */ async (t) => {
     const originalFetch = globalThis.fetch;
-    const usuario = { id: '9007199254740993', nombre: 'Prueba', apellido: 'Local', nombre_usuario: 'prueba', email: null, rol: 'Prueba', oficina: null };
+    const usuario = { id: '9007199254740993', nombre: 'Prueba', apellido: 'Local', nombre_usuario: 'prueba', email: null, rol: 'Prueba', oficina: null, oficina_id:null, ambito_id:null };
     const respuesta = { token: 'token-fixture', tipo: 'Bearer', expiresIn: 900, usuario };
     let peticion;
     /** Prepara una respuesta Fetch controlada y captura la petición para contrastar método, cabeceras y cuerpo. */

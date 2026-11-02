@@ -1,4 +1,4 @@
-import { limpiarPdf } from './pdf.service.js';
+import { pdfActual } from './pdf.documental.js';
 
 /** Reintentos alojados en el backend, al arrancar y cada cinco minutos mientras está activo. */
 export function iniciarMantenimientoPdf(): () => void {
@@ -7,7 +7,7 @@ export function iniciarMantenimientoPdf(): () => void {
     const ejecutar = async () => {
         if (ocupado || detenido) return;
         ocupado = true;
-        try { await limpiarPdf(10); }
+        try { await pdfActual.limpiar(10); }
         catch { console.error('Mantenimiento PDF no completado; se reintentará sin descartar pendientes.'); }
         finally { ocupado = false; }
     };

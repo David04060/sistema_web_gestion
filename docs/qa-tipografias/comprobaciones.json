@@ -1,0 +1,110 @@
+[
+  {
+    "alto": 1629,
+    "ancho": 1100,
+    "cargada": true,
+    "cliente": 1085,
+    "contenido": 1085,
+    "fuente": "\"Public Sans\"",
+    "ruta": "?propuesta=a&tema=claro"
+  },
+  {
+    "alto": 1629,
+    "ancho": 1100,
+    "cargada": true,
+    "cliente": 1085,
+    "contenido": 1085,
+    "fuente": "\"Public Sans\"",
+    "ruta": "?propuesta=a&tema=oscuro"
+  },
+  {
+    "alto": 1629,
+    "ancho": 1100,
+    "cargada": true,
+    "cliente": 1085,
+    "contenido": 1085,
+    "fuente": "\"Source Sans 3\"",
+    "ruta": "?propuesta=b&tema=claro"
+  },
+  {
+    "alto": 1629,
+    "ancho": 1100,
+    "cargada": true,
+    "cliente": 1085,
+    "contenido": 1085,
+    "fuente": "\"Source Sans 3\"",
+    "ruta": "?propuesta=b&tema=oscuro"
+  },
+  {
+    "alto": 1629,
+    "ancho": 1100,
+    "cargada": true,
+    "cliente": 1085,
+    "contenido": 1085,
+    "fuente": "\"IBM Plex Sans\"",
+    "ruta": "?propuesta=c&tema=claro"
+  },
+  {
+    "alto": 1629,
+    "ancho": 1100,
+    "cargada": true,
+    "cliente": 1085,
+    "contenido": 1085,
+    "fuente": "\"IBM Plex Sans\"",
+    "ruta": "?propuesta=c&tema=oscuro"
+  },
+  {
+    "alto": 2429,
+    "ancho": 375,
+    "cargada": true,
+    "cliente": 360,
+    "contenido": 360,
+    "fuente": "\"Public Sans\"",
+    "ruta": "?propuesta=a&tema=claro"
+  },
+  {
+    "alto": 2429,
+    "ancho": 375,
+    "cargada": true,
+    "cliente": 360,
+    "contenido": 360,
+    "fuente": "\"Public Sans\"",
+    "ruta": "?propuesta=a&tema=oscuro"
+  },
+  {
+    "alto": 2403,
+    "ancho": 375,
+    "cargada": true,
+    "cliente": 360,
+    "contenido": 360,
+    "fuente": "\"Source Sans 3\"",
+    "ruta": "?propuesta=b&tema=claro"
+  },
+  {
+    "alto": 2403,
+    "ancho": 375,
+    "cargada": true,
+    "cliente": 360,
+    "contenido": 360,
+    "fuente": "\"Source Sans 3\"",
+    "ruta": "?propuesta=b&tema=oscuro"
+  },
+  {
+    "alto": 2456,
+    "ancho": 375,
+    "cargada": true,
+    "cliente": 360,
+    "contenido": 360,
+    "fuente": "\"IBM Plex Sans\"",
+    "ruta": "?propuesta=c&tema=claro"
+  },
+  {
+    "alto": 2456,
+    "ancho": 375,
+    "cargada": true,
+    "cliente": 360,
+    "contenido": 360,
+    "fuente": "\"IBM Plex Sans\"",
+    "ruta": "?propuesta=c&tema=oscuro"
+  }
+]

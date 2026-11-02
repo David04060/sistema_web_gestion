@@ -1,156 +1,37 @@
-import {situacionesEntrega} from '../components/EntregaSecretaria';
-import { RegistroDocumentoOpciones } from '../components/RegistroDocumentoOpciones';
-import { etiquetaClasificacion } from '../clasificacion';
-import { useCallback, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { api, etiquetas, situacion } from '../../../api/documental';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { useConsulta } from '../../../hooks/useConsulta';
 import { EstadoCarga } from '../../../components/ui/EstadoCarga';
+import { TextoExpandible } from '../../../components/ui/TextoExpandible';
 import { fechaLocal } from '../../../lib/fechas';
-import * as api from '../api/documentos.api';
 import styles from '../../../components/ui/Admin.module.css';
-import documentoStyles from '../styles/Documentos.module.css';
-/** Busca y pagina en el servidor: conteos y resultados quedan limitados por el mismo permiso SQL. */
 export function DocumentosListaPage() {
-    const {token,usuario} = useAuth().sesion!;
-    const puedeFiltrarGuardados=['Director(a)','Secretaria de Dirección'].includes(usuario.rol);
-    const [params, setParams] = useSearchParams();
-    const filtrosVisibles = new URLSearchParams(params);
-    filtrosVisibles.delete('estado');
-    const guardadoNoDisponible=!puedeFiltrarGuardados&&['GUARDADO_DIRECCION','GUARDADO_SECRETARIA'].includes(params.get('situacion')??'');
-    if(guardadoNoDisponible)filtrosVisibles.delete('situacion');
-    const filtros = filtrosVisibles.toString();
-    useEffect(()=>{
-        if(guardadoNoDisponible){const siguientes=new URLSearchParams(params);siguientes.delete('situacion');setParams(siguientes,{replace:true});}
-    },[guardadoNoDisponible,params,setParams]);
-    const opciones = useConsulta(useCallback(/** Consulta las opciones y filtros documentales autorizados. */() => api.opciones(token), [token]));
-    const consulta = useConsulta(useCallback(/** Consulta la página documental definida por los parámetros de la URL. */() => api.listar(token, filtros), [token, filtros]));
-    /**
-     * Cambia únicamente la página de la consulta en la URL, conservando los filtros actuales.
-     * @param numero - Página solicitada manteniendo los filtros actuales.
-     */
-    function pagina(numero: number) {
-        const siguiente = new URLSearchParams(params);
-        siguiente.set('pagina', String(numero));
-        setParams(siguiente);
-    }
-    return <main className={styles.pagina}>
-        <div className={styles.titulo}>
-            <div>
-                <h1>Documentos</h1>
-                {opciones.datos?.puede_registrar && <RegistroDocumentoOpciones />}
-            </div>
-            <button type="button" className={styles.secundario} disabled={consulta.cargando || consulta.actualizando} onClick={() => {consulta.recargar();opciones.recargar();}}>{consulta.actualizando?'Actualizando…':'Actualizar listado'}</button>
-        </div>
-        <section className={styles.tarjeta}>
-            <form key={filtros} onSubmit={/** Convierte filtros no vacíos del formulario en parámetros de búsqueda y reinicia la paginación. */ e => {
-                e.preventDefault();
-                const datos = new FormData(e.currentTarget);
-                const siguiente = new URLSearchParams();
-                for (const [campo, valor] of datos)
-                    if (String(valor).trim())
-                        siguiente.set(campo, String(valor).trim());
-                setParams(siguiente);
-            }}>
-                <div className={styles.datos}>
-                    <div className={styles.campo}><label htmlFor="entrega-filtro">Situación</label><select id="entrega-filtro" name="situacion" defaultValue={filtrosVisibles.get('situacion')??''}><option value="">Todos</option>{Object.entries(situacionesEntrega).filter(([valor])=>puedeFiltrarGuardados||!['GUARDADO_DIRECCION','GUARDADO_SECRETARIA'].includes(valor)).map(([valor,texto])=><option key={valor} value={valor}>{texto}</option>)}</select></div>
-                    <div className={styles.campo}>
-                        <label htmlFor="buscar-documento">Buscar por código, asunto o remitente</label>
-                        <input id="buscar-documento" name="q" maxLength={250} defaultValue={params.get('q') ?? ''} />
-                    </div>
-                    <div className={styles.campo}>
-                        <label htmlFor="tipo-filtro">Tipo documental</label>
-                        <select id="tipo-filtro" name="tipo_documental_id" defaultValue={params.get('tipo_documental_id') ?? ''}>
-                            <option value="">Todos</option>
-                            {opciones.datos?.tipos.map(/** Presenta una opción de tipo documental para filtrar la consulta. */  t => <option key={t.id} value={t.id}>
-                                {t.nombre}
-                            </option>)}
-                        </select>
-                    </div>
-                    {([{ campo: 'oficina_id', nombre: 'Oficina', id: 'oficina_id', etiqueta: 'oficina' }, { campo: 'responsable_id', nombre: 'Responsable', id: 'responsable_id', etiqueta: 'responsable' }, { campo: 'archivador_id', nombre: 'Ubicacion', id: 'archivador_id', etiqueta: 'ubicacion' }] as const).map(/** Compone un filtro de oficina, responsable o archivador desde opciones autorizadas. */  f => <div key={f.campo} className={styles.campo}>
-                        <label htmlFor={f.campo}>
-                            {f.nombre}
-                        </label>
-                        <select key={`${f.campo}-${opciones.datos ? 'listo' : 'cargando'}`} id={f.campo} name={f.campo} defaultValue={params.get(f.campo) ?? ''}>
-                            <option value="">Todos</option>
-                            {[...new Map(opciones.datos?.filtros.filter(/** Descarta las referencias vacías antes de construir opciones de filtro. */  v => v[f.id]).map(/** Indexa opciones por su ID para eliminar duplicados sin ampliar su alcance. */  v => [v[f.id], v])).values()].map(/** Presenta una opción única del filtro conservando su etiqueta autorizada. */  v => <option key={v[f.id]} value={v[f.id] ?? ''}>
-                                {v[f.etiqueta]}
-                            </option>)}
-                        </select>
-                    </div>)}
-                    <div className={styles.campo}>
-                        <label htmlFor="activo-documento">Estado del registro</label>
-                        <select id="activo-documento" name="activo" defaultValue={params.get('activo') ?? ''}>
-                            <option value="">Todos los autorizados</option>
-                            <option value="true">Vigente</option>
-                            <option value="false">Anulado</option>
-                        </select>
-                    </div>
-                </div>
-                <div className={styles.acciones}>
-                    <button className={styles.boton}>Buscar</button>
-                    <button type="button" className={styles.secundario} onClick={/** Limpia los filtros de la URL y consulta nuevamente la primera página. */() => setParams({})}>Limpiar filtros</button>
-                </div>
-            </form>
-        </section>
-        <EstadoCarga {...consulta} reintentar={consulta.recargar} />
-        {consulta.datos && <section className={styles.tarjeta}>
-            <div className={styles.tabla}>
-                <table className={documentoStyles.listado}>
-                    <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Clasificación del registro</th>
-                            <th>Asunto</th>
-                            <th>Tipo</th>
-                            <th>Responsable / oficina</th>
-                            <th>Situación / destinatario</th>
-                            <th>Registro</th>
-                            <th>Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {consulta.datos.documentos.map(/** Presenta un documento devuelto por la página autorizada del backend. */  d => <tr key={d.id}>
-                            <td>
-                                <Link to={`/documentos/${d.id}`}>
-                                    {d.codigo}
-                                </Link>
-                            </td>
-                            <td>{etiquetaClasificacion(d.clasificacion_registro)}</td>
-                            <td>
-                                {d.asunto}
-                            </td>
-                            <td>
-                                {d.tipo_documental}
-                            </td>
-                            <td>
-                                {d.responsable}
-                                <br />
-                                {d.oficina}
-                            </td>
-                            <td>
-                                {d.entrega?<>{situacionesEntrega[d.entrega.situacion]}<br />{d.entrega.ubicacion_direccion??d.entrega.destinatario??''}{d.entrega.observaciones&&<><br />{d.entrega.observaciones}</>}</>:<span>—</span>}
-                                <br />
-                                {!d.activo && 'Anulado'}
-                            </td>
-                            <td>
-                                {fechaLocal(d.fecha_creacion)}
-                            </td>
-                            <td><Link className={styles.secundario} to={`/documentos/${d.id}`}>Ver detalle</Link></td>
-                        </tr>)}
-                    </tbody>
-                </table>
-            </div>
-            {!consulta.datos.documentos.length && <p className={styles.vacio}>No hay documentos.</p>}
-            <div className={styles.paginacion}>
-                <p>
-                    {consulta.datos.total} registros · Página {consulta.datos.pagina}
-                </p>
-                <div className={styles.acciones}>
-                    <button className={styles.secundario} disabled={consulta.datos.pagina <= 1} onClick={/** Solicita la página anterior conservando los filtros. */() => pagina(consulta.datos!.pagina - 1)}>Anterior</button>
-                    <button className={styles.secundario} disabled={consulta.datos.pagina * consulta.datos.limite >= consulta.datos.total} onClick={/** Solicita la página siguiente conservando los filtros. */() => pagina(consulta.datos!.pagina + 1)}>Siguiente</button>
-                </div>
-            </div>
-        </section>}
-    </main>;
+    const { token, usuario } = useAuth().sesion!, [params, setParams] = useSearchParams();
+    const [busqueda, setBusqueda] = useState(params.get('q') ?? '');
+    const [fecha,setFecha]=useState(params.get('fecha')??''),[precision,setPrecision]=useState(params.get('fecha')?.length===4?'anio':params.get('fecha')?.length===7?'mes':'dia');
+    const busquedaUrl=params.get('q')??'',fechaUrl=params.get('fecha')??'';
+    useEffect(()=>{setBusqueda(busquedaUrl);setFecha(fechaUrl);if(fechaUrl)setPrecision(fechaUrl.length===4?'anio':fechaUrl.length===7?'mes':'dia');},[busquedaUrl,fechaUrl]);
+    const criterios=[params.get('q')?'Código o asunto: '+params.get('q'):null,params.get('situacion')?'Situación: '+etiquetas[params.get('situacion')!]:null,params.get('clasificacion')?'Clasificación: '+(params.get('clasificacion')==='RECIBIDO'?'Recibido':'Emitido'):null,params.get('fecha')?'Registro: '+params.get('fecha')+' (hora de Perú)':null].filter(Boolean);
+    function buscar(e:React.FormEvent){e.preventDefault();const p=new URLSearchParams(params);for(const [k,v] of [['q',busqueda.trim()],['fecha',precision==='anio'&&fecha?String(Number(fecha)).padStart(4,'0'):fecha]]){if(v)p.set(k,v);else p.delete(k);}p.delete('pagina');setParams(p);}
+    function limpiar(){setBusqueda('');setFecha('');setParams({});}
+    const consulta = useConsulta(useCallback(() => api.lista(token, params.toString()), [token, params]));
+    const mensajeRuta=(useLocation().state as {mensaje?:unknown}|null)?.mensaje;
+    const registrar = ['Usuario', 'Director(a)', 'Secretaria de Dirección'].includes(usuario.rol);
+    function filtro(nombre: string, valor: string) { const p = new URLSearchParams(params); if (valor)
+        p.set(nombre, valor);
+    else
+        p.delete(nombre); p.delete('pagina'); setParams(p); }
+    const pagina = consulta.datos?.pagina ?? 1;
+    return <main className={`${styles.pagina} ${styles.paginaAmplia}`}><h1>Documentos</h1>{typeof mensajeRuta==='string'&&<p className={styles.exito} role="status">{mensajeRuta}</p>}
+ <div className={styles.acciones}>{registrar && <Link className={styles.boton} to="/documentos/nuevo">Registrar documento</Link>}</div>
+ <section className={styles.tarjeta}><form onSubmit={buscar} className={styles.filtrosDocumentos}>
+ <label className={styles.campo}>Buscar por código o asunto<input placeholder="Ej.: INF2026001 o informe de gestión" value={busqueda} maxLength={250} onChange={e => setBusqueda(e.target.value)}/></label>
+ <label className={styles.campo}>Situación<select value={params.get('situacion') ?? ''} onChange={e => filtro('situacion', e.target.value)}><option value="">Documentos ordinarios</option>{situacion.options.filter(s => s !== 'ANULADO' || usuario.rol === 'Superadministrador').map(s => <option key={s} value={s}>{etiquetas[s]}</option>)}</select></label>
+ <label className={styles.campo}>Clasificación<select value={params.get('clasificacion') ?? ''} onChange={e => filtro('clasificacion', e.target.value)}><option value="">Todas</option><option value="RECIBIDO">Recibido</option><option value="EMITIDO">Emitido</option></select></label><fieldset className={styles.filtroFecha}><legend>Fecha de registro</legend><div className={styles.formularioDosColumnas}><label className={styles.campo}>Buscar por<select value={precision} onChange={e=>{setPrecision(e.target.value);setFecha('');}}><option value="dia">Día concreto</option><option value="mes">Mes y año</option><option value="anio">Año completo</option></select></label><label className={styles.campo}>{precision==='dia'?'Día':precision==='mes'?'Mes y año':'Año'}<input aria-label="Periodo de registro" type={precision==='dia'?'date':precision==='mes'?'month':'number'} min={precision==='dia'?'0001-01-01':precision==='mes'?'0001-01':'1'} max={precision==='dia'?'9999-12-31':precision==='mes'?'9999-12':'9999'} step={precision==='anio'?1:undefined} value={fecha} onChange={e=>setFecha(e.target.value)}/></label></div></fieldset><div className={styles.acciones}><button className={`${styles.boton} ${styles.buscarDocumentos}`}>Buscar</button><button className={styles.secundario} type="button" onClick={limpiar}>Limpiar filtros</button></div></form>{criterios.length>0&&<aside aria-label="Filtros activos" className={styles.criterios}><strong>Filtros activos</strong><ul>{criterios.map(c=><li key={c}>{c}</li>)}</ul></aside>}</section>
+ <EstadoCarga {...consulta} reintentar={consulta.recargar}/>
+ {consulta.datos && <section className={styles.tarjeta}><p>{consulta.datos.total} {consulta.datos.total===1?'documento':'documentos'}</p><div className={`${styles.tabla} ${styles.tablaDocumentos}`}><table role="table"><thead><tr><th>Código</th><th>Tipo</th><th>Asunto</th><th>Clasificación</th><th>Registrado por</th><th>Situación</th><th>Registro</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody>{consulta.datos.documentos.map(d => <tr key={d.id}><td data-label="Código" className={styles.codigoDocumento}><Link to={'/documentos/' + d.id}>{d.codigo_visible}</Link></td><td data-label="Tipo" className={styles.soloEscritorioDocumento}>{d.tipo_nombre_guardado}</td><td data-label="Asunto" className={styles.asuntoDocumento}><TextoExpandible texto={d.asunto}/></td><td data-label="Clasificación">{d.clasificacion === 'RECIBIDO' ? 'Recibido' : d.clasificacion === 'EMITIDO' ? 'Emitido' : 'Sin clasificar'}</td><td data-label="Registrado por">{d.registrado_por_nombre}{d.registrado_por_oficina&&<span className={styles.oficinaRegistro}>{d.registrado_por_oficina}</span>}</td><td data-label="Situación">{etiquetas[d.situacion]}</td><td data-label="Registro">{fechaLocal(d.creado_en)}</td><td data-label="Ubicación" className={d.ubicacion_ruta?undefined:styles.sinUbicacionDocumento}>{d.ubicacion_ruta??'Sin ubicación'}</td><td data-label="Acciones" className={styles.accionDocumento}><Link className={styles.secundario} to={'/documentos/'+d.id}>Ver detalle</Link></td></tr>)}</tbody></table></div>{!consulta.datos.total && <p className={styles.vacio}>No hay documentos que coincidan. Prueba con otro código o limpia los filtros.</p>}
+ <div className={styles.acciones}><button className={styles.secundario} disabled={pagina <= 1 || consulta.actualizando} onClick={() => { const p = new URLSearchParams(params); p.set('pagina', String(pagina - 1)); setParams(p); }}>Anterior</button><span>Página {pagina}</span><button className={styles.secundario} disabled={pagina * consulta.datos.limite >= consulta.datos.total || consulta.actualizando} onClick={() => { const p = new URLSearchParams(params); p.set('pagina', String(pagina + 1)); setParams(p); }}>Siguiente</button></div></section>}
+ </main>;
 }

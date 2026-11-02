@@ -1,75 +1,45 @@
 import { useCallback, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { config, type Cuenta } from '../../../api/documental';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { useConsulta } from '../../../hooks/useConsulta';
-import { useCatalogosUsuarios } from '../hooks/useCatalogosUsuarios';
-import * as api from '../api/usuarios.api';
-import { UsuarioForm } from '../components/UsuarioForm';
-import type { CrearUsuario, DatosUsuario } from '../schemas/usuarios.schema';
 import { EstadoCarga } from '../../../components/ui/EstadoCarga';
-import { Confirmacion } from '../../../components/ui/Confirmacion';
 import styles from '../../../components/ui/Admin.module.css';
-/** Coordina catálogos reales y escritura; exige confirmación antes de cambiar el rol propio. */
-export function UsuarioFormularioPage() {
-    const { id } = useParams();
-    const auth = useAuth();
-    const token = auth.sesion!.token;
-    const navigate = useNavigate();
-    const consulta = useCallback(/** Consulta la cuenta al editar; evita una petición de detalle en creación. */() => id ? api.detalle(token, id) : Promise.resolve(null), [id, token]);
-    const usuario = useConsulta(consulta);
-    const catalogos = useCatalogosUsuarios();
-    const [ocupado, setOcupado] = useState(false);
-    const [error, setError] = useState('');
-    const [confirmar, setConfirmar] = useState<DatosUsuario | null>(null);
-    /**
-     * Crea o edita la cuenta con el contrato correspondiente; vuelve a verificar la sesión propia y navega al detalle si la operación lo permite.
-     * @param datos - Datos de entrada según el contrato tipado de esta operación.
-     */
-    async function guardar(datos: DatosUsuario | CrearUsuario) {
-        if (ocupado)
-            return;
-        setOcupado(true);
-        setError('');
-        try {
-            const respuesta = id ? await api.editar(token, id, datos) : await api.crear(token, datos as CrearUsuario);
-            if (id === auth.sesion?.usuario.id)
-                await auth.recuperar();
-            navigate(id === auth.sesion?.usuario.id && respuesta.usuario.rol !== 'Administrador' ? '/dashboard' : `/usuarios/${respuesta.usuario.id}`, { replace: true, state: { mensaje: 'Cuenta guardada correctamente.' } });
-        }
-        catch (fallo) {
-            setError(fallo instanceof Error ? fallo.message : 'No se pudo guardar la cuenta.');
-        }
-        finally {
-            setOcupado(false);
-            setConfirmar(null);
-        }
+export function UsuarioFormularioPage() { const { id } = useParams(), { token, usuario: actor } = useAuth().sesion!; const consulta = useConsulta(useCallback(async () => ({ cuenta: id ? (await config.usuario(token, id)).usuario : null, roles: (await config.roles(token)).roles, oficinas: (await config.oficinas(token)).oficinas }), [token, id])); return <main className={styles.pagina}><h1>{id ? 'Editar cuenta' : 'Crear cuenta'}</h1><EstadoCarga {...consulta} reintentar={consulta.recargar}/>{consulta.datos && (consulta.datos.cuenta?.rol_id === 1 && actor.rol !== 'Superadministrador' ? <p role="alert">Esta cuenta solo puede administrarla Superadministración.</p> : <Formulario key={id ?? 'nuevo'} token={token} id={id} inicial={consulta.datos.cuenta} roles={consulta.datos.roles.filter(r => r.id !== 1 || consulta.datos?.cuenta?.rol_id === 1)} oficinas={consulta.datos.oficinas}/>)}</main>; }
+function Formulario({ token, id, inicial, roles, oficinas }: {
+    token: string;
+    id?: string;
+    inicial: Cuenta | null;
+    roles: Array<{
+        id: number;
+        nombre: string;
+    }>;
+    oficinas: Array<{
+        id: string;
+        nombre: string;
+        activa: boolean;
+    }>;
+}) {
+    const navegar = useNavigate(), [v, setV] = useState({ nombre: inicial?.nombre ?? '', apellido: inicial?.apellido ?? '', nombre_usuario: inicial?.nombre_usuario ?? '', email: inicial?.email ?? '', telefono: inicial?.telefono ?? '', rol: String(inicial?.rol_id ?? 5), oficina: inicial?.oficina_id ?? '', contrasena: '', motivo: '' }), [error, setError] = useState(''), [ocupado, setOcupado] = useState(false);
+    const cambio = (k: keyof typeof v, valor: string | boolean) => setV(v => ({ ...v, [k]: valor }));
+    async function guardar(e: React.FormEvent) { e.preventDefault(); setOcupado(true); setError(''); try {
+        const base = { nombre: v.nombre.trim(), apellido: v.apellido.trim(), nombre_usuario: v.nombre_usuario.trim().toLowerCase(), email: v.email.trim() || null, telefono: v.telefono.trim() || null, rol_id: Number(v.rol), oficina_id: ['1', '2'].includes(v.rol) ? null : v.oficina || null };
+        const r = await config.guardar(token, 'usuarios' + (id ? '/' + id : ''), id ? { ...base, motivo: v.motivo.trim() } : { ...base, contrasena: v.contrasena }, id ? 'PUT' : 'POST');
+        navegar('/usuarios/' + (id ?? ('id' in r ? r.id : '')), { replace: true });
     }
-    return <main className={styles.pagina}>
-        <div className={styles.titulo}>
-            <div>
-                <h1>
-                    {id ? 'Editar cuenta' : 'Crear cuenta'}
-                </h1>
-                <p>Datos personales y asignación institucional.</p>
-            </div>
-        </div>
-        <EstadoCarga cargando={usuario.cargando || catalogos.cargando} error={usuario.error || catalogos.error} reintentar={/** Reintenta tanto la cuenta como los catálogos de asignación. */() => {
-            usuario.recargar();
-            catalogos.recargar();
-        }} />
-        {!usuario.cargando && !catalogos.cargando && !usuario.error && !catalogos.error && catalogos.datos &&
-            <section className={styles.tarjeta}>
-                <UsuarioForm inicial={usuario.datos?.usuario} roles={catalogos.datos.roles} oficinas={catalogos.datos.oficinas} ocupado={ocupado} error={error} onGuardar={/** Solicita confirmación si se cambia el rol propio; en otros casos guarda directamente los datos validados. */async (datos) => {
-                    if (id === auth.sesion?.usuario.id && usuario.datos?.usuario.rol_id !== datos.rol_id)
-                        setConfirmar(datos);
-                    else
-                        await guardar(datos);
-                }} />
-            </section>}
-        {confirmar && <Confirmacion titulo="Cambiar tu propio rol" ocupado={ocupado} cancelar={/** Descarta la edición pendiente que requería confirmación. */() => setConfirmar(null)} confirmar={/** Guarda los datos del cambio de rol propio ya confirmado. */() => {
-            void guardar(confirmar);
-        }}>
-            <p>Se actualizarán tus permisos. Si dejas de ser Administrador, ya no podrás acceder a estos módulos.</p>
-        </Confirmacion>}
-    </main>;
+    catch (e) {
+        setError(e instanceof Error ? e.message : 'No se pudo guardar');
+    }
+    finally {
+        setOcupado(false);
+    } }
+    const oficinaObligatoria = ['3', '4'].includes(v.rol);
+    const opciones = oficinas.filter(o => v.rol === '3' ? o.nombre === 'Dirección' : v.rol === '4' ? o.nombre === 'Mesa de Partes' : !['Dirección','Mesa de Partes'].includes(o.nombre)&&(o.activa || o.id === v.oficina));
+    return <section className={styles.tarjeta}><form onSubmit={e => void guardar(e)}><div className={styles.formularioDosColumnas}>
+ <label className={styles.campo}>Nombre<input required maxLength={150} value={v.nombre} onChange={e => cambio('nombre', e.target.value)}/></label><label className={styles.campo}>Apellido<input required maxLength={150} value={v.apellido} onChange={e => cambio('apellido', e.target.value)}/></label><label className={styles.campo}>Nombre de usuario<input required minLength={3} maxLength={80} pattern="[a-z0-9._-]{3,80}" value={v.nombre_usuario} onChange={e => cambio('nombre_usuario', e.target.value.toLowerCase())}/></label>
+ <label className={styles.campo}>Correo opcional<input type="email" value={v.email} onChange={e => cambio('email', e.target.value)}/></label><label className={styles.campo}>Teléfono opcional<input maxLength={50} value={v.telefono} onChange={e => cambio('telefono', e.target.value)}/></label>
+ <label className={styles.campo}>Rol<select disabled={inicial?.rol_id === 1} value={v.rol} onChange={e => { cambio('rol', e.target.value); cambio('oficina', ''); }}>{roles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}</select></label>
+ {!['1', '2'].includes(v.rol) && <label className={styles.campo}>Oficina{oficinaObligatoria ? ' obligatoria' : ' opcional'}<select required={oficinaObligatoria} value={v.oficina} onChange={e => cambio('oficina', e.target.value)}><option value="">Sin oficina</option>{opciones.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}</select></label>}
+ {id ? <><label className={styles.campo}>Motivo de modificación<textarea required maxLength={1000} value={v.motivo} onChange={e => cambio('motivo', e.target.value)}/></label></> : <label className={styles.campo}>Contraseña (8–128 caracteres)<input type="password" required minLength={8} maxLength={128} autoComplete="new-password" value={v.contrasena} onChange={e => cambio('contrasena', e.target.value)}/></label>}
+ </div>{id && <p>Guardar revocará las sesiones de esta cuenta. El backend protege los ámbitos históricos y las ubicaciones existentes.</p>}{error && <p className={styles.error} role="alert">{error}</p>}<div className={styles.acciones}><button className={styles.boton} disabled={ocupado}>{ocupado ? 'Guardando…' : 'Guardar cuenta'}</button><Link className={styles.secundario} to={id ? '/usuarios/' + id : '/usuarios'}>Cancelar</Link></div></form></section>;
 }

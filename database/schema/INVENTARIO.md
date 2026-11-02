@@ -1,0 +1,336 @@
+# Inventario real
+
+{
+  "base": "sistema_web_documental_final",
+  "host": "::1/128",
+  "puerto": 5432,
+  "oid": "98367",
+  "esquema": "public"
+}
+
+## Tablas
+
+- `ambitos_registro`
+- `auditoria_configuracion`
+- `auditoria_documental`
+- `cambios_nombre_campo`
+- `campos_opcionales`
+- `correlativos_documentales`
+- `delegaciones_documento`
+- `documentos`
+- `documentos_pdf`
+- `documentos_relaciones`
+- `miembros_ambito`
+- `oficinas`
+- `pdf_cargas`
+- `pdf_eventos`
+- `pdf_objetos_pendientes`
+- `roles`
+- `tipos_documentales`
+- `ubicaciones_documento`
+- `unidades_ubicacion`
+- `usuarios`
+- `valores_documento`
+
+## Funciones
+
+- `aplicar_delegacion`
+- `aplicar_ubicacion`
+- `asignar_codigo_documental`
+- `auditar_documento`
+- `auditar_pdf`
+- `auditar_valor_documento`
+- `impedir_borrado_documento`
+- `impedir_cambio_historico`
+- `impedir_truncado`
+- `registrar_cambio_nombre_campo`
+- `validar_delegacion`
+- `validar_documento_actualizacion`
+- `validar_estado_final`
+- `validar_miembro_ambito`
+- `validar_pdf_permiso`
+- `validar_relacion`
+- `validar_tipo_documental`
+- `validar_ubicacion`
+- `validar_unidad_ubicacion`
+- `validar_usuario_oficina`
+- `validar_valor_documento`
+
+## Triggers
+
+- `delegaciones_documento.aplicar_delegacion`: `CREATE TRIGGER aplicar_delegacion AFTER INSERT ON public.delegaciones_documento FOR EACH ROW EXECUTE FUNCTION aplicar_delegacion()`
+- `ubicaciones_documento.aplicar_ubicacion`: `CREATE TRIGGER aplicar_ubicacion AFTER INSERT ON public.ubicaciones_documento FOR EACH ROW EXECUTE FUNCTION aplicar_ubicacion()`
+- `documentos.asignar_codigo_documental`: `CREATE TRIGGER asignar_codigo_documental BEFORE INSERT ON public.documentos FOR EACH ROW EXECUTE FUNCTION asignar_codigo_documental()`
+- `documentos.auditar_documento`: `CREATE TRIGGER auditar_documento AFTER INSERT OR UPDATE ON public.documentos FOR EACH ROW EXECUTE FUNCTION auditar_documento()`
+- `documentos_pdf.auditar_pdf`: `CREATE TRIGGER auditar_pdf AFTER INSERT OR DELETE OR UPDATE ON public.documentos_pdf FOR EACH ROW EXECUTE FUNCTION auditar_pdf()`
+- `valores_documento.auditar_valor_documento`: `CREATE TRIGGER auditar_valor_documento AFTER INSERT OR UPDATE ON public.valores_documento FOR EACH ROW EXECUTE FUNCTION auditar_valor_documento()`
+- `documentos.documento_estado_con_hecho`: `CREATE CONSTRAINT TRIGGER documento_estado_con_hecho AFTER INSERT OR UPDATE ON public.documentos DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION validar_estado_final()`
+- `campos_opcionales.no_borrar_campo`: `CREATE TRIGGER no_borrar_campo BEFORE DELETE ON public.campos_opcionales FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
+- `documentos.no_borrar_documento`: `CREATE TRIGGER no_borrar_documento BEFORE DELETE ON public.documentos FOR EACH ROW EXECUTE FUNCTION impedir_borrado_documento()`
+- `ubicaciones_documento.no_borrar_ubicacion`: `CREATE TRIGGER no_borrar_ubicacion BEFORE DELETE ON public.ubicaciones_documento FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
+- `valores_documento.no_borrar_valor`: `CREATE TRIGGER no_borrar_valor BEFORE DELETE ON public.valores_documento FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
+- `auditoria_documental.no_truncar_auditoria`: `CREATE TRIGGER no_truncar_auditoria BEFORE TRUNCATE ON public.auditoria_documental FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
+- `auditoria_configuracion.no_truncar_configuracion`: `CREATE TRIGGER no_truncar_configuracion BEFORE TRUNCATE ON public.auditoria_configuracion FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
+- `delegaciones_documento.no_truncar_delegaciones`: `CREATE TRIGGER no_truncar_delegaciones BEFORE TRUNCATE ON public.delegaciones_documento FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
+- `documentos.no_truncar_documentos`: `CREATE TRIGGER no_truncar_documentos BEFORE TRUNCATE ON public.documentos FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
+- `pdf_eventos.no_truncar_pdf_eventos`: `CREATE TRIGGER no_truncar_pdf_eventos BEFORE TRUNCATE ON public.pdf_eventos FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
+- `documentos_relaciones.no_truncar_relaciones`: `CREATE TRIGGER no_truncar_relaciones BEFORE TRUNCATE ON public.documentos_relaciones FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
+- `ubicaciones_documento.no_truncar_ubicaciones`: `CREATE TRIGGER no_truncar_ubicaciones BEFORE TRUNCATE ON public.ubicaciones_documento FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
+- `valores_documento.no_truncar_valores`: `CREATE TRIGGER no_truncar_valores BEFORE TRUNCATE ON public.valores_documento FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
+- `auditoria_configuracion.proteger_auditoria_configuracion`: `CREATE TRIGGER proteger_auditoria_configuracion BEFORE DELETE OR UPDATE ON public.auditoria_configuracion FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
+- `auditoria_documental.proteger_auditoria_documental`: `CREATE TRIGGER proteger_auditoria_documental BEFORE DELETE OR UPDATE ON public.auditoria_documental FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
+- `cambios_nombre_campo.proteger_cambios_campo`: `CREATE TRIGGER proteger_cambios_campo BEFORE DELETE OR UPDATE ON public.cambios_nombre_campo FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
+- `delegaciones_documento.proteger_delegaciones`: `CREATE TRIGGER proteger_delegaciones BEFORE DELETE OR UPDATE ON public.delegaciones_documento FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
+- `pdf_eventos.proteger_pdf_eventos`: `CREATE TRIGGER proteger_pdf_eventos BEFORE DELETE OR UPDATE ON public.pdf_eventos FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
+- `documentos_relaciones.proteger_relaciones`: `CREATE TRIGGER proteger_relaciones BEFORE DELETE OR UPDATE ON public.documentos_relaciones FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
+- `campos_opcionales.registrar_cambio_nombre_campo`: `CREATE TRIGGER registrar_cambio_nombre_campo BEFORE UPDATE ON public.campos_opcionales FOR EACH ROW EXECUTE FUNCTION registrar_cambio_nombre_campo()`
+- `delegaciones_documento.validar_delegacion`: `CREATE TRIGGER validar_delegacion BEFORE INSERT ON public.delegaciones_documento FOR EACH ROW EXECUTE FUNCTION validar_delegacion()`
+- `documentos.validar_documento_actualizacion`: `CREATE TRIGGER validar_documento_actualizacion BEFORE UPDATE ON public.documentos FOR EACH ROW EXECUTE FUNCTION validar_documento_actualizacion()`
+- `miembros_ambito.validar_miembro_ambito`: `CREATE TRIGGER validar_miembro_ambito BEFORE INSERT OR UPDATE ON public.miembros_ambito FOR EACH ROW EXECUTE FUNCTION validar_miembro_ambito()`
+- `documentos_pdf.validar_pdf_permiso`: `CREATE TRIGGER validar_pdf_permiso BEFORE INSERT OR DELETE OR UPDATE ON public.documentos_pdf FOR EACH ROW EXECUTE FUNCTION validar_pdf_permiso()`
+- `documentos_relaciones.validar_relacion`: `CREATE TRIGGER validar_relacion BEFORE INSERT ON public.documentos_relaciones FOR EACH ROW EXECUTE FUNCTION validar_relacion()`
+- `tipos_documentales.validar_tipo_documental`: `CREATE TRIGGER validar_tipo_documental BEFORE INSERT ON public.tipos_documentales FOR EACH ROW EXECUTE FUNCTION validar_tipo_documental()`
+- `ubicaciones_documento.validar_ubicacion`: `CREATE TRIGGER validar_ubicacion BEFORE INSERT ON public.ubicaciones_documento FOR EACH ROW EXECUTE FUNCTION validar_ubicacion()`
+- `unidades_ubicacion.validar_unidad_ubicacion`: `CREATE TRIGGER validar_unidad_ubicacion BEFORE INSERT OR UPDATE ON public.unidades_ubicacion FOR EACH ROW EXECUTE FUNCTION validar_unidad_ubicacion()`
+- `usuarios.validar_usuario_oficina`: `CREATE TRIGGER validar_usuario_oficina BEFORE INSERT OR UPDATE ON public.usuarios FOR EACH ROW EXECUTE FUNCTION validar_usuario_oficina()`
+- `valores_documento.validar_valor_documento`: `CREATE TRIGGER validar_valor_documento BEFORE INSERT ON public.valores_documento FOR EACH ROW EXECUTE FUNCTION validar_valor_documento()`
+
+## Restricciones
+
+- `ambitos_registro.ambitos_registro_check`: `CHECK (((clase = 'PERSONAL'::text) = (titular_id IS NOT NULL)))`
+- `ambitos_registro.ambitos_registro_clase_check`: `CHECK ((clase = ANY (ARRAY['COMPARTIDO_DIRECCION'::text, 'PERSONAL'::text])))`
+- `ambitos_registro.ambitos_registro_clase_not_null`: `NOT NULL clase`
+- `ambitos_registro.ambitos_registro_creado_en_not_null`: `NOT NULL creado_en`
+- `ambitos_registro.ambitos_registro_id_clase_key`: `UNIQUE (id, clase)`
+- `ambitos_registro.ambitos_registro_id_not_null`: `NOT NULL id`
+- `ambitos_registro.ambitos_registro_pkey`: `PRIMARY KEY (id)`
+- `ambitos_registro.ambitos_registro_titular_id_fkey`: `FOREIGN KEY (titular_id) REFERENCES usuarios(id)`
+- `ambitos_registro.ambitos_registro_titular_id_key`: `UNIQUE (titular_id)`
+- `auditoria_configuracion.auditoria_configuracion_accion_not_null`: `NOT NULL accion`
+- `auditoria_configuracion.auditoria_configuracion_actor_id_fkey`: `FOREIGN KEY (actor_id) REFERENCES usuarios(id)`
+- `auditoria_configuracion.auditoria_configuracion_actor_id_not_null`: `NOT NULL actor_id`
+- `auditoria_configuracion.auditoria_configuracion_entidad_id_not_null`: `NOT NULL entidad_id`
+- `auditoria_configuracion.auditoria_configuracion_entidad_not_null`: `NOT NULL entidad`
+- `auditoria_configuracion.auditoria_configuracion_fecha_not_null`: `NOT NULL fecha`
+- `auditoria_configuracion.auditoria_configuracion_id_not_null`: `NOT NULL id`
+- `auditoria_configuracion.auditoria_configuracion_pkey`: `PRIMARY KEY (id)`
+- `auditoria_documental.auditoria_documental_accion_not_null`: `NOT NULL accion`
+- `auditoria_documental.auditoria_documental_actor_id_fkey`: `FOREIGN KEY (actor_id) REFERENCES usuarios(id)`
+- `auditoria_documental.auditoria_documental_actor_id_not_null`: `NOT NULL actor_id`
+- `auditoria_documental.auditoria_documental_check`: `CHECK (((accion <> ALL (ARRAY['CORRECCION'::text, 'ANULACION'::text])) OR (length(btrim(COALESCE(motivo, ''::text))) > 0)))`
+- `auditoria_documental.auditoria_documental_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
+- `auditoria_documental.auditoria_documental_documento_id_not_null`: `NOT NULL documento_id`
+- `auditoria_documental.auditoria_documental_fecha_not_null`: `NOT NULL fecha`
+- `auditoria_documental.auditoria_documental_id_not_null`: `NOT NULL id`
+- `auditoria_documental.auditoria_documental_pkey`: `PRIMARY KEY (id)`
+- `cambios_nombre_campo.cambios_nombre_campo_actor_id_fkey`: `FOREIGN KEY (actor_id) REFERENCES usuarios(id)`
+- `cambios_nombre_campo.cambios_nombre_campo_actor_id_not_null`: `NOT NULL actor_id`
+- `cambios_nombre_campo.cambios_nombre_campo_campo_id_fkey`: `FOREIGN KEY (campo_id) REFERENCES campos_opcionales(id)`
+- `cambios_nombre_campo.cambios_nombre_campo_campo_id_not_null`: `NOT NULL campo_id`
+- `cambios_nombre_campo.cambios_nombre_campo_fecha_not_null`: `NOT NULL fecha`
+- `cambios_nombre_campo.cambios_nombre_campo_id_not_null`: `NOT NULL id`
+- `cambios_nombre_campo.cambios_nombre_campo_motivo_check`: `CHECK ((length(btrim(motivo)) > 0))`
+- `cambios_nombre_campo.cambios_nombre_campo_motivo_not_null`: `NOT NULL motivo`
+- `cambios_nombre_campo.cambios_nombre_campo_nombre_anterior_not_null`: `NOT NULL nombre_anterior`
+- `cambios_nombre_campo.cambios_nombre_campo_nombre_nuevo_not_null`: `NOT NULL nombre_nuevo`
+- `cambios_nombre_campo.cambios_nombre_campo_pkey`: `PRIMARY KEY (id)`
+- `campos_opcionales.campos_opcionales_creado_en_not_null`: `NOT NULL creado_en`
+- `campos_opcionales.campos_opcionales_creado_por_fkey`: `FOREIGN KEY (creado_por) REFERENCES usuarios(id)`
+- `campos_opcionales.campos_opcionales_creado_por_not_null`: `NOT NULL creado_por`
+- `campos_opcionales.campos_opcionales_id_not_null`: `NOT NULL id`
+- `campos_opcionales.campos_opcionales_id_usuario_id_key`: `UNIQUE (id, usuario_id)`
+- `campos_opcionales.campos_opcionales_nombre_actual_check`: `CHECK ((length(btrim(nombre_actual)) > 0))`
+- `campos_opcionales.campos_opcionales_nombre_actual_not_null`: `NOT NULL nombre_actual`
+- `campos_opcionales.campos_opcionales_pkey`: `PRIMARY KEY (id)`
+- `campos_opcionales.campos_opcionales_usuario_id_fkey`: `FOREIGN KEY (usuario_id) REFERENCES usuarios(id)`
+- `campos_opcionales.campos_opcionales_usuario_id_nombre_actual_key`: `UNIQUE (usuario_id, nombre_actual)`
+- `campos_opcionales.campos_opcionales_usuario_id_not_null`: `NOT NULL usuario_id`
+- `correlativos_documentales.correlativos_documentales_ambito_id_not_null`: `NOT NULL ambito_id`
+- `correlativos_documentales.correlativos_documentales_anio_check`: `CHECK (((anio >= 2000) AND (anio <= 9999)))`
+- `correlativos_documentales.correlativos_documentales_anio_not_null`: `NOT NULL anio`
+- `correlativos_documentales.correlativos_documentales_pkey`: `PRIMARY KEY (ambito_id, tipo_id, anio)`
+- `correlativos_documentales.correlativos_documentales_tipo_id_ambito_id_fkey`: `FOREIGN KEY (tipo_id, ambito_id) REFERENCES tipos_documentales(id, ambito_id)`
+- `correlativos_documentales.correlativos_documentales_tipo_id_not_null`: `NOT NULL tipo_id`
+- `correlativos_documentales.correlativos_documentales_ultimo_numero_check`: `CHECK ((ultimo_numero > 0))`
+- `correlativos_documentales.correlativos_documentales_ultimo_numero_not_null`: `NOT NULL ultimo_numero`
+- `delegaciones_documento.delegaciones_documento_check`: `CHECK (((oficina_indicada_id IS NULL) OR (usuario_indicado_id IS NOT NULL)))`
+- `delegaciones_documento.delegaciones_documento_delegado_en_not_null`: `NOT NULL delegado_en`
+- `delegaciones_documento.delegaciones_documento_delegado_por_fkey`: `FOREIGN KEY (delegado_por) REFERENCES usuarios(id)`
+- `delegaciones_documento.delegaciones_documento_delegado_por_not_null`: `NOT NULL delegado_por`
+- `delegaciones_documento.delegaciones_documento_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
+- `delegaciones_documento.delegaciones_documento_documento_id_not_null`: `NOT NULL documento_id`
+- `delegaciones_documento.delegaciones_documento_nombre_persona_guardado_check`: `CHECK ((length(btrim(nombre_persona_guardado)) > 0))`
+- `delegaciones_documento.delegaciones_documento_nombre_persona_guardado_not_null`: `NOT NULL nombre_persona_guardado`
+- `delegaciones_documento.delegaciones_documento_oficina_indicada_id_fkey`: `FOREIGN KEY (oficina_indicada_id) REFERENCES oficinas(id)`
+- `delegaciones_documento.delegaciones_documento_pkey`: `PRIMARY KEY (documento_id)`
+- `delegaciones_documento.delegaciones_documento_usuario_indicado_id_fkey`: `FOREIGN KEY (usuario_indicado_id) REFERENCES usuarios(id)`
+- `delegaciones_documento.delegaciones_documento_usuario_indicado_id_oficina_indicad_fkey`: `FOREIGN KEY (usuario_indicado_id, oficina_indicada_id) REFERENCES usuarios(id, oficina_id)`
+- `documentos.documento_estado_con_hecho`: `TRIGGER DEFERRABLE INITIALLY DEFERRED`
+- `documentos.documentos_actualizado_en_not_null`: `NOT NULL actualizado_en`
+- `documentos.documentos_ambito_id_codigo_visible_key`: `UNIQUE (ambito_id, codigo_visible)`
+- `documentos.documentos_ambito_id_not_null`: `NOT NULL ambito_id`
+- `documentos.documentos_ambito_id_registrado_por_fkey`: `FOREIGN KEY (ambito_id, registrado_por) REFERENCES miembros_ambito(ambito_id, usuario_id)`
+- `documentos.documentos_ambito_id_tipo_id_anio_correlativo_key`: `UNIQUE (ambito_id, tipo_id, anio, correlativo)`
+- `documentos.documentos_anio_not_null`: `NOT NULL anio`
+- `documentos.documentos_asunto_check`: `CHECK ((length(btrim(asunto)) > 0))`
+- `documentos.documentos_asunto_not_null`: `NOT NULL asunto`
+- `documentos.documentos_check`: `CHECK (((situacion = 'ANULADO'::text) = (situacion_antes_anulacion IS NOT NULL)))`
+- `documentos.documentos_clasificacion_check`: `CHECK ((clasificacion = ANY (ARRAY['RECIBIDO'::text, 'EMITIDO'::text])))`
+- `documentos.documentos_clasificacion_not_null`: `NOT NULL clasificacion`
+- `documentos.documentos_codigo_visible_not_null`: `NOT NULL codigo_visible`
+- `documentos.documentos_correlativo_check`: `CHECK ((correlativo > 0))`
+- `documentos.documentos_correlativo_not_null`: `NOT NULL correlativo`
+- `documentos.documentos_creado_en_not_null`: `NOT NULL creado_en`
+- `documentos.documentos_id_not_null`: `NOT NULL id`
+- `documentos_pdf.documentos_pdf_actualizado_en_not_null`: `NOT NULL actualizado_en`
+- `documentos_pdf.documentos_pdf_actualizado_por_fkey`: `FOREIGN KEY (actualizado_por) REFERENCES usuarios(id)`
+- `documentos_pdf.documentos_pdf_actualizado_por_not_null`: `NOT NULL actualizado_por`
+- `documentos_pdf.documentos_pdf_clave_r2_key`: `UNIQUE (clave_r2)`
+- `documentos_pdf.documentos_pdf_clave_r2_not_null`: `NOT NULL clave_r2`
+- `documentos_pdf.documentos_pdf_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
+- `documentos_pdf.documentos_pdf_documento_id_not_null`: `NOT NULL documento_id`
+- `documentos_pdf.documentos_pdf_nombre_check`: `CHECK ((length(btrim(nombre)) > 0))`
+- `documentos_pdf.documentos_pdf_nombre_not_null`: `NOT NULL nombre`
+- `documentos_pdf.documentos_pdf_pkey`: `PRIMARY KEY (documento_id)`
+- `documentos_pdf.documentos_pdf_revision_key`: `UNIQUE (revision)`
+- `documentos_pdf.documentos_pdf_revision_not_null`: `NOT NULL revision`
+- `documentos_pdf.documentos_pdf_tamano_bytes_check`: `CHECK (((tamano_bytes >= 1) AND (tamano_bytes <= 15728640)))`
+- `documentos_pdf.documentos_pdf_tamano_bytes_not_null`: `NOT NULL tamano_bytes`
+- `documentos_pdf.documentos_pdf_tipo_mime_check`: `CHECK ((tipo_mime = 'application/pdf'::text))`
+- `documentos_pdf.documentos_pdf_tipo_mime_not_null`: `NOT NULL tipo_mime`
+- `documentos.documentos_pkey`: `PRIMARY KEY (id)`
+- `documentos.documentos_prefijo_guardado_not_null`: `NOT NULL prefijo_guardado`
+- `documentos.documentos_registrado_por_not_null`: `NOT NULL registrado_por`
+- `documentos_relaciones.documentos_relaciones_check`: `CHECK ((documento_id <> origen_id))`
+- `documentos_relaciones.documentos_relaciones_creado_en_not_null`: `NOT NULL creado_en`
+- `documentos_relaciones.documentos_relaciones_creado_por_fkey`: `FOREIGN KEY (creado_por) REFERENCES usuarios(id)`
+- `documentos_relaciones.documentos_relaciones_creado_por_not_null`: `NOT NULL creado_por`
+- `documentos_relaciones.documentos_relaciones_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
+- `documentos_relaciones.documentos_relaciones_documento_id_not_null`: `NOT NULL documento_id`
+- `documentos_relaciones.documentos_relaciones_origen_id_fkey`: `FOREIGN KEY (origen_id) REFERENCES documentos(id)`
+- `documentos_relaciones.documentos_relaciones_origen_id_not_null`: `NOT NULL origen_id`
+- `documentos_relaciones.documentos_relaciones_pkey`: `PRIMARY KEY (documento_id)`
+- `documentos.documentos_revision_check`: `CHECK ((revision > 0))`
+- `documentos.documentos_revision_not_null`: `NOT NULL revision`
+- `documentos.documentos_situacion_check`: `CHECK ((situacion = ANY (ARRAY['PENDIENTE_DIRECCION'::text, 'EN_MESA_DE_PARTES'::text, 'GUARDADO_DIRECCION'::text, 'PERSONAL'::text, 'DELEGADO'::text, 'ANULADO'::text])))`
+- `documentos.documentos_situacion_not_null`: `NOT NULL situacion`
+- `documentos.documentos_tipo_id_ambito_id_fkey`: `FOREIGN KEY (tipo_id, ambito_id) REFERENCES tipos_documentales(id, ambito_id)`
+- `documentos.documentos_tipo_id_not_null`: `NOT NULL tipo_id`
+- `documentos.documentos_tipo_nombre_guardado_not_null`: `NOT NULL tipo_nombre_guardado`
+- `miembros_ambito.miembros_ambito_ambito_id_fkey`: `FOREIGN KEY (ambito_id) REFERENCES ambitos_registro(id)`
+- `miembros_ambito.miembros_ambito_ambito_id_not_null`: `NOT NULL ambito_id`
+- `miembros_ambito.miembros_ambito_ambito_id_usuario_id_key`: `UNIQUE (ambito_id, usuario_id)`
+- `miembros_ambito.miembros_ambito_pkey`: `PRIMARY KEY (usuario_id)`
+- `miembros_ambito.miembros_ambito_usuario_id_fkey`: `FOREIGN KEY (usuario_id) REFERENCES usuarios(id)`
+- `miembros_ambito.miembros_ambito_usuario_id_not_null`: `NOT NULL usuario_id`
+- `oficinas.oficinas_activa_not_null`: `NOT NULL activa`
+- `oficinas.oficinas_creada_en_not_null`: `NOT NULL creada_en`
+- `oficinas.oficinas_id_not_null`: `NOT NULL id`
+- `oficinas.oficinas_nombre_check`: `CHECK ((length(btrim(nombre)) > 0))`
+- `oficinas.oficinas_nombre_key`: `UNIQUE (nombre)`
+- `oficinas.oficinas_nombre_not_null`: `NOT NULL nombre`
+- `oficinas.oficinas_pkey`: `PRIMARY KEY (id)`
+- `pdf_cargas.pdf_cargas_actor_id_fkey`: `FOREIGN KEY (actor_id) REFERENCES usuarios(id)`
+- `pdf_cargas.pdf_cargas_actor_id_not_null`: `NOT NULL actor_id`
+- `pdf_cargas.pdf_cargas_clave_definitiva_key`: `UNIQUE (clave_definitiva)`
+- `pdf_cargas.pdf_cargas_clave_definitiva_not_null`: `NOT NULL clave_definitiva`
+- `pdf_cargas.pdf_cargas_clave_temporal_key`: `UNIQUE (clave_temporal)`
+- `pdf_cargas.pdf_cargas_clave_temporal_not_null`: `NOT NULL clave_temporal`
+- `pdf_cargas.pdf_cargas_creada_en_not_null`: `NOT NULL creada_en`
+- `pdf_cargas.pdf_cargas_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
+- `pdf_cargas.pdf_cargas_documento_id_not_null`: `NOT NULL documento_id`
+- `pdf_cargas.pdf_cargas_id_not_null`: `NOT NULL id`
+- `pdf_cargas.pdf_cargas_nombre_not_null`: `NOT NULL nombre`
+- `pdf_cargas.pdf_cargas_pkey`: `PRIMARY KEY (id)`
+- `pdf_cargas.pdf_cargas_tamano_bytes_check`: `CHECK (((tamano_bytes >= 1) AND (tamano_bytes <= 15728640)))`
+- `pdf_cargas.pdf_cargas_tamano_bytes_not_null`: `NOT NULL tamano_bytes`
+- `pdf_cargas.pdf_cargas_vence_en_not_null`: `NOT NULL vence_en`
+- `pdf_eventos.pdf_eventos_accion_check`: `CHECK ((accion = ANY (ARRAY['CARGA'::text, 'REEMPLAZO'::text, 'ELIMINACION'::text, 'LIMPIEZA_PENDIENTE'::text, 'LIMPIEZA_COMPLETADA'::text])))`
+- `pdf_eventos.pdf_eventos_accion_not_null`: `NOT NULL accion`
+- `pdf_eventos.pdf_eventos_actor_id_fkey`: `FOREIGN KEY (actor_id) REFERENCES usuarios(id)`
+- `pdf_eventos.pdf_eventos_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
+- `pdf_eventos.pdf_eventos_documento_id_not_null`: `NOT NULL documento_id`
+- `pdf_eventos.pdf_eventos_fecha_not_null`: `NOT NULL fecha`
+- `pdf_eventos.pdf_eventos_id_not_null`: `NOT NULL id`
+- `pdf_eventos.pdf_eventos_pkey`: `PRIMARY KEY (id)`
+- `pdf_objetos_pendientes.pdf_objetos_pendientes_clave_r2_not_null`: `NOT NULL clave_r2`
+- `pdf_objetos_pendientes.pdf_objetos_pendientes_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
+- `pdf_objetos_pendientes.pdf_objetos_pendientes_documento_id_not_null`: `NOT NULL documento_id`
+- `pdf_objetos_pendientes.pdf_objetos_pendientes_intentos_check`: `CHECK ((intentos >= 0))`
+- `pdf_objetos_pendientes.pdf_objetos_pendientes_intentos_not_null`: `NOT NULL intentos`
+- `pdf_objetos_pendientes.pdf_objetos_pendientes_limpiar_desde_not_null`: `NOT NULL limpiar_desde`
+- `pdf_objetos_pendientes.pdf_objetos_pendientes_pkey`: `PRIMARY KEY (clave_r2)`
+- `roles.roles_codigo_check`: `CHECK ((codigo = ANY (ARRAY['SUPERADMINISTRADOR'::text, 'ADMINISTRADOR'::text, 'DIRECTOR'::text, 'SECRETARIA_DIRECCION'::text, 'USUARIO'::text])))`
+- `roles.roles_codigo_key`: `UNIQUE (codigo)`
+- `roles.roles_codigo_not_null`: `NOT NULL codigo`
+- `roles.roles_id_not_null`: `NOT NULL id`
+- `roles.roles_pkey`: `PRIMARY KEY (id)`
+- `tipos_documentales.tipos_documentales_activo_not_null`: `NOT NULL activo`
+- `tipos_documentales.tipos_documentales_ambito_id_fkey`: `FOREIGN KEY (ambito_id) REFERENCES ambitos_registro(id)`
+- `tipos_documentales.tipos_documentales_ambito_id_nombre_key`: `UNIQUE (ambito_id, nombre)`
+- `tipos_documentales.tipos_documentales_ambito_id_not_null`: `NOT NULL ambito_id`
+- `tipos_documentales.tipos_documentales_ambito_id_prefijo_key`: `UNIQUE (ambito_id, prefijo)`
+- `tipos_documentales.tipos_documentales_creado_en_not_null`: `NOT NULL creado_en`
+- `tipos_documentales.tipos_documentales_creado_por_fkey`: `FOREIGN KEY (creado_por) REFERENCES usuarios(id)`
+- `tipos_documentales.tipos_documentales_creado_por_not_null`: `NOT NULL creado_por`
+- `tipos_documentales.tipos_documentales_id_ambito_id_key`: `UNIQUE (id, ambito_id)`
+- `tipos_documentales.tipos_documentales_id_not_null`: `NOT NULL id`
+- `tipos_documentales.tipos_documentales_nombre_check`: `CHECK ((length(btrim(nombre)) > 0))`
+- `tipos_documentales.tipos_documentales_nombre_not_null`: `NOT NULL nombre`
+- `tipos_documentales.tipos_documentales_pkey`: `PRIMARY KEY (id)`
+- `tipos_documentales.tipos_documentales_prefijo_check`: `CHECK ((prefijo ~ '^[A-Z]{2,8}$'::text))`
+- `tipos_documentales.tipos_documentales_prefijo_not_null`: `NOT NULL prefijo`
+- `ubicaciones_documento.ubicaciones_documento_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
+- `ubicaciones_documento.ubicaciones_documento_documento_id_not_null`: `NOT NULL documento_id`
+- `ubicaciones_documento.ubicaciones_documento_id_not_null`: `NOT NULL id`
+- `ubicaciones_documento.ubicaciones_documento_oficina_nombre_guardado_not_null`: `NOT NULL oficina_nombre_guardado`
+- `ubicaciones_documento.ubicaciones_documento_pkey`: `PRIMARY KEY (id)`
+- `ubicaciones_documento.ubicaciones_documento_registrado_en_not_null`: `NOT NULL registrado_en`
+- `ubicaciones_documento.ubicaciones_documento_registrado_por_fkey`: `FOREIGN KEY (registrado_por) REFERENCES usuarios(id)`
+- `ubicaciones_documento.ubicaciones_documento_registrado_por_not_null`: `NOT NULL registrado_por`
+- `ubicaciones_documento.ubicaciones_documento_ruta_ubicacion_guardada_not_null`: `NOT NULL ruta_ubicacion_guardada`
+- `ubicaciones_documento.ubicaciones_documento_unidad_id_fkey`: `FOREIGN KEY (unidad_id) REFERENCES unidades_ubicacion(id)`
+- `ubicaciones_documento.ubicaciones_documento_unidad_id_not_null`: `NOT NULL unidad_id`
+- `ubicaciones_documento.ubicaciones_documento_vigente_not_null`: `NOT NULL vigente`
+- `unidades_ubicacion.unidades_ubicacion_activo_not_null`: `NOT NULL activo`
+- `unidades_ubicacion.unidades_ubicacion_check`: `CHECK ((padre_id IS DISTINCT FROM id))`
+- `unidades_ubicacion.unidades_ubicacion_clase_check`: `CHECK ((length(btrim(clase)) > 0))`
+- `unidades_ubicacion.unidades_ubicacion_clase_not_null`: `NOT NULL clase`
+- `unidades_ubicacion.unidades_ubicacion_creado_en_not_null`: `NOT NULL creado_en`
+- `unidades_ubicacion.unidades_ubicacion_id_not_null`: `NOT NULL id`
+- `unidades_ubicacion.unidades_ubicacion_id_propietario_id_key`: `UNIQUE (id, propietario_id)`
+- `unidades_ubicacion.unidades_ubicacion_nombre_check`: `CHECK ((length(btrim(nombre)) > 0))`
+- `unidades_ubicacion.unidades_ubicacion_nombre_not_null`: `NOT NULL nombre`
+- `unidades_ubicacion.unidades_ubicacion_oficina_id_not_null`: `NOT NULL oficina_id`
+- `unidades_ubicacion.unidades_ubicacion_padre_id_propietario_id_fkey`: `FOREIGN KEY (padre_id, propietario_id) REFERENCES unidades_ubicacion(id, propietario_id)`
+- `unidades_ubicacion.unidades_ubicacion_pkey`: `PRIMARY KEY (id)`
+- `unidades_ubicacion.unidades_ubicacion_propietario_id_not_null`: `NOT NULL propietario_id`
+- `unidades_ubicacion.unidades_ubicacion_propietario_id_oficina_id_fkey`: `FOREIGN KEY (propietario_id, oficina_id) REFERENCES usuarios(id, oficina_id)`
+- `usuarios.usuarios_activo_not_null`: `NOT NULL activo`
+- `usuarios.usuarios_actualizada_en_not_null`: `NOT NULL actualizada_en`
+- `usuarios.usuarios_apellido_check`: `CHECK ((length(btrim(apellido)) > 0))`
+- `usuarios.usuarios_apellido_not_null`: `NOT NULL apellido`
+- `usuarios.usuarios_contrasena_hash_check`: `CHECK ((length(btrim(contrasena_hash)) > 0))`
+- `usuarios.usuarios_contrasena_hash_not_null`: `NOT NULL contrasena_hash`
+- `usuarios.usuarios_creada_en_not_null`: `NOT NULL creada_en`
+- `usuarios.usuarios_email_key`: `UNIQUE (email)`
+- `usuarios.usuarios_id_not_null`: `NOT NULL id`
+- `usuarios.usuarios_id_oficina_id_key`: `UNIQUE (id, oficina_id)`
+- `usuarios.usuarios_nombre_check`: `CHECK ((length(btrim(nombre)) > 0))`
+- `usuarios.usuarios_nombre_not_null`: `NOT NULL nombre`
+- `usuarios.usuarios_nombre_usuario_check`: `CHECK ((length(btrim(nombre_usuario)) > 0))`
+- `usuarios.usuarios_nombre_usuario_key`: `UNIQUE (nombre_usuario)`
+- `usuarios.usuarios_nombre_usuario_not_null`: `NOT NULL nombre_usuario`
+- `usuarios.usuarios_oficina_id_fkey`: `FOREIGN KEY (oficina_id) REFERENCES oficinas(id)`
+- `usuarios.usuarios_pkey`: `PRIMARY KEY (id)`
+- `usuarios.usuarios_rol_id_fkey`: `FOREIGN KEY (rol_id) REFERENCES roles(id)`
+- `usuarios.usuarios_rol_id_not_null`: `NOT NULL rol_id`
+- `usuarios.usuarios_version_autenticacion_check`: `CHECK ((version_autenticacion >= 0))`
+- `usuarios.usuarios_version_autenticacion_not_null`: `NOT NULL version_autenticacion`
+- `valores_documento.valores_documento_campo_id_fkey`: `FOREIGN KEY (campo_id) REFERENCES campos_opcionales(id)`
+- `valores_documento.valores_documento_campo_id_not_null`: `NOT NULL campo_id`
+- `valores_documento.valores_documento_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
+- `valores_documento.valores_documento_documento_id_not_null`: `NOT NULL documento_id`
+- `valores_documento.valores_documento_nombre_guardado_not_null`: `NOT NULL nombre_guardado`
+- `valores_documento.valores_documento_pkey`: `PRIMARY KEY (documento_id, campo_id)`
+- `valores_documento.valores_documento_valor_not_null`: `NOT NULL valor`

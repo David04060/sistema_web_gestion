@@ -1,0 +1,58 @@
+[
+  {
+    "cliente": 1440,
+    "contenido": 1440,
+    "fuentes": [
+      "\"IBM Plex Sans\", Arial, system-ui, sans-serif"
+    ],
+    "ruta": "/usuarios"
+  },
+  {
+    "cliente": 1440,
+    "contenido": 1440,
+    "fuentes": [
+      "\"IBM Plex Sans\", Arial, system-ui, sans-serif"
+    ],
+    "ruta": "/usuarios/nuevo"
+  },
+  {
+    "cliente": 1440,
+    "contenido": 1440,
+    "fuentes": [
+      "\"IBM Plex Sans\", Arial, system-ui, sans-serif"
+    ],
+    "ruta": "/oficinas"
+  },
+  {
+    "cliente": 1440,
+    "contenido": 1440,
+    "fuentes": [
+      "\"IBM Plex Sans\", Arial, system-ui, sans-serif"
+    ],
+    "ruta": "/roles"
+  },
+  {
+    "cliente": 1440,
+    "contenido": 1440,
+    "fuentes": [
+      "\"IBM Plex Sans\", Arial, system-ui, sans-serif"
+    ],
+    "ruta": "/campos-opcionales"
+  },
+  {
+    "cliente": 1440,
+    "contenido": 1440,
+    "fuentes": [
+      "\"IBM Plex Sans\", Arial, system-ui, sans-serif"
+    ],
+    "ruta": "/ubicaciones"
+  },
+  {
+    "cliente": 1425,
+    "contenido": 1425,
+    "fuentes": [
+      "\"IBM Plex Sans\", Arial, system-ui, sans-serif"
+    ],
+    "ruta": "/documentos"
+  }
+]

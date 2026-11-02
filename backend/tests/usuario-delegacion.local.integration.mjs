@@ -30,6 +30,11 @@ test('Usuario local: registro, delegación personal, movimientos, privacidad y c
   await http('POST',`/api/documentos/${id}/confirmar-entrega`,'Usuario',{revision:0},403);
   const simultaneas=await Promise.all([manual,{nombre:'Otra persona'}].map(async body=>{const r=await fetch(base+`/api/documentos/${registrados[1].id}/delegar-personal`,{method:'POST',headers:{Authorization:'Bearer '+roles.Usuario.token,Origin:base,'Content-Type':'application/json'},body:JSON.stringify(body)});await r.json();return r.status;}));assert.deepEqual(simultaneas.sort(),[200,409]);
   for(const d of registrados)for(const rol of ['Director(a)','Secretaria de Dirección','Administrador']){await http('GET','/api/documentos/'+d.id,rol,undefined,404);await http('GET',`/api/documentos/${d.id}/historial`,rol,undefined,404);await http('POST',`/api/documentos/${d.id}/delegar-personal`,rol,manual,404);assert.equal((await http('GET','/api/documentos?q='+d.codigo,rol)).total,0);}
+  for(const d of registrados)for(const rol of ['Director(a)','Secretaria de Dirección','Administrador']){
+   await http('GET',`/api/documentos/${d.id}/pdf`,rol,undefined,404);
+   await http('POST',`/api/documentos/${d.id}/pdf/abrir`,rol,{descargar:true},404);
+   await http('POST',`/api/documentos/${d.id}/pdf/cargas`,rol,{nombre:'privado.pdf',tamano:100,mime:'application/pdf',revision:null},404);
+  }
   const ajeno=(await c.query("SELECT d.id::text FROM documentos d JOIN usuarios u ON u.id=d.registrado_por_id JOIN roles r ON r.id=u.rol_id JOIN tipos_documentales td ON td.id=d.tipo_documental_id WHERE r.nombre='Director(a)' AND NOT td.requiere_clave ORDER BY d.id LIMIT 1")).rows[0].id;
   await http('GET','/api/documentos/'+ajeno,'Usuario',undefined,404);await http('POST',`/api/documentos/${ajeno}/delegar-personal`,'Usuario',manual,404);
   const movimientos=await http('GET','/api/movimientos?limite=100','Usuario');assert.ok(movimientos.delegaciones.length>=4);assert.equal(movimientos.movimientos,undefined);

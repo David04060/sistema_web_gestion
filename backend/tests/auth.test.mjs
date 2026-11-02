@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import jwt from 'jsonwebtoken';
 // Aislamiento explícito: no se cargan credenciales ni se conecta a PostgreSQL.
-process.env.DATABASE_URL = 'postgresql://fixture:fixture@127.0.0.1:1/fixture';
+process.env.DATABASE_URL = 'postgresql://fixture:fixture@127.0.0.1:1/sistema_web_documental_final';
 process.env.JWT_SECRET = 'secreto-exclusivo-de-pruebas-locales-000000';
 const { app } = await import('../dist/app.js');
 const { pool } = await import('../dist/config/database.js');
@@ -48,7 +48,7 @@ test('Regresiones de autenticación, criptografía y HTTP con repositorio simula
             const token = generarToken(usuario.id, 0);
             assert.deepEqual(verificarToken(token), { sub: usuario.id, version: 0 });
             const payload = jwt.decode(token);
-            assert.equal(payload.exp - payload.iat, 900);
+            assert.equal(payload.exp - payload.iat, 3600);
         });
         await t.test('JWT: rechaza ausencia de exp, expiración, algoritmo, audiencia, versión e ID inválidos', /** Verifica el caso «JWT: rechaza ausencia de exp, expiración, algoritmo, audiencia, versión e ID inválidos»; una aserción fallida invalida este resultado. */ () => {
             const invalidos = [
@@ -98,7 +98,7 @@ test('Regresiones de autenticación, criptografía y HTTP con repositorio simula
             const body = await res.json();
             assert.deepEqual(Object.keys(body).sort(), ['expiresIn', 'tipo', 'token', 'usuario']);
             assert.equal(body.tipo, 'Bearer');
-            assert.equal(body.expiresIn, 900);
+            assert.equal(body.expiresIn, 3600);
             assert.equal(body.usuario.id, usuario.id);
             assert.equal('contrasena_hash' in body.usuario, false);
             assert.equal('version_autenticacion' in body.usuario, false);

@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { loginSchema, type LoginInput } from '../schemas/auth.schema';
 import styles from '../styles/Login.module.css';
+import logo from '../../../assets/logo-institucion.jpg';
+import {SelectorTema} from '../../../components/ui/SelectorTema';
+import {Icono} from '../../../components/icons/Icono';
 interface Props {
     cargando: boolean;
     error: string;
@@ -32,20 +35,23 @@ export function LoginPage({ cargando, error, mensaje, onIngresar }: Props) {
         await onIngresar(resultado.data);
     }
     return (<main className={styles.pagina}>
+        <div className={styles.apariencia}><SelectorTema /></div>
         <div className={styles.contenedor}>
             <header className={styles.encabezado}>
-                <div className={styles.logo} aria-hidden="true">EP</div>
+                <img className={styles.logo} src={logo} alt="Escudo oficial de la I.E. Enrique Paillardelle" width="104" height="104" />
                 <span className={styles.institucion}>I.E. ENRIQUE PAILLARDELLE</span>
-                <h1>Sistema Web Documental</h1>
-                <p>Gestión, organización, búsqueda y ubicación de documentos institucionales.</p>
+                <h1>La documentación institucional, en su lugar.</h1>
+                <p>Registra, consulta y organiza los documentos de la I.E. Enrique Paillardelle desde un solo espacio.</p>
+                <div className={styles.sello}><Icono nombre="documentos" tamano={20}/><span>Sistema de Gestión Documental<small>Acceso para personal autorizado</small></span></div>
             </header>
             <section className={styles.tarjeta} aria-labelledby="titulo-login">
+                <span className={styles.eyebrow}>BIENVENIDO A TU ESPACIO DE TRABAJO</span>
                 <h2 id="titulo-login">Iniciar sesión</h2>
                 <p className={styles.descripcion}>Ingresa tus credenciales para acceder al sistema.</p>
                 <form onSubmit={handleSubmit(enviar)} noValidate aria-busy={cargando}>
                     <div className={styles.campo}>
                         <label htmlFor="identificador">Usuario o correo electrónico</label>
-                        <input id="identificador" type="text" autoComplete="username" placeholder="Ingresa tu usuario o correo" maxLength={254} disabled={cargando} required aria-invalid={!!errors.identificador} aria-describedby={errors.identificador ? 'error-identificador' : undefined} {...register('identificador')} />
+                        <input id="identificador" type="text" autoComplete="username" placeholder="Ej.: nombre.apellido" maxLength={254} disabled={cargando} required aria-invalid={!!errors.identificador} aria-describedby={errors.identificador ? 'error-identificador' : undefined} {...register('identificador')} />
                         {errors.identificador && <p id="error-identificador" className={styles.error} role="alert">
                             {errors.identificador.message}
                         </p>}
@@ -73,7 +79,7 @@ export function LoginPage({ cargando, error, mensaje, onIngresar }: Props) {
                     </button>
                 </form>
             </section>
-            <footer className={styles.pie}>Institución Educativa Enrique Paillardelle</footer>
+            <footer className={styles.pie}>¿Necesitas acceso? Consulta con la administración del sistema.<br/>Institución Educativa Enrique Paillardelle · Tacna</footer>
         </div>
     </main>);
 }

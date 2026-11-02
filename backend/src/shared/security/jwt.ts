@@ -4,8 +4,8 @@ import { env } from "../../config/env.js";
 const ALGORITMO = "HS256";
 const EMISOR = "sistema-web-documental";
 const AUDIENCIA = "sistema-web-documental-api";
-/** Duración ya utilizada por la API: una sola fuente para la firma y expiresIn. */
-export const TOKEN_DURACION_SEGUNDOS = 900;
+/** Sesión de una hora para todos los roles; fuente única para la firma y expiresIn. */
+export const TOKEN_DURACION_SEGUNDOS = 3600;
 export interface JwtPayload {
     sub: string;
     version: number;

@@ -1,0 +1,38 @@
+[
+  {
+    "ancho": 1440,
+    "cliente": 1440,
+    "contenido": 1440,
+    "fuentes": [
+      "\"IBM Plex Sans\", Arial, system-ui, sans-serif"
+    ],
+    "tema": "claro"
+  },
+  {
+    "ancho": 1440,
+    "cliente": 1440,
+    "contenido": 1440,
+    "fuentes": [
+      "\"IBM Plex Sans\", Arial, system-ui, sans-serif"
+    ],
+    "tema": "oscuro"
+  },
+  {
+    "ancho": 375,
+    "cliente": 360,
+    "contenido": 360,
+    "fuentes": [
+      "\"IBM Plex Sans\", Arial, system-ui, sans-serif"
+    ],
+    "tema": "claro"
+  },
+  {
+    "ancho": 375,
+    "cliente": 360,
+    "contenido": 360,
+    "fuentes": [
+      "\"IBM Plex Sans\", Arial, system-ui, sans-serif"
+    ],
+    "tema": "oscuro"
+  }
+]

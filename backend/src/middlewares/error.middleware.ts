@@ -11,6 +11,10 @@ export const manejarError: ErrorRequestHandler = (error: unknown, _req, res, nex
         return;
     }
     const codigo = error && typeof error === "object" && "code" in error ? error.code : undefined;
+    if (codigo === 'P0001' || codigo === '40001' || codigo === '40P01') {
+        res.status(409).json({error:'La operación no es compatible con el estado o la versión actual; vuelva a consultar'});
+        return;
+    }
     if (codigo === "23505") {
         res.status(409).json({ error: "El nombre de usuario, correo o denominación ya está registrado" });
         return;
