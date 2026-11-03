@@ -27,7 +27,7 @@ services:
       - key: NEON_HOST
         sync: false
       - key: NEON_DATABASE
-        value: sistema_web_documental_final
+        value: sistema_documental_produccion
       - key: R2_PDF_PREFIX
         value: produccion/
       - key: CORS_ORIGINS
