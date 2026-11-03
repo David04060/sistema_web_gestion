@@ -1,17 +1,68 @@
-import {Router} from 'express';
-import {requiereAuth,type RequestAutenticada} from '../../middlewares/auth.middleware.js';
-import {validar} from '../../shared/http/validar.js';
-import * as s from './documentos.operaciones.js';
-export const documentosRouter=Router();
-documentosRouter.use(requiereAuth,(_q,r,n)=>{r.setHeader('Cache-Control','no-store, private');n();});
-const actor=(q:RequestAutenticada)=>q.usuario!.id;
-documentosRouter.get('/opciones',async(q:RequestAutenticada,r)=>r.json(await s.opciones(actor(q))));
-documentosRouter.get('/',async(q:RequestAutenticada,r)=>r.json(await s.listar(actor(q),validar(s.filtros,q.query))));
-documentosRouter.post('/',async(q:RequestAutenticada,r)=>r.status(201).json(await s.registrar(actor(q),validar(s.alta,q.body))));
-documentosRouter.get('/:id/historial',async(q:RequestAutenticada,r)=>r.json(await s.historial(actor(q),validar(s.id,q.params.id))));
-documentosRouter.get('/:id/auditoria',async(q:RequestAutenticada,r)=>r.json(await s.auditoria(actor(q),validar(s.id,q.params.id))));
-documentosRouter.get('/:id',async(q:RequestAutenticada,r)=>r.json(await s.detalle(actor(q),validar(s.id,q.params.id))));
-documentosRouter.put('/:id',async(q:RequestAutenticada,r)=>r.json(await s.corregir(actor(q),validar(s.id,q.params.id),validar(s.correccion,q.body))));
-documentosRouter.post('/:id/delegar',async(q:RequestAutenticada,r)=>r.json(await s.delegar(actor(q),validar(s.id,q.params.id),validar(s.delegacion,q.body))));
-documentosRouter.post('/:id/ubicacion',async(q:RequestAutenticada,r)=>r.json(await s.ubicar(actor(q),validar(s.id,q.params.id),validar(s.ubicacion,q.body))));
-documentosRouter.post('/:id/anular',async(q:RequestAutenticada,r)=>r.json(await s.anular(actor(q),validar(s.id,q.params.id),validar(s.anulacion,q.body))));
+import { Router } from 'express';
+import { requiereAuth, type RequestAutenticada } from '../../middlewares/auth.middleware.js';
+import { validar } from '../../shared/http/validar.js';
+import * as operaciones from './documentos.operaciones.js';
+import { descargarExcel } from './exportacion.controller.js';
+export const documentosRouter = Router();
+documentosRouter.use(requiereAuth, (_q, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, private');
+  next();
+});
+const actor = (req: RequestAutenticada) => req.usuario!.id;
+documentosRouter.get('/opciones', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.opciones(actor(req))),
+);
+documentosRouter.get('/exportar-excel', descargarExcel);
+documentosRouter.get('/', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.listar(actor(req), validar(operaciones.filtros, req.query))),
+);
+documentosRouter.post('/', async (req: RequestAutenticada, res) =>
+  res
+    .status(201)
+    .json(await operaciones.registrar(actor(req), validar(operaciones.alta, req.body))),
+);
+documentosRouter.get('/:id/historial', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.historial(actor(req), validar(operaciones.id, req.params.id))),
+);
+documentosRouter.get('/:id/auditoria', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.auditoria(actor(req), validar(operaciones.id, req.params.id))),
+);
+documentosRouter.get('/:id', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.detalle(actor(req), validar(operaciones.id, req.params.id))),
+);
+documentosRouter.put('/:id', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.corregir(
+      actor(req),
+      validar(operaciones.id, req.params.id),
+      validar(operaciones.correccion, req.body),
+    ),
+  ),
+);
+documentosRouter.post('/:id/delegar', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.delegar(
+      actor(req),
+      validar(operaciones.id, req.params.id),
+      validar(operaciones.delegacion, req.body),
+    ),
+  ),
+);
+documentosRouter.post('/:id/ubicacion', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.ubicar(
+      actor(req),
+      validar(operaciones.id, req.params.id),
+      validar(operaciones.ubicacion, req.body),
+    ),
+  ),
+);
+documentosRouter.post('/:id/anular', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.anular(
+      actor(req),
+      validar(operaciones.id, req.params.id),
+      validar(operaciones.anulacion, req.body),
+    ),
+  ),
+);

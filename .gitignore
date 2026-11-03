@@ -32,3 +32,6 @@ docs/*APLICAD*.json
 *.dump.enc
 *.backup.enc
 *.key
+
+# Capturas y resultados QA con datos locales; se conservan en disco.
+docs/qa-*/

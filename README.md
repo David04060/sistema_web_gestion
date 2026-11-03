@@ -98,6 +98,9 @@ Zod, Fetch API, CSS Modules y ESLint.
 Backend: Node.js, Express, TypeScript, PostgreSQL, `pg`, JWT con `jsonwebtoken`,
 `scrypt` de `node:crypto`, Zod, Helmet, `tsx` y ESLint.
 
+ExcelJS: biblioteca de Node.js usada en el backend para generar archivos Excel `.xlsx`.
+La exportación mensual está documentada en [docs/EXPORTACION_EXCEL_LOCAL.md](docs/EXPORTACION_EXCEL_LOCAL.md); esta referencia se conserva para la actualización posterior del fundamento técnico y los conceptos técnicos del entregable académico.
+
 PostgreSQL utiliza `pg` y SQL directo parametrizado, sin ORM. Fetch API, CSS Modules
 y `scrypt` no necesitan dependencias independientes. Se conservan `dotenv` y
 `express-rate-limit`, que ya forman parte de la implementación existente.

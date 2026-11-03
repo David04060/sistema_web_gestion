@@ -1,3 +1,5 @@
+import './helpers/exigir-aislamiento.mjs';
+import {verificarEntornoPrueba} from './helpers/entorno-prueba.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes} from 'node:crypto';
@@ -7,12 +9,11 @@ import {generarToken} from '../dist/shared/security/jwt.js';
 import {editarUsuario,editarOficina} from '../dist/modules/usuarios/administracion.operaciones.js';
 
 test('API local real: Superadministrador protegido y edición autorizada con rollback',async t=>{
- const identidad=(await pool.query("SELECT current_database() base,inet_server_addr()::text host,(SELECT oid::text FROM pg_database WHERE datname=current_database()) oid")).rows[0];
- assert.equal(identidad.base,'sistema_web_documental_final');assert.equal(identidad.oid,'98367');assert.ok(['::1/128','127.0.0.1/32'].includes(identidad.host));
+ await verificarEntornoPrueba(pool);
  const indice=(await pool.query("SELECT indisunique,indisvalid FROM pg_index WHERE indexrelid='public.ux_superadministrador_unico'::regclass")).rows[0];assert.ok(indice?.indisunique&&indice.indisvalid,'Debe conservarse el índice único del Superadministrador');
  const antes=(await pool.query('SELECT * FROM usuarios ORDER BY id')).rows;
  const superadmin=antes.find(u=>u.rol_id===1&&u.activo),admin=antes.find(u=>u.rol_id===2&&u.activo);
- assert.ok(superadmin&&admin,'Se requieren las cuentas locales existentes; la prueba no crea cuentas');
+ assert.ok(superadmin&&admin,'El runner debe preparar las cuentas sintéticas de los cinco roles');
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
  const base='http://127.0.0.1:'+server.address().port;
  const tokens=new Map(antes.filter(u=>u.activo).map(u=>[u.rol_id,generarToken(String(u.id),u.version_autenticacion)]));

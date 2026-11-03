@@ -1,3 +1,4 @@
+import './helpers/exigir-aislamiento.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import * as dashboard from '../dist/modules/dashboard/dashboard.documental.js';

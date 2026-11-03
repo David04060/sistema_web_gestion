@@ -1,30 +1,148 @@
-import {Router} from 'express';
-import {z} from 'zod';
-import {requiereAuth,type RequestAutenticada} from '../../middlewares/auth.middleware.js';
-import {validar} from '../../shared/http/validar.js';
-import {id} from '../documentos/documentos.operaciones.js';
-import * as s from './administracion.operaciones.js';
-export const administracionRouter=Router();
-administracionRouter.use((q,_r,n)=>{if(!/^\/(usuarios|roles|oficinas|tipos-documentales|ubicaciones|campos-opcionales)(\/|$)/.test(q.path))return n('router');n();});
-administracionRouter.use(requiereAuth,(_q,r,n)=>{r.setHeader('Cache-Control','no-store, private');n();});
-const actor=(q:RequestAutenticada)=>q.usuario!.id;
-administracionRouter.get('/usuarios',async(q:RequestAutenticada,r)=>r.json(await s.usuarios(actor(q),validar(s.filtrosUsuarios,q.query))));
-administracionRouter.get('/usuarios/:id',async(q:RequestAutenticada,r)=>r.json(await s.detalleUsuario(actor(q),validar(id,q.params.id))));
-administracionRouter.post('/usuarios',async(q:RequestAutenticada,r)=>r.status(201).json(await s.crearUsuario(actor(q),validar(s.usuarioAlta,q.body))));
-administracionRouter.put('/usuarios/:id',async(q:RequestAutenticada,r)=>r.json(await s.editarUsuario(actor(q),validar(id,q.params.id),validar(s.usuarioEdicion,q.body))));
-administracionRouter.post('/usuarios/:id/actividad',async(q:RequestAutenticada,r)=>r.json(await s.cambiarActividad(actor(q),validar(id,q.params.id),validar(s.actividad,q.body))));
-administracionRouter.post('/usuarios/:id/clave',async(q:RequestAutenticada,r)=>{const v=validar(z.object({contrasena:z.string().min(8, 'La contraseña debe tener mínimo 8 caracteres').max(128, 'La contraseña debe tener máximo 128 caracteres')}).strict(),q.body);r.json(await s.cambiarClave(actor(q),validar(id,q.params.id),v.contrasena));});
-administracionRouter.get('/roles',async(q:RequestAutenticada,r)=>r.json({roles:(await s.catalogos(actor(q))).roles}));
-administracionRouter.get('/oficinas',async(q:RequestAutenticada,r)=>r.json(await s.oficinas(actor(q))));
-administracionRouter.get('/oficinas/:id',async(q:RequestAutenticada,r)=>r.json(await s.detalleOficina(actor(q),validar(id,q.params.id))));
-administracionRouter.post('/oficinas',async(q:RequestAutenticada,r)=>r.status(201).json(await s.crearOficina(actor(q),validar(s.nombre,q.body))));
-administracionRouter.put('/oficinas/:id',async(q:RequestAutenticada,r)=>r.json(await s.editarOficina(actor(q),validar(id,q.params.id),validar(s.oficinaEdicion,q.body))));
-administracionRouter.post('/oficinas/:id/actividad',async(q:RequestAutenticada,r)=>r.json(await s.cambiarActividadOficina(actor(q),validar(id,q.params.id),validar(s.oficinaActividad,q.body))));
-administracionRouter.get('/tipos-documentales',async(q:RequestAutenticada,r)=>r.json(await s.tipos(actor(q))));
-administracionRouter.post('/tipos-documentales',async(q:RequestAutenticada,r)=>r.status(201).json(await s.crearTipo(actor(q),validar(s.tipo,q.body))));
-administracionRouter.get('/ubicaciones',async(q:RequestAutenticada,r)=>r.json(await s.unidades(actor(q),q.query.usuario_id===undefined?undefined:validar(id,q.query.usuario_id))));
-administracionRouter.post('/ubicaciones',async(q:RequestAutenticada,r)=>r.status(201).json(await s.crearUnidad(actor(q),validar(s.unidad,q.body))));
-administracionRouter.put('/ubicaciones/:id',async(q:RequestAutenticada,r)=>r.json(await s.editarUnidad(actor(q),validar(id,q.params.id),validar(s.unidad,q.body))));
-administracionRouter.get('/campos-opcionales',async(q:RequestAutenticada,r)=>r.json(await s.campos(actor(q),q.query.usuario_id===undefined?undefined:validar(id,q.query.usuario_id))));
-administracionRouter.post('/campos-opcionales',async(q:RequestAutenticada,r)=>r.status(201).json(await s.crearCampo(actor(q),validar(s.campo,q.body))));
-administracionRouter.put('/campos-opcionales/:id',async(q:RequestAutenticada,r)=>r.json(await s.renombrarCampo(actor(q),validar(id,q.params.id),validar(s.renombrar,q.body))));
+import { Router } from 'express';
+import { z } from 'zod';
+import { requiereAuth, type RequestAutenticada } from '../../middlewares/auth.middleware.js';
+import { validar } from '../../shared/http/validar.js';
+import { idSchema as id } from '../../shared/admin/admin.schema.js';
+import * as operaciones from './administracion.operaciones.js';
+export const administracionRouter = Router();
+administracionRouter.use((req, _r, next) => {
+  if (
+    !/^\/(usuarios|roles|oficinas|tipos-documentales|ubicaciones|campos-opcionales)(\/|$)/.test(
+      req.path,
+    )
+  )
+    return next('router');
+  next();
+});
+administracionRouter.use(requiereAuth, (_q, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, private');
+  next();
+});
+const actor = (req: RequestAutenticada) => req.usuario!.id;
+administracionRouter.get('/usuarios', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.usuarios(actor(req), validar(operaciones.filtrosUsuarios, req.query))),
+);
+administracionRouter.get('/usuarios/:id', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.detalleUsuario(actor(req), validar(id, req.params.id))),
+);
+administracionRouter.post('/usuarios', async (req: RequestAutenticada, res) =>
+  res
+    .status(201)
+    .json(await operaciones.crearUsuario(actor(req), validar(operaciones.usuarioAlta, req.body))),
+);
+administracionRouter.put('/usuarios/:id', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.editarUsuario(
+      actor(req),
+      validar(id, req.params.id),
+      validar(operaciones.usuarioEdicion, req.body),
+    ),
+  ),
+);
+administracionRouter.post('/usuarios/:id/actividad', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.cambiarActividad(
+      actor(req),
+      validar(id, req.params.id),
+      validar(operaciones.actividad, req.body),
+    ),
+  ),
+);
+administracionRouter.post('/usuarios/:id/clave', async (req: RequestAutenticada, res) => {
+  const v = validar(
+    z
+      .object({
+        contrasena: z
+          .string()
+          .min(8, 'La contraseña debe tener mínimo 8 caracteres')
+          .max(128, 'La contraseña debe tener máximo 128 caracteres'),
+      })
+      .strict(),
+    req.body,
+  );
+  res.json(await operaciones.cambiarClave(actor(req), validar(id, req.params.id), v.contrasena));
+});
+administracionRouter.get('/roles', async (req: RequestAutenticada, res) =>
+  res.json({ roles: (await operaciones.catalogos(actor(req))).roles }),
+);
+administracionRouter.get('/oficinas', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.oficinas(actor(req))),
+);
+administracionRouter.get('/oficinas/:id', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.detalleOficina(actor(req), validar(id, req.params.id))),
+);
+administracionRouter.post('/oficinas', async (req: RequestAutenticada, res) =>
+  res
+    .status(201)
+    .json(await operaciones.crearOficina(actor(req), validar(operaciones.nombre, req.body))),
+);
+administracionRouter.put('/oficinas/:id', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.editarOficina(
+      actor(req),
+      validar(id, req.params.id),
+      validar(operaciones.oficinaEdicion, req.body),
+    ),
+  ),
+);
+administracionRouter.post('/oficinas/:id/actividad', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.cambiarActividadOficina(
+      actor(req),
+      validar(id, req.params.id),
+      validar(operaciones.oficinaActividad, req.body),
+    ),
+  ),
+);
+administracionRouter.get('/tipos-documentales', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.tipos(actor(req))),
+);
+administracionRouter.post('/tipos-documentales', async (req: RequestAutenticada, res) =>
+  res
+    .status(201)
+    .json(await operaciones.crearTipo(actor(req), validar(operaciones.tipo, req.body))),
+);
+administracionRouter.get('/ubicaciones', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.unidades(
+      actor(req),
+      req.query.usuario_id === undefined ? undefined : validar(id, req.query.usuario_id),
+    ),
+  ),
+);
+administracionRouter.post('/ubicaciones', async (req: RequestAutenticada, res) =>
+  res
+    .status(201)
+    .json(await operaciones.crearUnidad(actor(req), validar(operaciones.unidad, req.body))),
+);
+administracionRouter.put('/ubicaciones/:id', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.editarUnidad(
+      actor(req),
+      validar(id, req.params.id),
+      validar(operaciones.unidad, req.body),
+    ),
+  ),
+);
+administracionRouter.get('/campos-opcionales', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.campos(
+      actor(req),
+      req.query.usuario_id === undefined ? undefined : validar(id, req.query.usuario_id),
+    ),
+  ),
+);
+administracionRouter.post('/campos-opcionales', async (req: RequestAutenticada, res) =>
+  res
+    .status(201)
+    .json(await operaciones.crearCampo(actor(req), validar(operaciones.campo, req.body))),
+);
+administracionRouter.put('/campos-opcionales/:id', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.renombrarCampo(
+      actor(req),
+      validar(id, req.params.id),
+      validar(operaciones.renombrar, req.body),
+    ),
+  ),
+);

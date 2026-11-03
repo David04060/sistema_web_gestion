@@ -9,7 +9,7 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc -b --pretty false",
     "preview": "vite preview",
-    "test": "node --test tests/contracts.test.mjs tests/session.test.mjs tests/routes.test.mjs tests/pdf.test.mjs tests/documental.test.mjs tests/detalle-documental.test.mjs tests/tema.test.mjs tests/dashboard-graficos.test.mjs",
+    "test": "node --test tests/contracts.test.mjs tests/session.test.mjs tests/routes.test.mjs tests/pdf.test.mjs tests/documental.test.mjs tests/detalle-documental.test.mjs tests/tema.test.mjs tests/dashboard-graficos.test.mjs tests/exportacion-excel.test.mjs",
     "analyze:bundle": "node scripts/analizar-bundle.mjs",
     "build:clasificacion:dev": "tsc -b && node scripts/build-clasificacion-dev.mjs"
   },
@@ -19,6 +19,7 @@
     "react-dom": "^19.3.1",
     "react-hook-form": "^7.90.0",
     "react-router-dom": "^7.18.4",
+    "recharts": "^3.10.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

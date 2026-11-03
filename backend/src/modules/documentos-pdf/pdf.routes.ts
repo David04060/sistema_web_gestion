@@ -1,12 +1,50 @@
-import {Router} from 'express';
-import {requiereAuth,type RequestAutenticada} from '../../middlewares/auth.middleware.js';
-import {validar} from '../../shared/http/validar.js';
-import {id} from '../documentos/documentos.operaciones.js';
-import {iniciarSchema,confirmarSchema,eliminarSchema,abrirSchema} from './pdf.schema.js';
-import {pdfActual as s} from './pdf.documental.js';
-export const pdfRouter=Router();pdfRouter.use(requiereAuth,(_q,r,n)=>{r.setHeader('Cache-Control','no-store, private');n();});
-pdfRouter.get('/:id/pdf',async(q:RequestAutenticada,r)=>r.json(await s.consultar(q.usuario!.id,validar(id,q.params.id))));
-pdfRouter.post('/:id/pdf/cargas',async(q:RequestAutenticada,r)=>r.json(await s.iniciar(q.usuario!.id,validar(id,q.params.id),validar(iniciarSchema,q.body))));
-pdfRouter.post('/:id/pdf/confirmar',async(q:RequestAutenticada,r)=>r.json(await s.confirmar(q.usuario!.id,validar(id,q.params.id),validar(confirmarSchema,q.body).carga)));
-pdfRouter.post('/:id/pdf/eliminar',async(q:RequestAutenticada,r)=>r.json(await s.eliminar(q.usuario!.id,validar(id,q.params.id),validar(eliminarSchema,q.body).revision)));
-pdfRouter.post('/:id/pdf/abrir',async(q:RequestAutenticada,r)=>r.json(await s.abrir(q.usuario!.id,validar(id,q.params.id),validar(abrirSchema,q.body).descargar)));
+import { Router } from 'express';
+import { requiereAuth, type RequestAutenticada } from '../../middlewares/auth.middleware.js';
+import { validar } from '../../shared/http/validar.js';
+import { idSchema as id } from '../../shared/admin/admin.schema.js';
+import { iniciarSchema, confirmarSchema, eliminarSchema, abrirSchema } from './pdf.schema.js';
+import { pdfActual as operaciones } from './pdf.documental.js';
+export const pdfRouter = Router();
+pdfRouter.use(requiereAuth, (_q, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, private');
+  next();
+});
+pdfRouter.get('/:id/pdf', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.consultar(req.usuario!.id, validar(id, req.params.id))),
+);
+pdfRouter.post('/:id/pdf/cargas', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.iniciar(
+      req.usuario!.id,
+      validar(id, req.params.id),
+      validar(iniciarSchema, req.body),
+    ),
+  ),
+);
+pdfRouter.post('/:id/pdf/confirmar', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.confirmar(
+      req.usuario!.id,
+      validar(id, req.params.id),
+      validar(confirmarSchema, req.body).carga,
+    ),
+  ),
+);
+pdfRouter.post('/:id/pdf/eliminar', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.eliminar(
+      req.usuario!.id,
+      validar(id, req.params.id),
+      validar(eliminarSchema, req.body).revision,
+    ),
+  ),
+);
+pdfRouter.post('/:id/pdf/abrir', async (req: RequestAutenticada, res) =>
+  res.json(
+    await operaciones.abrir(
+      req.usuario!.id,
+      validar(id, req.params.id),
+      validar(abrirSchema, req.body).descargar,
+    ),
+  ),
+);

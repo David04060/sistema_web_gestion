@@ -1,28 +1,39 @@
-# Dashboard — variación del MASTER
+# Dashboard — decisiones finales del 2 de noviembre de 2026
 
-Consultar ../MASTER.md, incluida la decisión IBM Plex Sans aprobada el 2 de noviembre de 2026. Se conservan márgenes, paletas, indicadores, accesos rápidos y documentos recientes existentes.
+Esta especificación reemplaza la versión anterior de esta página. Se aplica junto a la última decisión de MASTER.md. IBM Plex Sans local; gráficos dentro de la ruta diferida, sin fuentes ni datos externos.
 
-## Preguntas y representación
+## Composición
 
-- Tipos documentales vigentes: barras horizontales con nombre registrado, cantidad y porcentaje del total vigente del grupo. Largo relativo al mayor conteo; denominador visible. Lista textual siempre disponible.
-- Registros por mes: serie temporal de 12 meses calendario, incluido el actual parcial, zona America/Lima, con tabla nativa desplegable. Vigentes en línea sólida/círculos, anulados en línea discontinua/cuadrados cuando existan; el color nunca es la única diferencia. En móvil se presenta una lista mensual con cantidades legibles en lugar de encoger las etiquetas del SVG.
-- Cuentas por rol: barras de cantidades y porcentaje de cuentas visibles. Actividad de cuentas: anillo solo para las dos categorías activa/inactiva, acompañado de cantidades y porcentajes en texto.
-- Oficinas activas/inactivas: cantidades textuales. No añadir otro gráfico que repita la distribución de dos categorías del anillo.
+Título breve por rol, saludo, actualización y registro cuando corresponda. Indicadores documentales en cuadrícula adaptable; colores por situación estables y coincidentes con el anillo. Gráficos antes de accesos rápidos y recientes. Paneles independientes, superficies neutras, bordes discretos. Dos columnas en escritorio y tableta; una bajo 650 px. Cifras resumidas en dos columnas en móvil.
 
-## Ámbitos
+## Visualizaciones y fuentes
 
-- Usuario: personal propio, no anulados. Sus tarjetas de situación ya existentes se conservan; no repetirlas en otro gráfico.
-- Secretaría: gráficos del ámbito compartido; pendientes de Dirección son un subconjunto del mismo total. El resumen/recientes existente mantiene su alcance autorizado previo y los gráficos llevan su ámbito explícito.
-- Dirección: compartido y personales ajenos en grupos mutuamente excluyentes. El segundo grupo se consulta en un details con etiqueta solo lectura, sin sumar indicadores superpuestos.
-- Administrador: solo cuentas/oficinas; no solicitar ni renderizar series documentales. Excluir Superadministrador en cada denominador administrativo.
-- Superadministrador: global autorizado; total = vigentes + anulados. Tipos únicamente vigentes; serie mensual distingue ambas condiciones. Datos administrativos globales incluyen todos sus roles autorizados.
+Fuente única: GET /api/dashboard, validada con dashboardSchema de frontend/src/api/documental.ts. Recharts 3.10.1, sin animaciones, ResponsiveContainer, ejes, cuadrícula, tooltip y navegación con teclado. No se consultan listados para obtener estadísticas.
 
-## Estados y accesibilidad
+- Usuario: anillo de situación personal, barras de tipos vigentes y actividad por mes.
+- Secretaría: anillo de situación del ámbito compartido, barras de tipos y actividad mensual de ese mismo grupo. Las tarjetas superiores y recientes conservan el conjunto autorizado original y pueden incluir documentos de otros ámbitos consultables. El título de cada grupo distingue su alcance.
+- Dirección: grupo compartido y grupo de ámbitos personales ajenos en sección plegable «solo lectura». No sumar estos gráficos con las tarjetas de resumen.
+- Administrador: barras de cuentas por rol, anillo de activas/inactivas y cifras de oficinas. No solicita documentos; Superadministración no entra en sus denominadores.
+- Superadministrador: distribución global incluyendo anulados, tipos vigentes y actividad mensual con anulados separados. Además, cuentas y oficinas globales.
 
-Sin datos: mensajes claros sin gráficos ficticios. Meses sin registros: cero dentro del periodo explícito; no extrapolar fechas fuera de la ventana. Meses con total cero en todo el periodo: mensaje y tabla, sin línea decorativa. Si solo hay datos históricos anteriores a la ventana, mantener la distribución histórica y explicar que no hay registros en el periodo mensual.
+Anillos: leyenda completa con cantidades y porcentajes; centro con total. Situaciones: personal azul, pendiente dorado, delegado terracota, guardado verde, Mesa de Partes gris, anulado error. Actividad: activa verde, inactiva gris. Barras: escala de cantidades, etiquetas y tabla de cantidades y porcentajes; nombres largos completos en tooltip y tabla.
 
-IBM Plex Sans para HTML, SVG y cifras tabulares. Controles details con teclado y foco heredado; etiquetas, pies, leyendas y tablas usan tokens actuales en ambos modos. Puntos y leyendas no dependen de hover. Sin animación de trazado. Unidades documentales y administrativas no se mezclan.
+Enlaces de las leyendas a /documentos?situacion=… solo para los grupos personal y global, cuyo ámbito coincide con el listado. Los grupos compartidos y ajenos no enlazan a un filtro que amplíe su alcance.
 
-## Fuente ejecutable
+## Tiempo, ceros y accesibilidad
 
-GET /api/dashboard → backend/src/modules/dashboard/dashboard.documental.ts, consultarDashboard dentro de REPEATABLE READ READ ONLY. Identidad revalidada por actorActual; lecturaSQL limita cada agregado documental. No hay descarga de documentos completos para calcular gráficos. Frontend: api/documental.ts y features/dashboard/components/GraficosDashboard.tsx.
+Ventana del backend: doce meses calendario. Encabezado breve con meses inicial/final y cantidad. Por defecto el gráfico abarca desde el primer mes con registros hasta el último, conservando ceros intermedios. Selector «Todos los meses» recupera la ventana completa. Se indica cuántos meses no tienen registros; la tabla conserva siempre los doce meses y las cifras de vigentes/anulados/total.
+
+Solo un mes activo: columnas, sin simular tendencia. Ninguno activo: vacío informativo y tabla; no dibujar una línea plana. Dos o más: línea de vigentes, anulados discontinua si corresponde. Color, texto y estilo de línea se complementan.
+
+Tablas nativas desplegables y leyendas disponibles sin hover. Tooltip con cantidades; anillos y barras también porcentajes. Foco visible, flechas en los gráficos y controles nativos. Sin animación, compatible con movimiento reducido. Carga inicial con esqueleto y sin cifras ficticias; actualización conserva cifras y anuncia el proceso; error con reintento.
+
+## Evidencia
+
+Ver docs/INFORME_DASHBOARDS_LOCAL_20261102.md y docs/qa-dashboard-20261102. El informe distingue respuestas reales, escenarios sintéticos de navegador y límites. No modificar cuentas, documentos, PDF ni permisos para presentar datos.
+
+## Ajuste posterior de color — 2 de noviembre de 2026
+
+Aplica la última paleta de MASTER.md: negro #08090b, capas oscuras diferenciadas y gráficos más nítidos en ambos temas. Las tarjetas claras conservan sus acentos mediante --indicador-*; las visualizaciones usan --grafico-*.
+
+Las barras por tipo/rol usan colores estables por categoría y marcas de leyenda en su propio eje, sin cambiar tamaños ni distribución. Los meses mantienen un color por serie: azul vigentes y rojo anulados cuando existan. Las columnas muestran cantidades. No añadir categorías o series para llenar la paleta; un tipo o un mes activo se indican brevemente. Evidencia específica: docs/AJUSTE_PALETA_OSCURA_20261102.md.

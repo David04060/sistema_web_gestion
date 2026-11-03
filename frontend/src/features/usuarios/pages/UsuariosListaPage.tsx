@@ -5,4 +5,61 @@ import { useAuth } from '../../auth/hooks/useAuth';
 import { useConsulta } from '../../../hooks/useConsulta';
 import { EstadoCarga } from '../../../components/ui/EstadoCarga';
 import styles from '../../../components/ui/Admin.module.css';
-export function UsuariosListaPage() { const { token } = useAuth().sesion!; const consulta = useConsulta(useCallback(() => config.usuarios(token), [token])); return <main className={styles.pagina}><h1>Usuarios</h1><Link className={styles.boton} to="/usuarios/nuevo">Crear cuenta</Link><EstadoCarga {...consulta} reintentar={consulta.recargar}/>{consulta.datos && <section className={styles.tarjeta}><div className={`${styles.tabla} ${styles.tablaUsuarios}`}><table><thead><tr><th>Cuenta</th><th>Nombre</th><th>Rol</th><th>Oficina</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{consulta.datos.usuarios.map(u => <tr key={u.id}><td data-label="Cuenta"><Link to={'/usuarios/' + u.id}>{u.nombre_usuario}</Link></td><td data-label="Nombre">{u.nombre} {u.apellido}</td><td data-label="Rol">{u.rol}</td><td data-label="Oficina">{u.oficina ?? 'Sin oficina'}</td><td data-label="Estado"><span className={`${styles.estado} ${u.activo?'':styles.inactivo}`}>{u.activo ? 'Activa' : 'Inactiva'}</span></td><td data-label="Acciones"><Link className={styles.secundario} to={'/usuarios/'+u.id}>Ver detalle</Link></td></tr>)}</tbody></table></div>{!consulta.datos.usuarios.length && <p className={styles.vacio}>No hay cuentas registradas.</p>}</section>}</main>; }
+export function UsuariosListaPage() {
+  const { token } = useAuth().sesion!;
+  const consulta = useConsulta(useCallback(() => config.usuarios(token), [token]));
+  return (
+    <main className={styles.pagina}>
+      <h1>Usuarios</h1>
+      <Link className={styles.boton} to="/usuarios/nuevo">
+        Crear cuenta
+      </Link>
+      <EstadoCarga {...consulta} reintentar={consulta.recargar} />
+      {consulta.datos && (
+        <section className={styles.tarjeta}>
+          <div className={`${styles.tabla} ${styles.tablaUsuarios}`}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Cuenta</th>
+                  <th>Nombre</th>
+                  <th>Rol</th>
+                  <th>Oficina</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {consulta.datos.usuarios.map((u) => (
+                  <tr key={u.id}>
+                    <td data-label="Cuenta">
+                      <Link to={'/usuarios/' + u.id}>{u.nombre_usuario}</Link>
+                    </td>
+                    <td data-label="Nombre">
+                      {u.nombre} {u.apellido}
+                    </td>
+                    <td data-label="Rol">{u.rol}</td>
+                    <td data-label="Oficina">{u.oficina ?? 'Sin oficina'}</td>
+                    <td data-label="Estado">
+                      <span className={`${styles.estado} ${u.activo ? '' : styles.inactivo}`}>
+                        {u.activo ? 'Activa' : 'Inactiva'}
+                      </span>
+                    </td>
+                    <td data-label="Acciones">
+                      <Link className={styles.secundario} to={'/usuarios/' + u.id}>
+                        Ver detalle
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!consulta.datos.usuarios.length && (
+            <p className={styles.vacio}>No hay cuentas registradas.</p>
+          )}
+        </section>
+      )}
+    </main>
+  );
+}

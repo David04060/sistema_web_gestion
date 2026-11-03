@@ -1,24 +1,178 @@
-.archivo button { min-height:44px; padding:10px 16px; border:1px solid var(--borde-control); border-radius:9px; background:var(--superficie-secundaria); color:var(--primario); font:inherit; font-size:.9375rem; font-weight:600; cursor:pointer; transition:background .15s,border-color .15s; }
-.archivo button:hover:not(:disabled) { background:var(--superficie-hover); border-color:var(--borde-control); }
-.archivo button:focus-visible { outline:3px solid var(--info); outline-offset:3px; }
-.archivo button:disabled { opacity:.5; cursor:not-allowed; }
-.archivo label { display:grid; gap:9px; margin:18px 0 12px; font-size:.9375rem; color:var(--texto-secundario); }
-.archivo input[type=file] { box-sizing:border-box; width:100%; min-width:0; padding:10px; border:1px dashed var(--borde-control); border-radius:9px; background:var(--superficie); }
-.archivo input::file-selector-button { padding:8px 12px; margin-right:12px; border:0; border-radius:6px; background:var(--superficie-secundaria); color:var(--primario); cursor:pointer; }
-.archivo p { overflow-wrap:anywhere; }
-@media(max-width:600px) { .archivo button { flex:1 1 100%; width:100%; } .archivo input::file-selector-button { display:block; margin-bottom:8px; } }
-.selectorOculto { display:none; }
-.resumen { display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; }
-.resumen p { margin:0; min-width:0; font-weight:600; color:var(--texto); }
-.acciones { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:14px; }
-.cabecera { display:flex; align-items:center; gap:18px; margin-bottom:18px; }
-.cabecera h3 { margin:0; min-width:0; overflow-wrap:anywhere; font-size:15px; }
-.herramientas { display:flex; flex-wrap:wrap; gap:10px; padding:14px; background:var(--superficie-secundaria); border:1px solid var(--borde); border-radius:10px; margin-bottom:16px; }
-.archivo .peligro { color:var(--error); border-color:var(--error-borde); background:var(--error-fondo); }
-.archivo .peligro:hover:not(:disabled) { background:var(--error-fondo); border-color:var(--error-borde); }
-.visor { border:1px solid var(--borde); border-radius:10px; overflow:hidden; background:var(--visor-fondo); width:100%; min-width:0; }
-.paginas { display:flex; align-items:center; justify-content:center; gap:14px; padding:12px; flex-wrap:wrap; background:var(--superficie-secundaria); }
-.paginas span { font-size:.9375rem; color:var(--texto-secundario); }
-.papel { padding:18px; overflow:auto; max-height:75vh; max-width:100%; min-width:0; text-align:center; overscroll-behavior:contain; }
-.papel canvas { display:block; max-width:100%; height:auto; margin:0 auto; background:#ffffff; box-shadow:0 3px 14px #20304724; }
-@media(max-width:600px) { .cabecera { align-items:stretch; flex-direction:column; gap:12px; } .herramientas { padding:10px; } .paginas { gap:8px; } .paginas button { width:auto; flex:0 1 auto; } .papel { padding:8px; } }
+.archivo button {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--borde-control);
+  border-radius: 9px;
+  background: var(--superficie-secundaria);
+  color: var(--primario);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.archivo button:hover:not(:disabled) {
+  background: var(--superficie-hover);
+  border-color: var(--borde-control);
+}
+.archivo button:focus-visible {
+  outline: 3px solid var(--info);
+  outline-offset: 3px;
+}
+.archivo button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.archivo label {
+  display: grid;
+  gap: 9px;
+  margin: 18px 0 12px;
+  font-size: 0.9375rem;
+  color: var(--texto-secundario);
+}
+.archivo input[type='file'] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px dashed var(--borde-control);
+  border-radius: 9px;
+  background: var(--superficie);
+}
+.archivo input::file-selector-button {
+  padding: 8px 12px;
+  margin-right: 12px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--superficie-secundaria);
+  color: var(--primario);
+  cursor: pointer;
+}
+.archivo p {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .archivo button {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .archivo input::file-selector-button {
+    display: block;
+    margin-bottom: 8px;
+  }
+}
+.resumen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.resumen p {
+  margin: 0;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--texto);
+}
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+}
+.herramientas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px;
+  background: var(--superficie-secundaria);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+.archivo .peligro {
+  color: var(--error);
+  border-color: var(--error-borde);
+  background: var(--error-fondo);
+}
+.archivo .peligro:hover:not(:disabled) {
+  background: var(--error-fondo);
+  border-color: var(--error-borde);
+}
+.visor {
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--visor-fondo);
+  width: 100%;
+  min-width: 0;
+}
+.visor > p {
+  margin: 0;
+  padding: 16px 20px;
+  background: var(--superficie);
+  border-bottom: 1px solid var(--borde);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+.visor > .visor {
+  width: calc(100% - 32px);
+  margin: 0 16px 16px;
+}
+.visor > .herramientas {
+  margin: 16px;
+}
+.visor > .acciones {
+  padding: 16px 20px;
+  background: var(--superficie);
+  border-top: 1px solid var(--borde);
+}
+.paginas {
+  background: var(--superficie-secundaria);
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--borde);
+}
+.paginas span {
+  font-size: 0.9375rem;
+  color: var(--texto-secundario);
+}
+.papel {
+  padding: 18px;
+  overflow: auto;
+  max-height: 75vh;
+  max-width: 100%;
+  min-width: 0;
+  text-align: center;
+  overscroll-behavior: contain;
+}
+.papel canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  background: #ffffff;
+  box-shadow: 0 3px 14px #20304724;
+}
+@media (max-width: 600px) {
+  .herramientas {
+    padding: 10px;
+  }
+  .paginas {
+    gap: 8px;
+  }
+  .paginas button {
+    width: auto;
+    flex: 0 1 auto;
+  }
+  .papel {
+    padding: 8px;
+  }
+}

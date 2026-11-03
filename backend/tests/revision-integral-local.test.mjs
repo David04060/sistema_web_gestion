@@ -1,3 +1,5 @@
+import './helpers/exigir-aislamiento.mjs';
+import {verificarEntornoPrueba,leerFixtures} from './helpers/entorno-prueba.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes} from 'node:crypto';
@@ -15,7 +17,7 @@ test('Fechas gregorianas y precisión: día, mes, año; límites imposibles rech
 
 test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante rollback',async t=>{
  const conectar=pool.connect.bind(pool),query=pool.query.bind(pool),c=await conectar();
- const identidad=(await c.query('SELECT current_database() base,inet_server_addr()::text host')).rows[0];assert.equal(identidad.base,'sistema_web_documental_final');assert.ok(['::1/128','127.0.0.1/32'].includes(identidad.host));
+ await verificarEntornoPrueba(c);
  const tablas=(await c.query("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY 1")).rows.map(r=>r.tablename);
  async function huella(){const r={};for(const tabla of tablas)r[tabla]=(await c.query(`SELECT count(*)::int n,md5(coalesce(string_agg(to_jsonb(t)::text,'' ORDER BY to_jsonb(t)::text),'')) hash FROM public.${tabla} t`)).rows[0];return r;}
  const anterior=await huella();await c.query('BEGIN');
@@ -31,6 +33,8 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
   await t.test('Dos Usuarios en la misma oficina tienen ámbito y catálogos separados',async()=>{
    ids.oficina=(await ok(admin,'/oficinas','POST',{nombre:'PRUEBA REVISIÓN '+marca},201)).id;
    for(const n of ['a','b'])ids[n]=(await ok(admin,'/usuarios','POST',{nombre:'PRUEBA REVISIÓN',apellido:n,nombre_usuario:'revision_'+marca+n,rol_id:5,oficina_id:ids.oficina,contrasena:randomBytes(16).toString('hex')},201)).id;
+   ids.sinOficina=(await ok(admin,'/usuarios','POST',{nombre:'PRUEBA REVISIÓN',apellido:'Sin oficina',nombre_usuario:'revision_'+marca+'_sin_oficina',rol_id:5,oficina_id:null,contrasena:randomBytes(16).toString('hex')},201)).id;
+   assert.equal((await ok(admin,'/usuarios/'+ids.sinOficina)).usuario.oficina_id,null);
    for(const actor of [ids.a,ids.b,sec]){const tipo=(await ok(actor,'/tipos-documentales','POST',{nombre:'PRUEBA REVISIÓN '+marca,prefijo:'REVINT'},201)).id;ids['tipo'+actor]=tipo;}
    for(const n of ['a','b']){const op=await ok(ids[n],'/documentos/opciones');assert.equal(op.tipos.some(x=>x.id===ids['tipo'+ids[n==='a'?'b':'a']]),false);}
   });
@@ -76,6 +80,38 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
    assert.equal((await c.query('SELECT count(*)::int n FROM auditoria_documental WHERE documento_id=$1',[d.id])).rows[0].n,eventos);
    assert.equal((await c.query('SELECT confirmada_en FROM pdf_cargas WHERE id=$1',[carga.carga])).rows[0].confirmada_en,null);
   });
+  await t.test('PDF vigente: confirmación idempotente, reemplazo y recolección con fallo y reintento',async()=>{
+   const d=ids['doc'+sec],objetos=new Set(),borrados=[];
+   let fallar=false;
+   const pdf=pdfDocumental(()=>({
+    subir:async clave=>{objetos.add(clave);return 'https://example.invalid/carga-aislada';},
+    validarYCopiar:async(origen,destino)=>{assert.ok(objetos.has(origen));objetos.add(destino);},
+    abrir:async clave=>{assert.ok(objetos.has(clave));return 'https://example.invalid/lectura-aislada';},
+    eliminar:async clave=>{if(fallar)throw Error('Fallo simulado de eliminación');borrados.push(clave);objetos.delete(clave);},
+   }));
+   const primera=await pdf.iniciar(sec,d.id,{nombre:'primero.pdf',mime:'application/pdf',tamano:100,revision:null});
+   assert.equal((await pdf.confirmar(sec,d.id,primera.carga)).archivo.revision,primera.carga);
+   const eventos=(await c.query('SELECT count(*)::int n FROM auditoria_documental WHERE documento_id=$1',[d.id])).rows[0].n;
+   await pdf.confirmar(sec,d.id,primera.carga);
+   assert.equal((await c.query('SELECT count(*)::int n FROM auditoria_documental WHERE documento_id=$1',[d.id])).rows[0].n,eventos);
+   assert.equal(objetos.size,1);
+   const segunda=await pdf.iniciar(sec,d.id,{nombre:'segundo.pdf',mime:'application/pdf',tamano:100,revision:primera.carga});
+   const reemplazo=await pdf.confirmar(sec,d.id,segunda.carga);
+   assert.equal(reemplazo.archivo.nombre,'segundo.pdf');assert.equal(objetos.size,1);
+   const claveVigente=[...objetos][0];assert.ok(!borrados.includes(claveVigente));
+   assert.equal((await pdf.abrir(sec,d.id,false)).vence_en,60);
+   await assert.rejects(pdf.eliminar(sec,d.id,primera.carga),e=>e.status===409);
+   fallar=true;
+   const eliminado=await pdf.eliminar(sec,d.id,segunda.carga);
+   assert.equal(eliminado.archivo,null);assert.equal(eliminado.limpieza_pendiente,1);
+   assert.ok(objetos.has(claveVigente));
+   await c.query('UPDATE pdf_objetos_pendientes SET limpiar_desde=clock_timestamp() WHERE clave_r2=$1',[claveVigente]);
+   fallar=false;
+   assert.deepEqual(await pdf.limpiar(20,d.id),{eliminados:1,pendientes:0});
+   assert.equal(objetos.size,0);assert.equal((await pdf.consultar(sec,d.id)).limpieza_pendiente,0);
+   const acciones=(await c.query("SELECT accion FROM pdf_eventos WHERE documento_id=$1",[d.id])).rows.map(r=>r.accion);
+   assert.ok(acciones.includes('LIMPIEZA_PENDIENTE'));assert.ok(acciones.includes('LIMPIEZA_COMPLETADA'));
+  });
   await t.test('Lectura institucional sin escritura y aislamiento por API directa, historial y PDF',async()=>{
    const d=ids['doc'+ids.a];for(const actor of [dir,sec]){const r=await ok(actor,'/documentos/'+d.id);assert.ok(Object.values(r.documento.permisos).every(x=>!x));await ok(actor,'/documentos/'+d.id+'/historial');await ok(actor,'/documentos/'+d.id+'/auditoria');await ok(actor,'/documentos/'+d.id+'/pdf');assert.equal((await pedir(actor,'/documentos/'+d.id,'PUT',{revision:d.revision,motivo,asunto:'Prohibido'})).status,403);assert.equal((await pedir(actor,'/documentos/'+d.id+'/pdf/cargas','POST',{nombre:'test.pdf',tamano:100,mime:'application/pdf',revision:null})).status,403);}
    for(const actor of [ids.b,existente,admin])for(const ruta of ['', '/historial','/auditoria','/pdf'])assert.equal((await pedir(actor,'/documentos/'+d.id+ruta)).status,404);
@@ -93,7 +129,9 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
    const d=(await ok(ids.a,'/documentos','POST',{tipo_id:ids['tipo'+ids.a],clasificacion:'RECIBIDO',asunto:'Ubicación '+marca,unidad_id:contenido},201)).documento;assert.equal(d.ubicacion.ruta_ubicacion_guardada,'Estante revisión / Informes revisión');
    assert.equal((await pedir(ids.b,'/ubicaciones','POST',{clase:'Caja',nombre:'Ajena',padre_id:lugar})).status,409);
    assert.equal((await pedir(ids.a,'/ubicaciones/'+lugar,'PUT',{clase:'Lugar',nombre:'Ciclo',padre_id:contenido})).status,409);
-   assert.equal((await pedir(existente,'/ubicaciones','POST',{clase:'Lugar',nombre:'Sin oficina'})).status,409);
+   assert.equal((await pedir(ids.a,'/ubicaciones','POST',{clase:'Lugar',nombre:'Con oficina'})).status,201);
+   assert.equal((await pedir(ids.sinOficina,'/ubicaciones','POST',{clase:'Lugar',nombre:'Sin oficina'})).status,409);
+   assert.equal((await c.query('SELECT oficina_id FROM usuarios WHERE id=$1',[ids.sinOficina])).rows[0].oficina_id,null);
   });
   await t.test('Relacionados conservan identidad; una operación fallida no deja documento ni correlativo',async()=>{
    const origen=ids['doc'+ids.a];const d=(await ok(ids.a,'/documentos','POST',{tipo_id:ids['tipo'+ids.a],clasificacion:'EMITIDO',asunto:'Relacionado '+marca,origen_id:origen.id},201)).documento;assert.notEqual(d.id,origen.id);assert.equal(d.relacionados[0].id,origen.id);
@@ -111,7 +149,7 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
    const d=(await ok(sec,'/documentos','POST',{tipo_id:ids['tipo'+sec],clasificacion:'EMITIDO',asunto:'Conservado '+marca,conservar_en_mesa:true},201)).documento;
    const r=(await ok(sec,'/documentos/'+d.id+'/delegar','POST',{revision:d.revision,nombre:'Persona manual sin cuenta'})).documento;assert.equal(r.registrado_por,sec);assert.equal(r.delegacion.nombre_persona_guardado,'Persona manual sin cuenta');
    for(const actor of [sec,dir])assert.equal((await ok(actor,'/documentos/'+d.id+'/pdf')).modificar,true);
-   const pendiente=ids['doc'+sec];for(const body of [{revision:pendiente.revision},{revision:pendiente.revision,oficina_id:ids.oficina},{revision:pendiente.revision,usuario_id:ids.b,oficina_id:'1'}])assert.equal((await pedir(dir,'/documentos/'+pendiente.id+'/delegar','POST',body)).status,400);
+   const pendiente=ids['doc'+sec];for(const body of [{revision:pendiente.revision},{revision:pendiente.revision,oficina_id:ids.oficina},{revision:pendiente.revision,usuario_id:ids.b,oficina_id:leerFixtures().oficinas['Dirección']}])assert.equal((await pedir(dir,'/documentos/'+pendiente.id+'/delegar','POST',body)).status,400);
    const unidad=(await ok(dir,'/ubicaciones','POST',{clase:'Lugar',nombre:'Caja Dirección revisión'},201)).id;
    const guardado=(await ok(dir,'/documentos/'+pendiente.id+'/ubicacion','POST',{revision:pendiente.revision,unidad_id:unidad})).documento;assert.equal(guardado.situacion,'GUARDADO_DIRECCION');
   });

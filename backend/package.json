@@ -9,10 +9,12 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "test": "npm run build && node --test tests/auth.test.mjs tests/cuerpos-comprimidos.test.mjs tests/despliegue.test.mjs tests/documental-nuevo.test.mjs tests/pdf-storage.test.mjs tests/dashboard-estadisticas.local.test.mjs tests/dashboard-api.local.test.mjs",
-    "test:documental": "npm run build && node --test tests/documental-nuevo.test.mjs",
-    "test:mejoras:local": "npm run build && node --test tests/mejoras-local.test.mjs",
-    "test:revision:local": "npm run build && node --test tests/revision-integral-local.test.mjs tests/administracion-local.test.mjs tests/mejoras-local.test.mjs tests/delegacion-local.test.mjs",
+    "test": "npm run build && node scripts/probar-backend-aislado.mjs completa",
+    "test:documental": "npm run build && node scripts/probar-backend-aislado.mjs documental",
+    "test:mejoras:local": "npm run build && node scripts/probar-backend-aislado.mjs mejoras",
+    "test:revision:local": "npm run build && node scripts/probar-backend-aislado.mjs revision",
+    "test:unitarias:heredadas": "npm run build && node scripts/probar-backend-aislado.mjs unitarias-heredadas",
+    "test:guard": "node --test tests/entorno-prueba.test.mjs",
     "schema:documentar": "node scripts/documentar-base-documental.mjs",
     "hash:local": "npm run build && node scripts/generar-hash-local.mjs"
   },
@@ -24,6 +26,7 @@
     "@aws-sdk/client-s3": "^3.1159.0",
     "@aws-sdk/s3-request-presigner": "^3.1159.0",
     "dotenv": "^18.0.8",
+    "exceljs": "^4.4.0",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.1",
     "helmet": "^8.3.0",
@@ -47,6 +50,9 @@
     "node": "24.x"
   },
   "overrides": {
-    "minimatch": "11.0.1"
+    "minimatch": "11.0.1",
+    "exceljs": {
+      "uuid": "11.1.1"
+    }
   }
 }

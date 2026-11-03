@@ -285,3 +285,56 @@ El usuario seleccionó **C · IBM Plex Sans** tras revisar la comparación. Esta
 - Cifras tabulares y lining para comparaciones. Mantener escala existente: base/campos 16 px, texto administrativo 15–16, H1 30/26 móvil, H2 18, ayudas/metadatos 12–14.
 - El canvas PDF conserva la tipografía y colores del documento original; sus controles heredan la nueva familia.
 - Muestras y licencias comparativas permanecen disponibles como evidencia; no gobiernan el estilo global.
+
+## Corrección institucional final — 2 de noviembre de 2026
+
+Esta sección prevalece sobre las paletas y ejemplos anteriores. No se volvió a ejecutar la skill de diseño. Fuente ejecutable: frontend/src/index.css; IBM Plex Sans permanece local, incluida la interfaz de gráficos y PDF.
+
+El escudo original se inspeccionó completo: azul del campo y cinta, dorado del contorno, terracota del arco/antorcha y rojo de las banderas. Se conservan el original y sus derivados. Las variantes de estos colores se ajustan para lectura y diferenciación; no se usa el celeste de la imagen como fondo universal. Verde comunica guardado/actividad y rojo errores/anulación; el dorado identifica pendientes.
+
+| Token | Claro | Oscuro |
+|---|---|---|
+| --fondo | #f5f5f3 | #181a1b |
+| --superficie | #ffffff | #222526 |
+| --superficie-secundaria | #efefec | #2c3031 |
+| --superficie-hover | #e7e7e3 | #363b3c |
+| --texto | #252724 | #f2f1eb |
+| --texto-secundario | #60635d | #bdc3c2 |
+| --borde | #dcdcd6 | #414647 |
+| --borde-control | #85857e | #858e90 |
+| --grafico-azul | #176c9c | #79bae2 |
+| --grafico-oro | #ac7b18 | #e3bd5e |
+| --grafico-terracota | #ad5e3b | #e79d79 |
+| --grafico-verde | #39765a | #85c3a1 |
+| --grafico-neutro | #747b80 | #a9b1b5 |
+| --visor-fondo | #e2e3df | #141617 |
+
+Primario mantiene #075a91 / #8bcdff como acción y enlace. Fondos semánticos de avisos conservan sus tokens. Oscuro con grafito y capas neutras; nunca invertir el documento PDF. Preferencia paillardelle-tema y sincronización conservadas.
+
+Jerarquía: H1 30/26 px, sección 18 px, panel 16 px, cuerpo y controles 15–16 px, ayudas 13–14 px, ejes 12 px, cifra principal 32–36 px y peso 600. Códigos con Plex Sans, peso 600 y espaciado leve; números tabulares. Escala de espacio 4/8/12/16/24/32 px. Panel 24 px, 16–20 móvil; visor con metadatos y herramientas separados del papel por relleno/borde.
+
+Carga compartida mediante Esqueleto con variantes lista, detalle, dashboard y PDF. Sin ceros de reemplazo ni animaciones de brillo. Estados de red anunciados y reintento visible. Evitar instrucciones técnicas y explicaciones redundantes de ámbitos: conservar las advertencias que cambien una decisión (cierre de sesiones, reemplazo/anulación, solo lectura e historial).
+
+La especificación de gráficos y denominadores está en pages/dashboard.md. Evidencia y pendientes actuales en docs/INFORME_DASHBOARDS_LOCAL_20261102.md; los resultados anteriores no prueban esta corrección.
+
+## Ajuste de negro y paleta gráfica — 2 de noviembre de 2026
+
+Esta decisión sustituye únicamente los colores anteriores. Conserva la composición, los espacios, IBM Plex Sans y las funciones del rediseño. La apariencia clara mantiene superficies, textos, controles y acentos de tarjetas; solo cambia la paleta dentro de los gráficos.
+
+Oscuro: fondo #08090b, tarjeta/panel #141619, campo #0d1013, superficie secundaria #202328, capa elevada #25292f, hover #2b3036, borde #343a42, borde de control #72808e, texto #f6f7f9 y secundario #bbc5d0. Primario #69c2ff y hover #a3daff. Tooltips y diálogos usan capa elevada; los campos usan fondo propio. Sin alterar radios, alturas, márgenes ni tipografía.
+
+| Gráfico | Claro | Oscuro |
+|---|---|---|
+| Azul | #0078bd | #40b5ff |
+| Dorado | #a36c00 | #ffd44a |
+| Terracota | #cf511f | #ff965a |
+| Verde | #00885b | #4cdda2 |
+| Celeste | #007d89 | #36d8dc |
+| Neutro | #606e7e | #a5b1bf |
+| Anulado | #c62b42 | #ff657d |
+
+Tokens --indicador-* conservan los colores anteriores de las tarjetas claras y se vinculan a la paleta nítida en oscuro. Tokens --grafico-* gobiernan las visualizaciones. No usar colores gráficos como texto pequeño sin comprobar contraste; ejes, cantidades y leyendas de categorías usan los tokens de texto.
+
+Tipos documentales: color estable por nombre registrado, independiente de orden, cantidad y subconjunto autorizado; no solicita otros ámbitos para asignar colores. Roles: Usuario azul, Secretaría dorado, Dirección verde, Administración terracota y Superadministración celeste. Leyenda de color integrada junto a las etiquetas del eje; nombres íntegros en ayuda y tabla. Meses: azul para vigentes, rojo para anulados, nunca un color distinto por mes de la misma serie. Un tipo se identifica como «Un tipo documental»; un mes activo conserva «Actividad concentrada en un mes» y columnas con cantidades visibles.
+
+Evidencia de esta corrección: docs/AJUSTE_PALETA_OSCURA_20261102.md y docs/qa-paleta-oscura-20261102. No se volvió a ejecutar la skill de diseño ni se modificaron datos o servicios remotos.

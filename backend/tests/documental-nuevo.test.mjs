@@ -1,10 +1,10 @@
+import './helpers/exigir-aislamiento.mjs';
+import {verificarEntornoPrueba} from './helpers/entorno-prueba.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes} from 'node:crypto';
 import {Buffer} from 'node:buffer';
 import {URL} from 'node:url';
-import fs from 'node:fs';
-import {parse} from 'dotenv';
 import pg from 'pg';
 import {permisos,lecturaSQL} from '../dist/shared/documental/nucleo.js';
 import {alta,delegacion,correccion} from '../dist/modules/documentos/documentos.operaciones.js';
@@ -55,11 +55,12 @@ test('HTTP nuevo: salud, validación y rutas retiradas; sin cuentas ni datos de 
  const login=await fetch(base+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});assert.equal(login.status,400);
  }finally{await new Promise(r=>server.close(r));}
 });
-test('PostgreSQL real nuevo: identidad, esquema, acceso SQL y bloqueo concurrente sin insertar usuarios',async()=>{
- const url=parse(fs.readFileSync('.env')).DATABASE_URL;assert.equal(new URL(url).pathname,'/sistema_web_documental_final');
+test('PostgreSQL aislado: identidad, esquema, acceso SQL y bloqueo concurrente sin insertar usuarios',async()=>{
+ const esperado=await verificarEntornoPrueba(pool),url=process.env.DATABASE_URL;assert.equal(new URL(url).pathname,'/'+esperado.base);
  const a=new pg.Client({connectionString:url}),b=new pg.Client({connectionString:url});await a.connect();await b.connect();
  try{
-  const i=(await a.query("SELECT current_database() base,(SELECT oid::text FROM pg_database WHERE datname=current_database()) oid,current_schema() esquema")).rows[0];assert.equal(i.base,'sistema_web_documental_final');assert.equal(i.oid,'98367');
+  await verificarEntornoPrueba(a);await verificarEntornoPrueba(b);
+  const i=(await a.query("SELECT current_database() base,(SELECT oid::text FROM pg_database WHERE datname=current_database()) oid,current_schema() esquema")).rows[0];assert.equal(i.base,esperado.base);assert.equal(i.esquema,'public');assert.match(i.oid,/^[1-9]\d*$/);
   assert.equal((await a.query('SELECT count(*)::int n FROM roles')).rows[0].n,5);
   assert.equal((await a.query("SELECT count(*)::int n FROM information_schema.columns WHERE table_name='pdf_cargas' AND column_name='revision_esperada'")).rows[0].n,1);
   const antes=(await a.query('SELECT count(*)::int n FROM usuarios')).rows[0].n;

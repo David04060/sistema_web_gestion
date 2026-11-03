@@ -1,0 +1,26 @@
+.resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.titulo {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+@media (max-width: 600px) {
+  .resumen {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .resumen > a {
+    padding: 16px 14px;
+  }
+  .resumen > a span {
+    font-size: 0.8125rem;
+  }
+  .resumen > a strong {
+    font-size: 2rem;
+  }
+}

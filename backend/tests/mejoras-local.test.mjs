@@ -1,3 +1,5 @@
+import './helpers/exigir-aislamiento.mjs';
+import {verificarEntornoPrueba} from './helpers/entorno-prueba.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes} from 'node:crypto';
@@ -13,7 +15,7 @@ test('Auditoría normalizada: datos reales legibles, sin identificadores ni clav
 });
 
 test('Mejoras locales por HTTP y PostgreSQL real: fixtures revertidos íntegramente',async t=>{
- const identidad=(await pool.query("SELECT current_database() base,inet_server_addr()::text host,(SELECT oid::text FROM pg_database WHERE datname=current_database()) oid")).rows[0];assert.equal(identidad.base,'sistema_web_documental_final');assert.equal(identidad.oid,'98367');assert.ok(['::1/128','127.0.0.1/32'].includes(identidad.host));
+ await verificarEntornoPrueba(pool);
  const conectar=pool.connect.bind(pool),consultar=pool.query.bind(pool),c=await conectar();
  const tablas=(await c.query("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename")).rows.map(t=>t.tablename);
  async function huellas(){const out={};for(const tabla of tablas){assert.match(tabla,/^[a-z_]+$/);out[tabla]=(await c.query(`SELECT count(*)::int n,md5(coalesce(string_agg(to_jsonb(t)::text,'' ORDER BY to_jsonb(t)::text),'')) hash FROM public.${tabla} t`)).rows[0];}return out;}

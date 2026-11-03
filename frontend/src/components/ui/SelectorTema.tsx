@@ -5,7 +5,7 @@ import styles from './SelectorTema.module.css';
 function almacen() { try { return window.localStorage; } catch { return undefined; } }
 function aplicar(tema: Tema) {
     document.documentElement.dataset.tema = tema;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', tema === 'oscuro' ? '#101b2b' : '#ffffff');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', tema === 'oscuro' ? '#08090b' : '#ffffff');
 }
 function suscribir(notificar: () => void) {
     const sistema = window.matchMedia('(prefers-color-scheme: dark)');

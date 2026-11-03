@@ -1,0 +1,33 @@
+.dialogo {
+  max-height: calc(100svh - 32px);
+  overflow: auto;
+}
+.dialogo form > div:last-child {
+  justify-content: flex-end;
+  padding-top: 14px;
+}
+.nota {
+  font-size: 0.8125rem !important;
+  color: var(--texto-secundario);
+}
+.progreso {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  font-size: 0.875rem;
+  color: var(--texto-secundario);
+}
+.progreso progress {
+  width: 100%;
+  height: 12px;
+  accent-color: var(--primario);
+}
+@media (max-width: 600px) {
+  .dialogo {
+    padding: 24px 20px;
+  }
+  .dialogo form > div:last-child {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

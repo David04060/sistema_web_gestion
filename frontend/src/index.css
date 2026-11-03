@@ -1,53 +1,247 @@
 @layer theme, base, components, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
-@font-face { font-family:'IBM Plex Sans'; src:url('/fuentes/ibm-plex-sans/normal.ttf') format('truetype'); font-style:normal; font-weight:100 700; font-display:swap; }
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('/fuentes/ibm-plex-sans/normal.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+}
 :root {
- --primario:#075a91; --primario-hover:#064574; --sobre-primario:#ffffff;
- --fondo:#f3f6fa; --superficie:#ffffff; --superficie-secundaria:#edf2f8; --superficie-hover:#e6eef7;
- --borde:#d1dce8; --borde-control:#7b8da3; --texto:#18283d; --texto-secundario:#52647b;
- --acento:#edca39; --acento-suave:#fff8d9; --info:#075a91; --info-fondo:#eaf3fc; --info-borde:#b7d3ed;
- --exito:#22623e; --exito-fondo:#edf8f0; --exito-borde:#b6d8c1;
- --advertencia:#795313; --advertencia-fondo:#fff8e5; --advertencia-borde:#deca91;
- --error:#a72e38; --error-fondo:#fff1f2; --error-borde:#e6b7bd;
- --neutro-fondo:#edf0f5; --neutro-texto:#536174; --neutro-borde:#cfd7e2;
- --visor-fondo:#dce5ef; --scrim:#07142699;
- --radio:14px; --radio-control:8px; --sombra:0 2px 8px #18365105;
- --espacio-1:4px; --espacio-2:8px; --espacio-3:12px; --espacio-4:16px; --espacio-6:24px; --espacio-8:32px;
- --fuente-interfaz:'IBM Plex Sans',Arial,system-ui,sans-serif;
- font-family:var(--fuente-interfaz); font-variant-numeric:tabular-nums lining-nums; font-size:16px; color:var(--texto); background:var(--fondo); color-scheme:light;
- font-synthesis:none; text-rendering:optimizeLegibility; -webkit-font-smoothing:antialiased;
+  --primario: #075a91;
+  --primario-hover: #064574;
+  --sobre-primario: #ffffff;
+  --fondo: #f5f5f3;
+  --superficie: #ffffff;
+  --superficie-secundaria: #efefec;
+  --superficie-hover: #e7e7e3;
+  --borde: #dcdcd6;
+  --borde-control: #85857e;
+  --texto: #252724;
+  --texto-secundario: #60635d;
+  --grafico-azul: #0078bd;
+  --grafico-oro: #a36c00;
+  --grafico-terracota: #cf511f;
+  --grafico-verde: #00885b;
+  --grafico-neutro: #606e7e;
+  --grafico-celeste: #007d89;
+  --grafico-anulado: #c62b42;
+  --indicador-azul: #176c9c;
+  --indicador-oro: #ac7b18;
+  --indicador-terracota: #ad5e3b;
+  --indicador-verde: #39765a;
+  --indicador-neutro: #747b80;
+  --acento: #edca39;
+  --acento-suave: #fff8d9;
+  --info: #075a91;
+  --info-fondo: #eaf3fc;
+  --info-borde: #b7d3ed;
+  --exito: #22623e;
+  --exito-fondo: #edf8f0;
+  --exito-borde: #b6d8c1;
+  --advertencia: #795313;
+  --advertencia-fondo: #fff8e5;
+  --advertencia-borde: #deca91;
+  --error: #a72e38;
+  --error-fondo: #fff1f2;
+  --error-borde: #e6b7bd;
+  --neutro-fondo: #efefec;
+  --neutro-texto: #60635d;
+  --neutro-borde: #d4d5ce;
+  --visor-fondo: #e2e3df;
+  --scrim: #16181399;
+  --radio: 14px;
+  --radio-control: 8px;
+  --sombra: 0 2px 8px #25272406;
+  --espacio-1: 4px;
+  --espacio-2: 8px;
+  --espacio-3: 12px;
+  --espacio-4: 16px;
+  --espacio-6: 24px;
+  --espacio-8: 32px;
+  --fuente-interfaz: 'IBM Plex Sans', Arial, system-ui, sans-serif;
+  font-family: var(--fuente-interfaz);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 16px;
+  color: var(--texto);
+  background: var(--fondo);
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 :root[data-tema='oscuro'] {
- --primario:#8bcdff; --primario-hover:#b8dfff; --sobre-primario:#08263f;
- --fondo:#101b2b; --superficie:#17263a; --superficie-secundaria:#20334b; --superficie-hover:#29415c;
- --borde:#364d68; --borde-control:#7f98b5; --texto:#edf3fb; --texto-secundario:#b3c4d9;
- --acento:#f0d45f; --acento-suave:#3b3520; --info:#9dd2ff; --info-fondo:#20394f; --info-borde:#426887;
- --exito:#9ce0b6; --exito-fondo:#183c32; --exito-borde:#3c705a;
- --advertencia:#f2d489; --advertencia-fondo:#3d3320; --advertencia-borde:#806c3c;
- --error:#ffb6be; --error-fondo:#442832; --error-borde:#85505c;
- --neutro-fondo:#26374c; --neutro-texto:#c2cedf; --neutro-borde:#4b607a;
- --visor-fondo:#0c1522; --scrim:#030a14bb; --sombra:0 2px 8px #00000012;
- color-scheme:dark;
+  --primario: #69c2ff;
+  --primario-hover: #a3daff;
+  --sobre-primario: #07121c;
+  --fondo: #08090b;
+  --superficie: #141619;
+  --superficie-secundaria: #202328;
+  --superficie-hover: #2b3036;
+  --superficie-elevada: #25292f;
+  --campo-fondo: #0d1013;
+  --borde: #343a42;
+  --borde-control: #72808e;
+  --texto: #f6f7f9;
+  --texto-secundario: #bbc5d0;
+  --grafico-azul: #40b5ff;
+  --grafico-oro: #ffd44a;
+  --grafico-terracota: #ff965a;
+  --grafico-verde: #4cdda2;
+  --grafico-neutro: #a5b1bf;
+  --grafico-celeste: #36d8dc;
+  --grafico-anulado: #ff657d;
+  --indicador-azul: var(--grafico-azul);
+  --indicador-oro: var(--grafico-oro);
+  --indicador-terracota: var(--grafico-terracota);
+  --indicador-verde: var(--grafico-verde);
+  --indicador-neutro: var(--grafico-neutro);
+  --acento: #ffd44a;
+  --acento-suave: #2c260e;
+  --info: #69c2ff;
+  --info-fondo: #152a3a;
+  --info-borde: #31546e;
+  --exito: #72e8ad;
+  --exito-fondo: #112b21;
+  --exito-borde: #315d47;
+  --advertencia: #ffda73;
+  --advertencia-fondo: #30250e;
+  --advertencia-borde: #705825;
+  --error: #ff9cab;
+  --error-fondo: #351720;
+  --error-borde: #793443;
+  --neutro-fondo: #202328;
+  --neutro-texto: #bbc5d0;
+  --neutro-borde: #4b5662;
+  --visor-fondo: #090b0e;
+  --scrim: #000000bf;
+  --sombra: 0 2px 8px #0000004d;
+  color-scheme: dark;
 }
-*,*::before,*::after { box-sizing:border-box; }
-body { margin:0; min-width:0; }
-#root { min-height:100svh; }
-button,input,select,textarea { font:inherit; }
-button { cursor:pointer; touch-action:manipulation; }
-button,input,select,textarea,a { -webkit-tap-highlight-color:transparent; }
-button:disabled,input:disabled,select:disabled,textarea:disabled { cursor:not-allowed; opacity:.6; }
-a { color:var(--primario); text-underline-offset:3px; }
-a:hover { color:var(--primario-hover); }
-:focus-visible { outline:3px solid var(--info); outline-offset:3px; }
-:target { scroll-margin-top:24px; }
-h1,h2,h3 { color:var(--texto); letter-spacing:-.025em; line-height:1.3; text-wrap:balance; }
-p { line-height:1.65; overflow-wrap:anywhere; }
-input[type='checkbox'] { accent-color:var(--primario); width:18px; height:18px; vertical-align:middle; }
-input::placeholder,textarea::placeholder { color:var(--texto-secundario); opacity:1; }
-input::file-selector-button { background:var(--superficie-secundaria); color:var(--texto); border:1px solid var(--borde-control); border-radius:6px; padding:9px 12px; margin-right:12px; cursor:pointer; }
-button,a,input,select,textarea,summary { scroll-margin-block:20px; }
-summary { min-height:44px; }
-dialog { background:var(--superficie); color:var(--texto); }
-body:has(dialog[open]) { overflow:hidden; }
-@media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; animation:none!important; } }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 0;
+}
+#root {
+  min-height: 100svh;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button,
+input,
+select,
+textarea,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+a {
+  color: var(--primario);
+  text-underline-offset: 3px;
+}
+a:hover {
+  color: var(--primario-hover);
+}
+:focus-visible {
+  outline: 3px solid var(--info);
+  outline-offset: 3px;
+}
+:target {
+  scroll-margin-top: 24px;
+}
+h1,
+h2,
+h3 {
+  color: var(--texto);
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+p {
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+input[type='checkbox'] {
+  accent-color: var(--primario);
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--texto-secundario);
+  opacity: 1;
+}
+input::file-selector-button {
+  background: var(--superficie-secundaria);
+  color: var(--texto);
+  border: 1px solid var(--borde-control);
+  border-radius: 6px;
+  padding: 9px 12px;
+  margin-right: 12px;
+  cursor: pointer;
+}
+button,
+a,
+input,
+select,
+textarea,
+summary {
+  scroll-margin-block: 20px;
+}
+summary {
+  min-height: 44px;
+}
+button:active:not(:disabled),
+a:active {
+  filter: brightness(0.94);
+}
+.recharts-wrapper {
+  font-family: var(--fuente-interfaz);
+}
+.recharts-tooltip-wrapper {
+  max-width: min(320px, 85vw);
+  font-size: 0.875rem;
+}
+dialog {
+  background: var(--superficie);
+  color: var(--texto);
+}
+:root[data-tema='oscuro'] :is(input:not([type='checkbox']), select, textarea) {
+  background-color: var(--campo-fondo);
+}
+:root[data-tema='oscuro'] dialog {
+  background-color: var(--superficie-elevada);
+}
+body:has(dialog[open]) {
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

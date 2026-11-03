@@ -1,3 +1,4 @@
+import './helpers/exigir-aislamiento.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {app} from '../dist/app.js';

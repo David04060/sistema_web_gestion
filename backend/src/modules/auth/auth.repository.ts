@@ -1,5 +1,6 @@
-import { pool } from "../../config/database.js";
-import type { UsuarioAuth } from "./auth.types.js";
+import { nombresRolSQL } from '../../shared/security/roles.js';
+import { pool } from '../../config/database.js';
+import type { UsuarioAuth } from './auth.types.js';
 const COLUMNAS = `
   u.id::text,
   u.rol_id,
@@ -11,7 +12,7 @@ const COLUMNAS = `
   u.email,
   u.contrasena_hash,
   u.activo,
-  CASE r.codigo WHEN 'SUPERADMINISTRADOR' THEN 'Superadministrador' WHEN 'ADMINISTRADOR' THEN 'Administrador' WHEN 'DIRECTOR' THEN 'Director(a)' WHEN 'SECRETARIA_DIRECCION' THEN 'Secretaria de Dirección' ELSE 'Usuario' END AS rol,
+  ${nombresRolSQL} AS rol,
   o.nombre AS oficina,
   u.version_autenticacion
 `;
@@ -26,15 +27,21 @@ const JOINS = `
  * minúsculas sin @, mientras los correos incluyen @ y se comparan con lower().
  */
 export async function buscarPorIdentificador(identificador: string): Promise<UsuarioAuth | null> {
-    const resultado = await pool.query<UsuarioAuth>(`SELECT ${COLUMNAS} ${JOINS}
+  const resultado = await pool.query<UsuarioAuth>(
+    `SELECT ${COLUMNAS} ${JOINS}
      WHERE u.nombre_usuario = $1
         OR lower(u.email) = $1
-     LIMIT 1`, [identificador.trim().toLowerCase()]);
-    return resultado.rows[0] ?? null;
+     LIMIT 1`,
+    [identificador.trim().toLowerCase()],
+  );
+  return resultado.rows[0] ?? null;
 }
 /** Consulta el bigint como texto para mantener precisión fuera del rango seguro de JavaScript. */
 export async function buscarPorId(id: string): Promise<UsuarioAuth | null> {
-    const resultado = await pool.query<UsuarioAuth>(`SELECT ${COLUMNAS} ${JOINS}
-     WHERE u.id = $1::bigint`, [id]);
-    return resultado.rows[0] ?? null;
+  const resultado = await pool.query<UsuarioAuth>(
+    `SELECT ${COLUMNAS} ${JOINS}
+     WHERE u.id = $1::bigint`,
+    [id],
+  );
+  return resultado.rows[0] ?? null;
 }
