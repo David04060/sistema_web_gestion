@@ -27,3 +27,14 @@ Se conservaron FUT, las oficinas existentes y las unidades Estante Dirección / 
 ## Verificación previa a publicación
 
 Prueba nueva backend observada fallar por ausencia de capacidades; suite revision en PostgreSQL efímero pasó 37/37 tras la corrección. Las cuentas sintéticas solo existieron en ese cluster aislado, retirado al terminar. Frontend 70/70; typecheck, lint y build de ambos proyectos satisfactorios. Compilación frontend dirigida al API Render. Los detalles remotos se añaden después de confirmar el despliegue efectivo.
+
+## Verificación remota y entrega
+
+- Código cb25e328b72bad4ac74a613e08d3a9876ec38a62 desplegado en Render, estado Live. Frontend publicado en Pages; 54/54 recursos coinciden byte por byte con la compilación y la ruta SPA responde 200.
+- GET tipos: 403 para roles administrativos y 200 para Dirección, Secretaría y Usuario, según el alcance documental vigente. Metadatos editable/en_uso comprobados contra los creadores reales.
+- PUT real de FUT con sus mismos valores y motivo explícito: 200 para su creadora, 403 para Dirección. Los valores finales del catálogo permanecen idénticos; queda auditoría de esta verificación. No se crearon tipos ni documentos para el recorrido productivo.
+- Cero tipos de prueba restantes. Pantalla de tipos comprobada con la sesión existente de Dirección en temas claro y oscuro, sin errores de consola; FUT aparece de consulta por pertenecer a Secretaría.
+- El control de viewport de Chrome no aplicó el ancho solicitado: la medida efectiva siguió siendo 1296 px. No se declara comprobado el tamaño móvil. El formulario de edición de la creadora se verificó mediante SSR y HTTP, no mediante un nuevo inicio de sesión de Secretaría.
+- Se conserva un cambio local de formato ajeno a esta corrección en backend/src/config/local.ts, excluido de estos commits. No se revierte ni se publica ese cambio.
+
+Evidencia privada: tipos-prueba-retirados.json, tipos-verificacion-remota.json, tipos-rojo.log, tipos-verde.log, tipos-front-verde.log, tipos-front-build.log, tipos-render-live.png y tipos-publicado.png. No se versionan secretos ni copias de datos.
