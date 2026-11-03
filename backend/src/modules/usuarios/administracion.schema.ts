@@ -36,6 +36,11 @@ export const tipo = z
       .regex(/^[A-Z]{2,8}$/),
   })
   .strict();
+export const tipoEdicion = tipo.extend({
+  activo: z.boolean(),
+  motivo: z.string().trim().min(1).max(1000),
+}).strict();
+export const motivoTipo = z.object({ motivo: z.string().trim().min(1).max(1000) }).strict();
 export const unidad = z
   .object({
     propietario_id: id.optional(),

@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {Buffer} from 'node:buffer';
+import {mkdirSync,writeFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
 import process from 'node:process';
 import {build} from 'vite';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {createElement} from 'react';
-const result=await build({configFile:false,logLevel:'silent',plugins:[{name:'contrato-documental',resolveId(i){if(i==='virtual:documental')return '\0virtual:documental';},load(i){if(i==='\0virtual:documental')return ['src/api/documental.ts','src/lib/perfiles.ts','src/lib/historialDocumental.ts','src/features/documentos/components/DestinoDocumental.tsx','src/features/documentos/components/ControlesPdf.tsx'].map(p=>`export * from '${process.cwd().replaceAll('\\','/')}/${p}';`).join('\n');}}],build:{write:false,minify:false,rollupOptions:{input:'virtual:documental',preserveEntrySignatures:'strict',output:{format:'es',codeSplitting:false}}}});
+const result=await build({configFile:false,logLevel:'silent',plugins:[{name:'contrato-documental',resolveId(i){if(i==='virtual:documental')return '\0virtual:documental';},load(i){if(i==='\0virtual:documental')return ['src/api/documental.ts','src/features/usuarios/components/TipoDocumentalForm.tsx','src/lib/perfiles.ts','src/lib/historialDocumental.ts','src/features/documentos/components/DestinoDocumental.tsx','src/features/documentos/components/ControlesPdf.tsx'].map(p=>`export * from '${process.cwd().replaceAll('\\','/')}/${p}';`).join('\n');}}],build:{ssr:true,write:false,minify:false,rollupOptions:{input:'virtual:documental',preserveEntrySignatures:'strict',output:{format:'es',codeSplitting:false}}}});
 const chunk=(Array.isArray(result)?result:[result]).flatMap(r=>r.output).find(c=>c.type==='chunk'&&c.isEntry);
-const m=await import('data:text/javascript;base64,'+Buffer.from(chunk.code).toString('base64'));
+mkdirSync('.private/render-tipos',{recursive:true});
+const file=resolve('.private/render-tipos/entrada.mjs');writeFileSync(file,chunk.code);
+const m=await import(pathToFileURL(file).href);
 const doc={id:'9007199254740993',ambito_id:'20',tipo_id:'9007199254740994',registrado_por:'8',registrado_por_nombre:'Nombre de contrato',tipo_nombre_guardado:'Informe histórico',clasificacion:'RECIBIDO',asunto:'Prueba de contrato en memoria',remitente:null,observaciones:null,codigo_visible:'INF2026001',situacion:'PERSONAL',revision:'1',creado_en:'2026-11-01T12:00:00Z',actualizado_en:'2026-11-01T12:00:00Z'};
 const opciones={ambito_id:'20',tipos:[],campos:[],unidades:[],destinatarios:[{id:'90',nombre:'Persona elegible',oficina_id:'1'},{id:'91',nombre:'Otra oficina',oficina_id:'2'}],oficinas:[{id:'1',nombre:'Oficina elegible'},{id:'2',nombre:'Otra oficina'},{id:'3',nombre:'Sin personas'}]};
 test('Los contratos documentales nuevos conservan bigint como texto y exigen capacidades backend',()=>{
@@ -69,3 +73,8 @@ test('Historial legible conserva etiquetas históricas y no muestra claves priva
  const cambios=m.cambioLegible(null,{persona:'Persona indicada',clave_r2:'privada/no-mostrar',revision:'uuid-interno'});
  assert.deepEqual(cambios,[{campo:'Persona indicada',antes:'—',despues:'Persona indicada'}]);
 });
+
+ test('Edición de tipos: nombre y motivo accesibles; prefijo usado bloqueado y cancelar disponible',()=>{
+ const html=renderToStaticMarkup(createElement(m.TipoDocumentalForm,{inicial:{id:'8',nombre:'Informe',prefijo:'INF',activo:true,en_uso:true},ocupado:false,guardar:()=>{},cancelar:()=>{}}));
+ assert.ok(html.includes('Guardar cambios'));assert.ok(html.includes('Cancelar'));assert.ok(html.includes('Motivo'));assert.match(html,/disabled=""[^>]*value="INF"/);assert.ok(html.includes('Los documentos anteriores conservan'));
+ });

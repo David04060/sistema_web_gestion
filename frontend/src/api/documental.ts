@@ -125,7 +125,7 @@ export const rolesSchema = z.object({
 });
 export const respuestaCambio = z.object({ actualizado: z.boolean() }).or(z.object({ id }));
 export const tiposSchema = z.object({
-  tipos: z.array(z.object({ id, nombre: z.string(), prefijo: z.string(), activo: z.boolean() })),
+  tipos: z.array(z.object({ id, nombre: z.string(), prefijo: z.string(), activo: z.boolean(), editable: z.boolean().default(false), en_uso: z.boolean().default(true) })),
 });
 export const camposSchema = z.object({
   campos: z.array(z.object({ id, usuario_id: id, nombre_actual: z.string() })),

@@ -16,6 +16,8 @@ import {
   renombrar,
   oficinaEdicion,
   oficinaActividad,
+  tipoEdicion,
+  motivoTipo,
 } from './administracion.schema.js';
 import { nombresRolSQL } from '../../shared/security/roles.js';
 /** Sirve GET /roles; las oficinas se consultan por su propia ruta. */
@@ -86,8 +88,11 @@ export async function tipos(actor: string) {
     return {
       tipos: (
         await cliente.query(
-          'SELECT id::text,nombre,prefijo,activo FROM tipos_documentales WHERE ambito_id=$1 ORDER BY nombre',
-          [ambito],
+          `SELECT t.id::text,t.nombre,t.prefijo,t.activo,
+            t.creado_por=$2::bigint editable,
+            EXISTS(SELECT 1 FROM documentos d WHERE d.tipo_id=t.id) en_uso
+          FROM tipos_documentales t WHERE t.ambito_id=$1 ORDER BY t.nombre`,
+          [ambito, identidad.id],
         )
       ).rows,
     };
@@ -105,6 +110,43 @@ export async function crearTipo(actor: string, datos: z.infer<typeof tipo>) {
     ).rows[0];
     await auditarConfiguracion(cliente, identidad, 'TIPO_DOCUMENTAL', t.id, 'CREAR', null, datos);
     return t;
+  });
+}
+/** Revalida ámbito y creador; compartir catálogo no autoriza a editar tipos de otra cuenta. */
+async function tipoPropio(cliente: PoolClient, identidad: Actor, id: string) {
+  const ambito = exigirAmbito(identidad);
+  const t = (await cliente.query(
+    'SELECT id::text,nombre,prefijo,activo,creado_por::text FROM tipos_documentales WHERE id=$1 AND ambito_id=$2 FOR UPDATE',
+    [id, ambito],
+  )).rows[0];
+  if (!t) throw new HttpError(404, 'Tipo documental inexistente');
+  if (t.creado_por !== identidad.id)
+    throw new HttpError(403, 'Solo quien creó el tipo documental puede modificarlo');
+  return t;
+}
+/** Los documentos conservan nombre y código históricos; un prefijo usado no se reutiliza. */
+export async function editarTipo(actor: string, id: string, datos: z.infer<typeof tipoEdicion>) {
+  return operacion(actor, datos.motivo, async (cliente, identidad) => {
+    const anterior = await tipoPropio(cliente, identidad, id);
+    if (datos.prefijo !== anterior.prefijo &&
+      (await cliente.query('SELECT 1 FROM documentos WHERE tipo_id=$1 LIMIT 1', [id])).rowCount)
+      throw new HttpError(409, 'El prefijo ya tiene documentos; puedes cambiar el nombre o desactivar el tipo');
+    await cliente.query('UPDATE tipos_documentales SET nombre=$2,prefijo=$3,activo=$4 WHERE id=$1',
+      [id, datos.nombre, datos.prefijo, datos.activo]);
+    await auditarConfiguracion(cliente, identidad, 'TIPO_DOCUMENTAL', id, 'EDITAR', anterior, datos);
+    return { actualizado: true };
+  });
+}
+/** Solo se elimina un tipo sin documentos ni correlativos; los usados se desactivan. */
+export async function eliminarTipo(actor: string, id: string, datos: z.infer<typeof motivoTipo>) {
+  return operacion(actor, datos.motivo, async (cliente, identidad) => {
+    const anterior = await tipoPropio(cliente, identidad, id);
+    if ((await cliente.query(`SELECT 1 FROM documentos WHERE tipo_id=$1
+      UNION ALL SELECT 1 FROM correlativos_documentales WHERE tipo_id=$1 LIMIT 1`, [id])).rowCount)
+      throw new HttpError(409, 'El tipo tiene documentos o numeración reservada; desactívalo para conservar el historial');
+    await cliente.query('DELETE FROM tipos_documentales WHERE id=$1', [id]);
+    await auditarConfiguracion(cliente, identidad, 'TIPO_DOCUMENTAL', id, 'ELIMINAR', anterior, null);
+    return { actualizado: true };
   });
 }
 /** Solo administración puede escoger otro titular; el Administrador no alcanza al Superadministrador. */

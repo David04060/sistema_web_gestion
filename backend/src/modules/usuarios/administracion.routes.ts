@@ -102,6 +102,14 @@ administracionRouter.post('/tipos-documentales', async (req: RequestAutenticada,
     .status(201)
     .json(await operaciones.crearTipo(actor(req), validar(operaciones.tipo, req.body))),
 );
+administracionRouter.put('/tipos-documentales/:id', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.editarTipo(actor(req), validar(id, req.params.id),
+    validar(operaciones.tipoEdicion, req.body))),
+);
+administracionRouter.delete('/tipos-documentales/:id', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.eliminarTipo(actor(req), validar(id, req.params.id),
+    validar(operaciones.motivoTipo, req.body))),
+);
 administracionRouter.get('/ubicaciones', async (req: RequestAutenticada, res) =>
   res.json(
     await operaciones.unidades(

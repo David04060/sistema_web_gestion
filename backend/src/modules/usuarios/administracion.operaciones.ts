@@ -16,6 +16,8 @@ export {
   renombrar,
   oficinaEdicion,
   oficinaActividad,
+  tipoEdicion,
+  motivoTipo,
   actividad,
   filtrosUsuarios,
 } from './administracion.schema.js';
@@ -262,6 +264,8 @@ export {
   editarOficina,
   tipos,
   crearTipo,
+  editarTipo,
+  eliminarTipo,
   unidades,
   crearUnidad,
   editarUnidad,

@@ -55,6 +55,29 @@ test('API local real: Superadministrador protegido y edición autorizada con rol
     assert.deepEqual(await editarOficina(String(admin.id),oficina.id,{nombre:oficina.nombre,motivo:'Verificación local con rollback'}),{actualizado:true});
    }finally{pool.connect=conectar;}
   });
+  await t.test('Tipos propios: edición, aislamiento, historia y retirada sin perder documentos',async()=>{
+   const propio=antes.find(u=>u.rol_id===5&&u.oficina_id),direccion=antes.find(u=>u.rol_id===3),secretaria=antes.find(u=>u.rol_id===4);
+   async function como(u,ruta,method='GET',body){const r=await fetch(base+'/api'+ruta,{method,headers:{Authorization:'Bearer '+generarToken(String(u.id),u.version_autenticacion),'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,body:await r.json()};}
+   const datos={nombre:'Tipo editable aislado',prefijo:'EDITQA'},motivo='Corrección comprobada en cluster aislado';
+   const creado=await como(propio,'/tipos-documentales','POST',datos);assert.equal(creado.status,201);const ruta='/tipos-documentales/'+creado.body.id;
+   let lista=await como(propio,'/tipos-documentales');let tipo=lista.body.tipos.find(x=>x.id===creado.body.id);assert.equal(tipo.editable,true);assert.equal(tipo.en_uso,false);
+   assert.equal((await como(direccion,ruta,'PUT',{...datos,activo:true,motivo})).status,404);
+   assert.equal((await como(admin,ruta,'PUT',{...datos,activo:true,motivo})).status,403);
+   assert.equal((await como(propio,ruta,'PUT',{nombre:'Tipo corregido',prefijo:'EDITQB',activo:true,motivo})).status,200);
+   const doc=await como(propio,'/documentos','POST',{tipo_id:creado.body.id,clasificacion:'RECIBIDO',asunto:'Verificar nombre histórico'});assert.equal(doc.status,201);const historico=doc.body.documento;
+   assert.equal((await como(propio,ruta,'PUT',{nombre:'Nombre actual',prefijo:'EDITQB',activo:true,motivo})).status,200);
+   assert.equal((await como(propio,ruta,'PUT',{nombre:'Nombre actual',prefijo:'OTRO',activo:true,motivo})).status,409);
+   assert.equal((await como(propio,ruta,'DELETE',{motivo})).status,409);
+   assert.equal((await como(propio,ruta,'PUT',{nombre:'Nombre actual',prefijo:'EDITQB',activo:false,motivo})).status,200);
+   const detalle=(await como(propio,'/documentos/'+historico.id)).body.documento;assert.equal(detalle.tipo_nombre_guardado,historico.tipo_nombre_guardado);assert.equal(detalle.codigo_visible,historico.codigo_visible);
+   assert.ok(!(await como(propio,'/documentos/opciones')).body.tipos.some(x=>x.id===creado.body.id));
+   const compartido=await como(secretaria,'/tipos-documentales','POST',{nombre:'Tipo compartido aislado',prefijo:'COMPQA'});assert.equal(compartido.status,201);
+   const visible=(await como(direccion,'/tipos-documentales')).body.tipos.find(x=>x.id===compartido.body.id);assert.equal(visible.editable,false);
+   assert.equal((await como(direccion,'/tipos-documentales/'+visible.id,'PUT',{nombre:'No autorizado',prefijo:'COMPQA',activo:true,motivo})).status,403);
+   assert.equal((await como(secretaria,'/tipos-documentales/'+visible.id,'DELETE',{motivo})).status,200);
+   assert.ok(!(await como(secretaria,'/tipos-documentales')).body.tipos.some(x=>x.id===visible.id));
+   assert.ok((await pool.query("SELECT 1 FROM auditoria_configuracion WHERE entidad='TIPO_DOCUMENTAL' AND entidad_id=$1 AND accion='EDITAR'",[creado.body.id])).rowCount);
+  });
   assert.deepEqual((await pool.query('SELECT * FROM usuarios ORDER BY id')).rows,antes,'Las cuentas y credenciales deben conservarse');
  }finally{await new Promise(r=>server.close(r));await pool.end();}
 });
