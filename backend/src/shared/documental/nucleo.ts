@@ -85,7 +85,10 @@ export async function documento(
     await cliente.query<Registro>(
       `SELECT d.*,d.id::text,d.ambito_id::text,d.tipo_id::text,d.registrado_por::text,
   d.revision::text,(SELECT concat_ws(' ',u.nombre,u.apellido) FROM usuarios u WHERE u.id=d.registrado_por)
-  registrado_por_nombre FROM documentos d WHERE d.id=$1 AND ${lecturaSQL}`,
+  registrado_por_nombre,
+  (SELECT l.propietario_id::text FROM ubicaciones_documento u
+   JOIN unidades_ubicacion l ON l.id=u.unidad_id WHERE u.documento_id=d.id AND u.vigente)
+  titular_ubicacion FROM documentos d WHERE d.id=$1 AND ${lecturaSQL}`,
       [id, identidad.rol_id, identidad.ambito_id],
     )
   ).rows[0];
@@ -100,14 +103,17 @@ export function permisos(identidad: Actor, d: Registro) {
     antes = vigente && d.situacion !== 'DELEGADO';
   const direccionPendiente =
     compartido && identidad.rol_id === 3 && d.situacion === 'PENDIENTE_DIRECCION';
+  const ubicacionPropia = d.titular_ubicacion === identidad.id;
+  const puedeCerrarUbicacion = d.titular_ubicacion == null || ubicacionPropia;
   return {
     relacionar:
       vigente && identidad.ambito_id === d.ambito_id && [3, 4, 5].includes(identidad.rol_id),
     corregir: vigente && propio && (identidad.rol_id !== 5 || d.situacion !== 'DELEGADO'),
     anular: antes && (propio || direccionPendiente),
     delegar:
-      vigente &&
+      vigente && puedeCerrarUbicacion &&
       (direccionPendiente ||
+        (compartido && identidad.rol_id === 3 && d.situacion === 'GUARDADO_DIRECCION' && ubicacionPropia) ||
         (propio && identidad.rol_id === 4 && d.situacion === 'EN_MESA_DE_PARTES') ||
         (propio && identidad.rol_id === 5 && d.situacion === 'PERSONAL')),
     ubicar:

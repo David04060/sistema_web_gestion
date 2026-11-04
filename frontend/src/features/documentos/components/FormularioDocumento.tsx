@@ -215,22 +215,6 @@ export function FormularioDocumento({
                 </select>
               </label>
             )}
-            {!id && (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={delegar}
-                  onChange={(e) => setDelegar(e.target.checked)}
-                /> Delegar al registrar
-              </label>
-            )}
-            {!id && delegar && (
-              <fieldset>
-                <legend>Destino de la delegación</legend>
-                <p>La delegación registra la persona indicada sin confirmar una entrega física.</p>
-                <DestinoDocumental token={token} valor={destino} cambiar={setDestino} opciones={opciones} />
-              </fieldset>
-            )}
             {!id && ubicable && (
               <label className={styles.campo}>
                 Ubicación opcional
@@ -246,6 +230,14 @@ export function FormularioDocumento({
                   ))}
                 </select>
               </label>
+            )}
+            {!id && (
+              <details onToggle={(e) => setDelegar(e.currentTarget.open)}>
+                <summary>Delegar</summary>
+                {delegar && (
+                  <DestinoDocumental token={token} valor={destino} cambiar={setDestino} opciones={opciones} />
+                )}
+              </details>
             )}
             {campos.map((c) => (
               <label key={c.id} className={styles.campo}>
@@ -318,9 +310,7 @@ export function FormularioDocumento({
                 ? 'Guardando…'
                 : id
                   ? 'Guardar corrección'
-                  : pdf
-                    ? 'Registrar documento y confirmar PDF'
-                    : 'Registrar documento'}
+                  : 'Registrar documento'}
             </button>
             <Link className={styles.secundario} to={id ? '/documentos/' + id : '/documentos'}>
               Cancelar

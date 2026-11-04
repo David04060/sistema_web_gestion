@@ -5,6 +5,7 @@ import { PDFDocument } from 'pdf-lib';
 import { leerFixtures, verificarEntornoPrueba } from './helpers/entorno-prueba.mjs';
 import { pool } from '../dist/config/database.js';
 import { alta, registrar, delegar, listar, filtros, buscarDestinatarios } from '../dist/modules/documentos/documentos.operaciones.js';
+import { crearUnidad } from '../dist/modules/usuarios/administracion.operaciones.js';
 import { pdfDocumental } from '../dist/modules/documentos-pdf/pdf.documental.js';
 import { validarPdf } from '../dist/modules/documentos-pdf/pdf.storage.js';
 
@@ -74,6 +75,42 @@ test('Alta delegada, rollback y PDF de autor con PostgreSQL real y almacenamient
           assert.ok(adjunto.archivo.revision);
         }
       }
+    }
+    for (const [actor, tipo, conservar, situacion] of [
+      [director, fixture.tipos.director, false, 'GUARDADO_DIRECCION'],
+      [secretaria, fixture.tipos.director, true, 'EN_MESA_DE_PARTES'],
+      [usuario, fixture.tipos.usuario, false, 'PERSONAL'],
+    ]) {
+      const unidad = await crearUnidad(actor.id, { nombre: 'Ubicación de prueba', clase: 'Lugar', padre_id: null });
+      const datos = entrada(tipo, { unidad_id: unidad.id, conservar_en_mesa: conservar });
+      const { documento: guardado } = await registrar(actor.id, datos);
+      const { documento: vecino } = await registrar(actor.id, datos);
+      assert.equal(guardado.situacion, situacion);
+      assert.ok(guardado.ubicacion);
+      assert.equal(guardado.permisos.delegar, true);
+      const { documento: delegado } = await delegar(actor.id, guardado.id, {
+        ...destino, revision: guardado.revision, usuario_id: null, oficina_id: null,
+      });
+      assert.equal(delegado.situacion, 'DELEGADO');
+      assert.equal(delegado.ubicacion, null);
+      assert.equal(delegado.permisos.pdf, true);
+      const ubicaciones = (await pool.query(
+        'SELECT documento_id::text,vigente FROM ubicaciones_documento WHERE unidad_id=$1 ORDER BY documento_id',
+        [unidad.id],
+      )).rows;
+      assert.deepEqual(ubicaciones, [
+        { documento_id: guardado.id, vigente: false }, { documento_id: vecino.id, vigente: true },
+      ]);
+      const historial = (await pool.query(
+        "SELECT anterior,posterior,actor_id::text,fecha FROM auditoria_documental WHERE documento_id=$1 AND accion='DELEGACION'",
+        [guardado.id],
+      )).rows[0];
+      assert.equal(historial.anterior.situacion, situacion);
+      assert.equal(historial.anterior.ruta, guardado.ubicacion.ruta_ubicacion_guardada);
+      assert.equal(historial.posterior.situacion, 'DELEGADO');
+      assert.equal(historial.posterior.ruta, null);
+      assert.equal(historial.actor_id, actor.id);
+      assert.ok(historial.fecha);
     }
     const { documento: personal } = await registrar(usuario.id, entrada(fixture.tipos.usuario));
     const previo = await adjuntar(usuario, personal);

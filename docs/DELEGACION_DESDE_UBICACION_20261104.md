@@ -1,0 +1,8 @@
+# Selector de delegación y cierre de ubicación vigente
+
+- El alta y el detalle usan un solo combobox de persona. El resultado distingue cuenta y oficina. El teclado permite recorrer coincidencias, elegir con Enter y cerrar con Escape. El filtro de oficina y el nombre manual siguen disponibles.
+- El alta muestra Delegar como sección plegable después de Ubicación opcional y conserva Registrar documento como acción principal. Abrir la sección incluye el destino en la misma transacción del alta.
+- La ubicación vigente debe pertenecer al actor para delegar un documento ubicado. Dirección puede delegar desde Guardado en Dirección si gestiona esa ubicación en el ámbito compartido. Secretaría y Usuario conservan los requisitos de autoría. El trigger marca la ubicación histórica, cambia el estado y registra el antes y después en auditoría.
+- El incremental 006 sustituye tres funciones, sin actualizar filas existentes. Se comparó la definición previa de cada función con el punto de partida versionado antes de publicarlo.
+- Ejemplo comprobado en PostgreSQL aislado. Dirección registra en Ubicación de prueba y el estado inicial es Guardado en Dirección. Al delegar a Persona indicada, la auditoría conserva la ruta Ubicación de prueba y el estado anterior. El estado nuevo es Delegado y la ruta vigente queda vacía. Se comprobaron el actor, la fecha y la permanencia de otro documento en la misma ubicación. Secretaría y Usuario pasaron la misma comprobación desde sus estados de origen.
+- El permiso PDF del autor sigue disponible después de delegar. Se comprobó el permiso y se ejecutaron las regresiones de carga y reemplazo con almacenamiento simulado.

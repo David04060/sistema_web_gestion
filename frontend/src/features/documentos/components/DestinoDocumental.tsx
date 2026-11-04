@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { api } from '../../../api/documental';
 import type { OpcionesActuales } from '../../../api/documental';
 import styles from '../../../components/ui/Admin.module.css';
@@ -6,6 +6,7 @@ export const destinoVacio = {
   modo: 'usuario',
   oficina: '',
   usuario: '',
+  etiqueta: '',
   nombre: '',
   observaciones: '',
 };
@@ -32,9 +33,12 @@ export function DestinoDocumental({
   token: string;
 }) {
   const [texto, setTexto] = useState('');
+  const [abierto, setAbierto] = useState(false);
+  const [indice, setIndice] = useState(-1);
+  const listaId = useId();
   const [intento, setIntento] = useState(0);
   const consulta = texto.trim();
-  const activa = v.modo === 'usuario' && consulta.length >= 2;
+  const activa = abierto && !v.usuario && v.modo === 'usuario' && consulta.length >= 2;
   const clave = JSON.stringify([token, consulta, v.oficina, intento]);
   const [resultado, setResultado] = useState<{
     clave: string;
@@ -57,13 +61,23 @@ export function DestinoDocumental({
   }, [activa, clave, token, consulta, v.oficina]);
   const actual = activa && resultado?.clave === clave ? resultado : undefined;
   const cambio = (p: Partial<Destino>) => cambiar({ ...v, ...p });
+  const personas = actual?.datos?.personas ?? [];
+  const opcionActiva = abierto && personas[indice] ? listaId + '-' + indice : undefined;
+  useEffect(() => {
+    if (opcionActiva) document.getElementById(opcionActiva)?.scrollIntoView({ block: 'nearest' });
+  }, [opcionActiva]);
+  const elegir = (persona: (typeof personas)[number]) => {
+    cambio({ usuario: persona.id, etiqueta: persona.nombre + ' · ' + persona.nombre_usuario });
+    setAbierto(false);
+    setIndice(-1);
+  };
   return (
     <div className={styles.datos}>
       <label className={styles.campo}>
         Persona destinataria
         <select
           value={v.modo}
-          onChange={(e) => { setTexto(''); cambio({ modo: e.target.value, oficina: '', usuario: '', nombre: '' }); }}
+          onChange={(e) => { setTexto(''); cambio({ modo: e.target.value, oficina: '', usuario: '', etiqueta: '', nombre: '' }); }}
         >
           <option value="usuario">Usuario registrado</option>
           <option value="manual">Persona sin cuenta</option>
@@ -75,7 +89,7 @@ export function DestinoDocumental({
             Oficina opcional
             <select
               value={v.oficina}
-              onChange={(e) => cambio({ oficina: e.target.value, usuario: '' })}
+              onChange={(e) => { setIndice(-1); cambio({ oficina: e.target.value, usuario: '', etiqueta: '' }); }}
             >
               <option value="">Todas las oficinas</option>
               {opciones.oficinas
@@ -86,36 +100,73 @@ export function DestinoDocumental({
                 ))}
             </select>
           </label>
-          <label className={styles.campo}>
-            Buscar por nombre
-            <input
-              type="search"
-              maxLength={100}
-              value={texto}
-              onChange={(e) => { setTexto(e.target.value); cambio({ usuario: '' }); }}
-            />
-          </label>
-          {!activa && <p>Escribe al menos dos caracteres.</p>}
-          {activa && !actual && <p role="status">Buscando destinatarios…</p>}
-          {actual?.error && (
-            <div role="alert">
-              <p>{actual.error}</p>
-              <button type="button" onClick={() => setIntento((n) => n + 1)}>Reintentar</button>
-            </div>
-          )}
-          {actual?.datos?.personas.length === 0 && <p role="status">No se encontraron personas.</p>}
-          {actual?.datos?.hay_mas && <p role="status">Se muestran 20 resultados. Precisa el nombre.</p>}
-          <label className={styles.campo}>
-            Usuario
-            <select required value={v.usuario} onChange={(e) => cambio({ usuario: e.target.value })}>
-              <option value="">Seleccionar persona</option>
-              {actual?.datos?.personas.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre} · {u.nombre_usuario} · {u.oficina ?? 'Sin oficina'}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className={styles.selectorPersona}>
+            <label className={styles.campo}>
+              Usuario
+              <input
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={abierto}
+                aria-controls={abierto ? listaId : undefined}
+                aria-activedescendant={opcionActiva}
+                autoComplete="off"
+                maxLength={100}
+                placeholder="Escribe un nombre"
+                value={v.usuario ? v.etiqueta : texto}
+                onFocus={(e) => { setAbierto(true); if (v.usuario) e.currentTarget.select(); }}
+                onClick={() => { setAbierto(true); if (resultado?.clave === clave && resultado.error) setIntento((n) => n + 1); }}
+                onBlur={() => setAbierto(false)}
+                onChange={(e) => {
+                  setTexto(e.target.value);
+                  setAbierto(true);
+                  setIndice(-1);
+                  cambio({ usuario: '', etiqueta: '' });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape' && abierto) {
+                    e.preventDefault();
+                    setAbierto(false);
+                  } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setAbierto(true);
+                    if (personas.length)
+                      setIndice((i) => e.key === 'ArrowDown'
+                        ? Math.min(i + 1, personas.length - 1)
+                        : i < 0 ? personas.length - 1 : Math.max(i - 1, 0));
+                  } else if (e.key === 'Enter' && abierto) {
+                    e.preventDefault();
+                    if (personas[indice]) elegir(personas[indice]);
+                  }
+                }}
+              />
+            </label>
+            {abierto && (
+              <div className={styles.coincidenciasPersona}>
+                <div id={listaId} role="listbox" aria-label="Personas coincidentes">
+                  {personas.map((u, i) => (
+                    <div
+                      key={u.id}
+                      id={listaId + '-' + i}
+                      role="option"
+                      aria-selected={i === indice}
+                      onPointerDown={(e) => e.preventDefault()}
+                      onClick={() => elegir(u)}
+                    >
+                      {u.nombre} · {u.nombre_usuario} · {u.oficina ?? 'Sin oficina'}
+                    </div>
+                  ))}
+                </div>
+                {!activa && !v.usuario && <p>Escribe al menos dos caracteres.</p>}
+                {v.usuario && <p>Persona seleccionada. Edita el nombre para buscar otra.</p>}
+                {activa && !actual && <p role="status">Buscando destinatarios…</p>}
+                {actual?.error && (
+                  <p role="alert">{actual.error} Vuelve a escribir o abre el selector de nuevo.</p>
+                )}
+                {actual?.datos?.personas.length === 0 && <p role="status">No se encontraron personas.</p>}
+                {actual?.datos?.hay_mas && <p role="status">Se muestran 20 resultados. Precisa el nombre.</p>}
+              </div>
+            )}
+          </div>
         </>
       ) : (
         <label className={styles.campo}>
