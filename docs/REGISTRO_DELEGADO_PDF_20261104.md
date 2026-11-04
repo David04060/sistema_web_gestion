@@ -24,3 +24,12 @@ env.ts selecciona perfil y valida entorno, local.ts comprueba el destino local, 
 - Frontend, 70/70. Typecheck, lint y build de ambos proyectos verificados.
 - La suite general detectó que el inventario aún omitía PUT y DELETE de tipos de la publicación previa. El inventario actualizado incluye ambas rutas y la nueva búsqueda.
 La repetición de la suite general pasó 62/62 en PostgreSQL aislado.
+
+## Publicación y comprobación productiva
+
+- Código dc2e808cfaceefaa4a880fde8daf4bc7f2f8f247 enviado a main. Render confirmó Live en dep-dblle4etlv9c73c398bg y registró la identidad de sistema_documental_produccion al iniciar.
+- Incremental 005 aplicado en la base y rama productivas comprobadas. La definición previa se guardó en el área privada y se confirmó la nueva regla mediante lectura posterior del catálogo PostgreSQL.
+- Pages 8fed2ec1-3fe5-4f8e-abca-8ae8e5e2efe6 activo. Los 53 recursos del dominio canónico coinciden byte por byte con frontend/dist. /documentos/nuevo responde 200 y devuelve la entrada SPA esperada.
+- Con las cuentas productivas activas se verificaron 200 para búsqueda de Dirección, Secretaría y Usuario, 403 para ambos roles administrativos y 401 sin sesión. Se verificó CORS desde el origen de Pages. En las cuentas Usuario, la consulta directa Pendiente de Dirección devolvió cero filas.
+- Los casos de escritura y fallo de R2 se cubrieron en PostgreSQL aislado con almacenamiento simulado. En producción se hicieron consultas de lectura y la migración de función. Quedan pendientes la interacción manual completa con teclado y móvil y un recorrido con un PDF real en R2. El incremental queda disponible para instalaciones locales existentes.
+- La revisión de consumidores confirmó dos retiradas de código. Queda pendiente certificar el uso de herramientas históricas que no entran en el flujo activo antes de considerar otras retiradas.
