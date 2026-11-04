@@ -169,6 +169,7 @@ export function ArchivoPdf({
           <div className={pdfStyles.visor}>
             <HerramientasPdf
               modificar={estado.modificar}
+              puedeEliminar={estado.eliminar ?? estado.modificar}
               ocupado={ocupado}
               volver={() => setBytes(undefined)}
               descargar={() => void ejecutar((v) => abrir(true, v))}

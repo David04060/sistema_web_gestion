@@ -141,7 +141,7 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
   });
   await t.test('Delegación personal informativa: no transfiere, no concede acceso; bloquea mutaciones',async()=>{
    const d=(await ok(ids.a,'/documentos/'+ids['doc'+ids.a].id)).documento;const r=(await ok(ids.a,'/documentos/'+d.id+'/delegar','POST',{revision:d.revision,usuario_id:ids.b,oficina_id:ids.oficina})).documento;assert.equal(r.ambito_id,d.ambito_id);assert.equal(r.registrado_por,ids.a);assert.equal(r.situacion,'DELEGADO');
-   assert.equal((await pedir(ids.b,'/documentos/'+d.id)).status,404);await ok(ids.a,'/documentos/'+d.id+'/pdf');assert.equal((await ok(ids.a,'/documentos/'+d.id+'/pdf')).modificar,false);
+   assert.equal((await pedir(ids.b,'/documentos/'+d.id)).status,404);await ok(ids.a,'/documentos/'+d.id+'/pdf');assert.equal((await ok(ids.a,'/documentos/'+d.id+'/pdf')).modificar,true);
    for(const [ruta,body] of [['/delegar',{revision:r.revision,nombre:'Otra persona'}],['/anular',{revision:r.revision,motivo}]])assert.equal((await pedir(ids.a,'/documentos/'+d.id+ruta,'POST',body)).status,403);
    assert.equal((await pedir(ids.a,'/documentos/'+d.id,'PUT',{revision:r.revision,motivo,asunto:'Prohibido'})).status,403);
   });

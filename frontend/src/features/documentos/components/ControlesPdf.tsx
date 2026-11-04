@@ -32,6 +32,7 @@ export function ResumenPdf({
 }
 export function HerramientasPdf({
   modificar,
+  puedeEliminar = modificar,
   ocupado,
   volver,
   descargar,
@@ -39,6 +40,7 @@ export function HerramientasPdf({
   eliminar,
 }: {
   modificar: boolean;
+  puedeEliminar?: boolean;
   ocupado: boolean;
   volver: () => void;
   descargar: () => void;
@@ -58,9 +60,9 @@ export function HerramientasPdf({
           <button type="button" disabled={ocupado} onClick={seleccionar}>
             Actualizar/Reemplazar PDF
           </button>
-          <button className={styles.peligro} type="button" disabled={ocupado} onClick={eliminar}>
+          {puedeEliminar && <button className={styles.peligro} type="button" disabled={ocupado} onClick={eliminar}>
             Eliminar PDF
-          </button>
+          </button>}
         </>
       )}
     </div>

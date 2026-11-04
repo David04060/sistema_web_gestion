@@ -1,4 +1,5 @@
 import type { ClientBase } from 'pg';
+import { verificarEsquemaDocumental } from './esquema.js';
 export function validarUrlLocal(valor: string) {
   const u = new URL(valor);
   if (
@@ -18,9 +19,9 @@ export async function verificarConexionLocal(
     identidad = (
       await c.query(
         `SELECT current_database() base,inet_server_addr()::text host,
-  inet_server_port() puerto,(SELECT oid::text FROM pg_database WHERE datname=current_database())
-  oid,current_schema() esquema,current_user rol,current_setting('neon.branch_id',
-  true) rama`,
+        inet_server_port() puerto,(SELECT oid::text FROM pg_database WHERE datname=current_database())
+        oid,current_schema() esquema,current_user rol,current_setting('neon.branch_id',
+        true) rama`,
       )
     ).rows[0];
   if (
@@ -31,11 +32,6 @@ export async function verificarConexionLocal(
     identidad.rama
   )
     throw new Error('Identidad local incompatible');
-  if (comprobarEsquema) {
-    await c.query(
-      'SELECT d.ambito_id,d.tipo_id,d.registrado_por,d.situacion,d.revision FROM documentos d LIMIT 0',
-    );
-    await c.query('SELECT revision_esperada FROM pdf_cargas LIMIT 0');
-  }
+  if (comprobarEsquema) await verificarEsquemaDocumental(c);
   return identidad;
 }

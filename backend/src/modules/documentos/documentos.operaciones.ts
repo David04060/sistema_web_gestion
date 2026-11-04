@@ -8,6 +8,7 @@ import {
   ubicacion,
   anulacion,
   filtros,
+  consultaDestinatarios,
 } from './documental.schema.js';
 export {
   id,
@@ -53,11 +54,10 @@ export async function opciones(actor: string) {
           [identidad.id],
         )
       ).rows,
-      destinatarios: (
-        await cliente.query(
-          "SELECT id::text,concat_ws(' ',nombre,apellido) nombre,oficina_id::text FROM usuarios WHERE activo ORDER BY nombre,apellido",
-        )
-      ).rows,
+      // Compatibilidad con pestañas que aún cargaron el selector anterior.
+      destinatarios: (await cliente.query(
+        "SELECT id::text,concat_ws(' ',nombre,apellido) nombre,oficina_id::text FROM usuarios WHERE activo ORDER BY nombre,apellido,id LIMIT 20",
+      )).rows,
       oficinas: (
         await cliente.query('SELECT id::text,nombre FROM oficinas WHERE activa ORDER BY nombre')
       ).rows,
@@ -168,12 +168,33 @@ export async function historial(actor: string, documentoId: string) {
     };
   });
 }
+/** Busca por nombre con límite fijo y devuelve oficina y cuenta para distinguir homónimos. */
+export async function buscarDestinatarios(actor: string, filtro: z.infer<typeof consultaDestinatarios>) {
+  return operacion(actor, 'Buscar destinatarios', async (cliente, identidad) => {
+    exigirAmbito(identidad);
+    const resultado = await cliente.query(
+      `SELECT u.id::text,concat_ws(' ',u.nombre,u.apellido) nombre,
+              u.nombre_usuario,o.nombre oficina
+       FROM usuarios u LEFT JOIN oficinas o ON o.id=u.oficina_id
+       WHERE u.activo AND ($2::bigint IS NULL OR u.oficina_id=$2)
+         AND strpos(lower(concat_ws(' ',u.nombre,u.apellido)),lower($1))>0
+       ORDER BY u.nombre,u.apellido,u.id LIMIT 21`,
+      [filtro.q, filtro.oficina_id ?? null],
+    );
+    return { personas: resultado.rows.slice(0, 20), hay_mas: resultado.rows.length > 20 };
+  });
+}
+
 /** Alta atómica con valores históricos, relación y ubicación; el trigger asigna el correlativo. */
 export async function registrar(actor: string, datos: z.infer<typeof alta>) {
   const nuevo = await operacion(actor, 'Registro', async (cliente, identidad) => {
     const ambito = exigirAmbito(identidad);
     if (datos.conservar_en_mesa && identidad.rol_id !== 4)
       throw new HttpError(403, 'Solo Secretaría conserva en Mesa de Partes');
+    if (datos.destino && identidad.rol_id === 4 && !datos.conservar_en_mesa)
+      throw new HttpError(400, 'Para delegar al registrar, Secretaría debe conservar en Mesa de Partes');
+    if (datos.destino && identidad.rol_id === 3 && datos.unidad_id)
+      throw new HttpError(400, 'La delegación inmediata no admite guardar en Dirección');
     if (datos.origen_id) {
       const origen = await documento(cliente, identidad, datos.origen_id, true);
       if (origen.ambito_id !== ambito) throw new HttpError(403, 'Origen fuera de su ámbito');
@@ -208,6 +229,12 @@ export async function registrar(actor: string, datos: z.infer<typeof alta>) {
         [d.id, datos.origen_id, identidad.id],
       );
     if (datos.unidad_id) await registrarUbicacion(cliente, d.id, datos.unidad_id, identidad.id);
+    if (datos.destino) {
+      const registro = await documento(cliente, identidad, d.id, true);
+      if (!permisos(identidad, registro).delegar)
+        throw new HttpError(403, 'Delegación no autorizada');
+      await insertarDelegacion(cliente, identidad.id, d.id, datos.destino);
+    }
     return d.id as string;
   });
   return detalle(actor, nuevo);
@@ -236,6 +263,33 @@ export async function corregir(
   });
   return detalle(actor, documentoId);
 }
+/** Comparte validación y escritura entre el alta atómica y la delegación posterior. */
+async function insertarDelegacion(
+  cliente: PoolClient,
+  actor: string,
+  documentoId: string,
+  datos: Omit<z.infer<typeof delegacion>, 'revision'>,
+) {
+  let nombre = datos.nombre;
+  if (datos.usuario_id) {
+    const u = (
+      await cliente.query(
+        "SELECT oficina_id::text,concat(nombre,' ',apellido) nombre FROM usuarios WHERE id=$1 AND activo FOR SHARE",
+        [datos.usuario_id],
+      )
+    ).rows[0];
+    if (!u || (datos.oficina_id && u.oficina_id !== datos.oficina_id))
+      throw new HttpError(400, 'Persona y oficina incompatibles');
+    nombre = u.nombre;
+  }
+  await cliente.query(
+    `INSERT INTO delegaciones_documento(documento_id,oficina_indicada_id,
+usuario_indicado_id,nombre_persona_guardado,observaciones,delegado_por) VALUES($1,
+$2,$3,$4,$5,$6)`,
+    [documentoId, datos.oficina_id, datos.usuario_id, nombre, datos.observaciones, actor],
+  );
+}
+
 /** Guarda una persona registrada o manual; valida oficina compatible sin transferir ámbito ni conceder acceso. */
 export async function delegar(
   actor: string,
@@ -246,24 +300,7 @@ export async function delegar(
     const d = await documento(cliente, identidad, documentoId, true);
     exigirRevision(d, datos.revision);
     if (!permisos(identidad, d).delegar) throw new HttpError(403, 'Delegación no autorizada');
-    let nombre = datos.nombre;
-    if (datos.usuario_id) {
-      const u = (
-        await cliente.query(
-          "SELECT oficina_id::text,concat(nombre,' ',apellido) nombre FROM usuarios WHERE id=$1 AND activo FOR SHARE",
-          [datos.usuario_id],
-        )
-      ).rows[0];
-      if (!u || (datos.oficina_id && u.oficina_id !== datos.oficina_id))
-        throw new HttpError(400, 'Persona y oficina incompatibles');
-      nombre = u.nombre;
-    }
-    await cliente.query(
-      `INSERT INTO delegaciones_documento(documento_id,oficina_indicada_id,
-  usuario_indicado_id,nombre_persona_guardado,observaciones,delegado_por) VALUES($1,
-  $2,$3,$4,$5,$6)`,
-      [documentoId, datos.oficina_id, datos.usuario_id, nombre, datos.observaciones, identidad.id],
-    );
+    await insertarDelegacion(cliente, identidad.id, documentoId, datos);
   });
   return detalle(actor, documentoId);
 }

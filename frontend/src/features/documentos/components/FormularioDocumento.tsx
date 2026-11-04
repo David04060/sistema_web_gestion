@@ -6,6 +6,7 @@ import {
   type DocumentoActual,
   type OpcionesActuales,
 } from '../../../api/documental';
+import { DestinoDocumental, datosDestino, destinoVacio } from './DestinoDocumental';
 import { ArchivoPdf } from './ArchivoPdf';
 import { clientePdf, comprobarSeleccion, subirPdf } from '../api/pdf.api';
 import styles from '../../../components/ui/Admin.module.css';
@@ -34,6 +35,8 @@ export function FormularioDocumento({
 }) {
   const navegar = useNavigate();
   const enviando = useRef(false);
+  const [delegar, setDelegar] = useState(false);
+  const [destino, setDestino] = useState(destinoVacio);
   const [datos, setDatos] = useState({
     tipo_id: inicial?.tipo_id ?? '',
     clasificacion: inicial?.clasificacion ?? clasificacion,
@@ -84,9 +87,10 @@ export function FormularioDocumento({
           : await api.registrar(token, {
               ...contenido,
               tipo_id: datos.tipo_id,
+              ...(delegar ? { destino: datosDestino(destino) } : {}),
               clasificacion: datos.clasificacion,
-              conservar_en_mesa: datos.conservar_en_mesa,
-              ...(datos.unidad_id ? { unidad_id: datos.unidad_id } : {}),
+              conservar_en_mesa: conservarEnMesa,
+              ...(ubicable && datos.unidad_id ? { unidad_id: datos.unidad_id } : {}),
               ...(origen ? { origen_id: origen.id } : {}),
             });
       if (!id) {
@@ -123,10 +127,12 @@ export function FormularioDocumento({
         <ArchivoPdf token={token} id={creado} />
       </>
     );
+  const conservarEnMesa = perfil.rol === 'Secretaria de Dirección' && (delegar || datos.conservar_en_mesa);
   const ubicable =
+    !(delegar && perfil.rol === 'Director(a)') &&
     !!perfil.oficina_id &&
     (perfil.rol === 'Usuario' ||
-      (perfil.rol === 'Secretaria de Dirección' && datos.conservar_en_mesa) ||
+      (conservarEnMesa) ||
       perfil.rol === 'Director(a)');
   return (
     <>
@@ -197,7 +203,8 @@ export function FormularioDocumento({
               <label className={styles.campo}>
                 Destino inicial
                 <select
-                  value={datos.conservar_en_mesa ? 'mesa' : 'direccion'}
+                  disabled={delegar}
+                  value={conservarEnMesa ? 'mesa' : 'direccion'}
                   onChange={(e) => {
                     cambiar('conservar_en_mesa', e.target.value === 'mesa');
                     cambiar('unidad_id', '');
@@ -207,6 +214,22 @@ export function FormularioDocumento({
                   <option value="mesa">Conservar en Mesa de Partes</option>
                 </select>
               </label>
+            )}
+            {!id && (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={delegar}
+                  onChange={(e) => setDelegar(e.target.checked)}
+                /> Delegar al registrar
+              </label>
+            )}
+            {!id && delegar && (
+              <fieldset>
+                <legend>Destino de la delegación</legend>
+                <p>La delegación registra la persona indicada sin confirmar una entrega física.</p>
+                <DestinoDocumental token={token} valor={destino} cambiar={setDestino} opciones={opciones} />
+              </fieldset>
             )}
             {!id && ubicable && (
               <label className={styles.campo}>

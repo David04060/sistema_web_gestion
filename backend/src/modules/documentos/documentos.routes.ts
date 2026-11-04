@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requiereAuth, type RequestAutenticada } from '../../middlewares/auth.middleware.js';
 import { validar } from '../../shared/http/validar.js';
 import * as operaciones from './documentos.operaciones.js';
+import { consultaDestinatarios } from './documental.schema.js';
 import { descargarExcel } from './exportacion.controller.js';
 export const documentosRouter = Router();
 documentosRouter.use(requiereAuth, (_q, res, next) => {
@@ -11,6 +12,9 @@ documentosRouter.use(requiereAuth, (_q, res, next) => {
 const actor = (req: RequestAutenticada) => req.usuario!.id;
 documentosRouter.get('/opciones', async (req: RequestAutenticada, res) =>
   res.json(await operaciones.opciones(actor(req))),
+);
+documentosRouter.get('/destinatarios', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.buscarDestinatarios(actor(req), validar(consultaDestinatarios, req.query))),
 );
 documentosRouter.get('/exportar-excel', descargarExcel);
 documentosRouter.get('/', async (req: RequestAutenticada, res) =>

@@ -11,7 +11,22 @@ import { ExportarDocumentos } from '../components/ExportarDocumentos';
 /** La URL conserva los filtros al navegar y volver; los resultados siempre proceden del alcance del servidor. */
 export function DocumentosListaPage() {
   const { token, usuario } = useAuth().sesion!,
-    [params, setParams] = useSearchParams();
+    [url, setParams] = useSearchParams();
+  const situaciones = situacion.options.filter((s) =>
+    usuario.rol === 'Usuario' ? s === 'PERSONAL' || s === 'DELEGADO'
+      : s !== 'ANULADO' || usuario.rol === 'Superadministrador',
+  );
+  const situacionUrl = url.get('situacion');
+  const incompatible = situacionUrl !== null && !situaciones.some((s) => s === situacionUrl);
+  const params = new URLSearchParams(url);
+  if (incompatible) {
+    params.delete('situacion');
+    params.delete('pagina');
+  }
+  const consultaUrl = params.toString();
+  useEffect(() => {
+    if (incompatible) setParams(consultaUrl, { replace: true });
+  }, [incompatible, consultaUrl, setParams]);
   const [busqueda, setBusqueda] = useState(params.get('q') ?? '');
   const [fecha, setFecha] = useState(params.get('fecha') ?? ''),
     [precision, setPrecision] = useState(
@@ -56,7 +71,7 @@ export function DocumentosListaPage() {
     setParams({});
   }
   const consulta = useConsulta(
-    useCallback(() => api.lista(token, params.toString()), [token, params]),
+    useCallback(() => api.lista(token, consultaUrl), [token, consultaUrl]),
   );
   const mensajeRuta = (useLocation().state as { mensaje?: unknown } | null)?.mensaje;
   const registrar = ['Usuario', 'Director(a)', 'Secretaria de Dirección'].includes(usuario.rol);
@@ -103,9 +118,8 @@ export function DocumentosListaPage() {
               value={params.get('situacion') ?? ''}
               onChange={(e) => filtro('situacion', e.target.value)}
             >
-              <option value="">Documentos ordinarios</option>
-              {situacion.options
-                .filter((s) => s !== 'ANULADO' || usuario.rol === 'Superadministrador')
+              <option value="">{usuario.rol === 'Usuario' ? 'Todos mis documentos' : 'Documentos ordinarios'}</option>
+              {situaciones
                 .map((s) => (
                   <option key={s} value={s}>
                     {etiquetas[s]}

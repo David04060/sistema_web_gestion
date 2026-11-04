@@ -1,10 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import type { z } from 'zod';
 import { limpiarObjetosPdf } from './pdf.limpieza.js';
-import { operacion, documento, permisos } from '../../shared/documental/nucleo.js';
+import { operacion, documento, permisos, type Actor, type Registro } from '../../shared/documental/nucleo.js';
 import { HttpError } from '../../shared/http/HttpError.js';
 import { crearAlmacenR2, prefijoPdf, type AlmacenPdf } from './pdf.storage.js';
 import type { iniciarSchema } from './pdf.schema.js';
+/** El permiso nuevo del autor delegado cubre carga y reemplazo; conserva la eliminación anterior. */
+function puedeEliminarPdf(actor: Actor, d: Registro) {
+  return permisos(actor, d).pdf && (
+    ([3, 4].includes(actor.rol_id) && actor.ambito_id === d.ambito_id) ||
+    (actor.rol_id === 5 && d.situacion !== 'DELEGADO')
+  );
+}
 /** Servicio del esquema vigente; el almacenamiento se resuelve solo al usar una operación R2. */
 export function pdfDocumental(almacen: () => AlmacenPdf = crearAlmacenR2) {
   /** Devuelve metadatos públicos y capacidad de modificación, nunca claves privadas del objeto. */
@@ -21,6 +28,7 @@ export function pdfDocumental(almacen: () => AlmacenPdf = crearAlmacenR2) {
       return {
         archivo: p,
         modificar: permisos(identidad, d).pdf,
+        eliminar: puedeEliminarPdf(identidad, d),
         limpieza_pendiente: (
           await cliente.query(
             `SELECT count(*)::int cantidad FROM pdf_objetos_pendientes o WHERE documento_id=$1 AND eliminado_en
@@ -136,7 +144,7 @@ export function pdfDocumental(almacen: () => AlmacenPdf = crearAlmacenR2) {
   async function eliminar(actor: string, id: string, revision: string) {
     await operacion(actor, 'Eliminar PDF', async (cliente, identidad) => {
       const d = await documento(cliente, identidad, id, true);
-      if (!permisos(identidad, d).pdf) throw new HttpError(403, 'Gestión PDF no autorizada');
+      if (!puedeEliminarPdf(identidad, d)) throw new HttpError(403, 'Gestión PDF no autorizada');
       const r = await cliente.query(
         'DELETE FROM documentos_pdf WHERE documento_id=$1 AND revision=$2',
         [id, revision],

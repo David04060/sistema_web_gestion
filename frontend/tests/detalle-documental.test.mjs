@@ -18,8 +18,10 @@ import {UsuarioFormularioPage} from '${resolve('src/features/usuarios/pages/Usua
 import {UsuarioDetallePage} from '${resolve('src/features/usuarios/pages/UsuarioDetallePage.tsx').split(String.fromCharCode(92)).join('/')}';
 import {UsuariosListaPage} from '${resolve('src/features/usuarios/pages/UsuariosListaPage.tsx').split(String.fromCharCode(92)).join('/')}';
 import {UbicacionesPage} from '${resolve('src/features/ubicaciones/pages/UbicacionesPage.tsx').split(String.fromCharCode(92)).join('/')}';
-import {CamposActualesPage} from '${resolve('src/features/usuarios/pages/ConfiguracionPages.tsx').split(String.fromCharCode(92)).join('/')}';
-import {OficinasActualesPage,OficinaDetallePage,OficinaFormularioPage} from '${resolve('src/features/usuarios/pages/OficinasPages.tsx').split(String.fromCharCode(92)).join('/')}';
+import {CamposActualesPage} from '${resolve('src/features/usuarios/pages/CamposActualesPage.tsx').split(String.fromCharCode(92)).join('/')}';
+import {OficinasActualesPage} from '${resolve('src/features/usuarios/pages/OficinasListaPage.tsx').split(String.fromCharCode(92)).join('/')}';
+import {OficinaDetallePage} from '${resolve('src/features/usuarios/pages/OficinaDetallePage.tsx').split(String.fromCharCode(92)).join('/')}';
+import {OficinaFormularioPage} from '${resolve('src/features/usuarios/pages/OficinaFormularioPage.tsx').split(String.fromCharCode(92)).join('/')}';
 import {DocumentoFormularioPage} from '${resolve('src/features/documentos/pages/DocumentoFormularioPage.tsx').split(String.fromCharCode(92)).join('/')}';
 import {PrevisualizacionRegistroPdf} from '${resolve('src/features/documentos/components/PrevisualizacionRegistroPdf.tsx').split(String.fromCharCode(92)).join('/')}';
 import {elegir} from 'virtual:estado';

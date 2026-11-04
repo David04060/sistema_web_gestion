@@ -4,7 +4,6 @@ import styles from '../../../components/ui/Admin.module.css';
 import { EstadoCarga } from '../../../components/ui/EstadoCarga';
 import { useConsulta } from '../../../hooks/useConsulta';
 import { useAuth } from '../../auth/hooks/useAuth';
-export { OficinasActualesPage } from './OficinasPages';
 export function RolesActualesPage() {
   const { token } = useAuth().sesion!;
   const consulta = useConsulta(useCallback(() => config.roles(token), [token]));

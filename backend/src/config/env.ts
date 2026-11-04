@@ -128,7 +128,7 @@ if (perfilNeon) {
       : process.env.NEON_HOST;
   if (!validarUrlNeon(env.DATABASE_URL, hostEsperado, 'sistema_web_app', env.NEON_DATABASE)) {
     console.error(
-      'Neon requiere conexión directa a neondb con sistema_web_app y sslmode=verify-full.',
+      'Neon requiere conexión directa a la base configurada con sistema_web_app y sslmode=verify-full.',
     );
     process.exit(1);
   }

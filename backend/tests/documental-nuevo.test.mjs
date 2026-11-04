@@ -21,7 +21,7 @@ test('Permisos puros: compartido, consulta institucional, delegado personal y an
  assert.deepEqual(permisos(usuario,personal),{relacionar:true,corregir:true,anular:true,delegar:true,ubicar:false,pdf:true});
  assert.equal(permisos({...usuario,oficina_id:'2'},personal).ubicar,true);
  const delegado={...personal,situacion:'DELEGADO'};
- assert.deepEqual(permisos(usuario,delegado),{relacionar:true,corregir:false,anular:false,delegar:false,ubicar:false,pdf:false});
+ assert.deepEqual(permisos(usuario,delegado),{relacionar:true,corregir:false,anular:false,delegar:false,ubicar:false,pdf:true});
  for(const rol_id of [1,2,3,4]){const externo={id:'4',rol_id,ambito_id:rol_id<3?null:'10',activo:true,oficina_id:null};assert.ok(Object.values(permisos(externo,personal)).every(v=>v===false));}
  for(const rol_id of [3,4]){const actor={id:'4',rol_id,ambito_id:'10',activo:true,oficina_id:'2'};assert.equal(permisos(actor,{...delegado,ambito_id:'10'}).pdf,true);assert.equal(permisos(actor,{...delegado,ambito_id:'10',situacion:'ANULADO'}).pdf,false);}
  assert.equal(permisos({...usuario,id:'99'},personal).pdf,false);

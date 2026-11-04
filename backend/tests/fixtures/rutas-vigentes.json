@@ -1,4 +1,5 @@
 [
+  "DELETE /api/tipos-documentales/:id",
   "GET /api/auth/me",
   "GET /api/campos-opcionales",
   "GET /api/dashboard",
@@ -7,6 +8,7 @@
   "GET /api/documentos/:id/auditoria",
   "GET /api/documentos/:id/historial",
   "GET /api/documentos/:id/pdf",
+  "GET /api/documentos/destinatarios",
   "GET /api/documentos/exportar-excel",
   "GET /api/documentos/opciones",
   "GET /api/health",
@@ -37,6 +39,7 @@
   "PUT /api/campos-opcionales/:id",
   "PUT /api/documentos/:id",
   "PUT /api/oficinas/:id",
+  "PUT /api/tipos-documentales/:id",
   "PUT /api/ubicaciones/:id",
   "PUT /api/usuarios/:id"
 ]

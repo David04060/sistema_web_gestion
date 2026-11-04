@@ -10,7 +10,7 @@ import {administracionRouter} from '../dist/modules/usuarios/administracion.rout
 import {pdfRouter} from '../dist/modules/documentos-pdf/pdf.routes.js';
 import {documentosRouter} from '../dist/modules/documentos/documentos.routes.js';
 
-test('Las 40 rutas vigentes coinciden con la línea base de fase 2 y Excel precede al ID',async()=>{
+test('Las rutas vigentes coinciden con el inventario HTTP y Excel precede al ID',async()=>{
  try{
   const actual=[];
   for(const l of app.router.stack)if(l.route)for(const method of Object.keys(l.route.methods))actual.push(method.toUpperCase()+' '+l.route.path);

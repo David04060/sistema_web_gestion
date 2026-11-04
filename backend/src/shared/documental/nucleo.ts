@@ -115,7 +115,7 @@ export function permisos(identidad: Actor, d: Registro) {
       identidad.oficina_id !== null &&
       (direccionPendiente || (propio && ['PERSONAL', 'EN_MESA_DE_PARTES'].includes(d.situacion))),
     pdf:
-      vigente && (compartido || (propio && identidad.rol_id === 5 && d.situacion !== 'DELEGADO')),
+      vigente && (compartido || (propio && [3, 4, 5].includes(identidad.rol_id))),
   };
 }
 /** Rechaza escrituras sobre una revisión anterior antes de modificar datos. */

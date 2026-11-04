@@ -6,6 +6,31 @@ import { idSchema } from '../../shared/admin/admin.schema.js';
 export const id = idSchema;
 const texto = z.string().trim().max(20000).nullable().optional().default(null);
 const motivo = z.string().trim().min(1).max(1000);
+export const consultaDestinatarios = z.object({ q: z.string().trim().min(2).max(100), oficina_id: id.optional() }).strict();
+
+const destinoDelegacion = z
+  .object({
+    oficina_id: id.nullable().optional().default(null),
+    usuario_id: id.nullable().optional().default(null),
+    nombre: z.string().trim().min(1).max(250).nullable().optional().default(null),
+    observaciones: texto,
+  })
+  .strict();
+
+const validarDestino = (v: z.infer<typeof destinoDelegacion>, c: z.RefinementCtx) => {
+    if (
+      (!v.usuario_id && !v.nombre) ||
+      (v.usuario_id && v.nombre) ||
+      (v.oficina_id && !v.usuario_id)
+    )
+      c.addIssue({
+        code: 'custom',
+        message: 'Seleccione una persona registrada o escriba su nombre; oficina sola no basta',
+      });
+  };
+
+export const delegacion = destinoDelegacion.extend({ revision: id }).superRefine(validarDestino);
+
 export const alta = z
   .object({
     tipo_id: id,
@@ -16,6 +41,7 @@ export const alta = z
     conservar_en_mesa: z.boolean().optional().default(false),
     unidad_id: id.nullable().optional(),
     origen_id: id.optional(),
+    destino: destinoDelegacion.superRefine(validarDestino).optional(),
     valores: z
       .array(z.object({ campo_id: id, valor: z.string().max(20000) }).strict())
       .max(100)
@@ -36,26 +62,6 @@ export const correccion = z
       .optional(),
   })
   .strict();
-export const delegacion = z
-  .object({
-    revision: id,
-    oficina_id: id.nullable().optional().default(null),
-    usuario_id: id.nullable().optional().default(null),
-    nombre: z.string().trim().min(1).max(250).nullable().optional().default(null),
-    observaciones: texto,
-  })
-  .strict()
-  .superRefine((v, c) => {
-    if (
-      (!v.usuario_id && !v.nombre) ||
-      (v.usuario_id && v.nombre) ||
-      (v.oficina_id && !v.usuario_id)
-    )
-      c.addIssue({
-        code: 'custom',
-        message: 'Seleccione una persona registrada o escriba su nombre; oficina sola no basta',
-      });
-  });
 export const ubicacion = z.object({ revision: id, unidad_id: id }).strict();
 export const anulacion = z.object({ revision: id, motivo }).strict();
 export const filtros = z

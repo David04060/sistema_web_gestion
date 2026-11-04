@@ -39,7 +39,7 @@ test('Delegación exige persona; modo manual no envía oficina ni usuario y no t
  assert.deepEqual(datos,{oficina_id:null,usuario_id:null,nombre:'Persona manual',observaciones:null});
  assert.equal('responsable_actual_id'in datos,false);assert.equal('ambito_id'in datos,false);
  const html=renderToStaticMarkup(createElement(m.DestinoDocumental,{valor:{...m.destinoVacio,oficina:'1'},cambiar:()=>{},opciones}));
- assert.ok(html.includes('Persona elegible'));assert.ok(!html.includes('Sin personas'));assert.ok(!html.includes('value="91"'));
+ assert.ok(html.includes('Buscar por nombre'));assert.ok(html.includes('Oficina elegible'));assert.ok(!html.includes('value="91"'));
  const manual=renderToStaticMarkup(createElement(m.DestinoDocumental,{valor:{...m.destinoVacio,modo:'manual'},cambiar:()=>{},opciones}));assert.ok(!manual.includes('Oficina opcional'));assert.ok(manual.includes('Nombre de la persona'));
 });
 test('API vigente: filtros, revisión, motivo, delegación y configuración usan endpoints nuevos',async()=>{

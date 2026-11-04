@@ -385,6 +385,7 @@ BEGIN
   SELECT clase INTO amb FROM ambitos_registro WHERE id=d.ambito_id;
   IF d.id IS NULL OR d.situacion='ANULADO' OR
      ((amb='COMPARTIDO_DIRECCION' AND rol IN (3,4)) OR
+      (actor=d.registrado_por AND rol IN (3,4,5) AND TG_OP<>'DELETE') OR
       (amb='PERSONAL' AND rol=5 AND actor=d.registrado_por AND d.situacion<>'DELEGADO'))
        IS DISTINCT FROM TRUE THEN
     RAISE EXCEPTION 'Operación PDF no autorizada';

@@ -12,6 +12,7 @@ export const estadoPdfSchema = z
       })
       .nullable(),
     modificar: z.boolean(),
+    eliminar: z.boolean().optional(),
     limpieza_pendiente: z.number(),
   })
   .transform((v) => ({

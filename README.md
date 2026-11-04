@@ -1,305 +1,39 @@
-# Sistema Web Documental — I.E. Enrique Paillardelle
+# Sistema Web Documental · I.E. Enrique Paillardelle
 
-## PDF documentales privados — implementación preparada
+Aplicación React y TypeScript en Cloudflare Pages, API Express en Render y PostgreSQL en Neon. Los PDF se almacenan en Cloudflare R2 privado. El servicio productivo utiliza la base sistema_documental_produccion. Para desarrollo se utiliza sistema_web_documental_final en PostgreSQL local.
 
-Registro con PDF opcional, adjunto posterior, consulta, reemplazo y eliminación
-con permisos documentales existentes y Cloudflare R2 privado. La migración aditiva
-005 y la configuración R2 requieren revisión y aplicación manual antes de habilitar
-la funcionalidad. Véase [ARCHIVOS_PDF_R2.md](docs/ARCHIVOS_PDF_R2.md) para arquitectura,
-autorización, tratamiento de fallos, pruebas y publicación pendiente.
+## Desarrollo
 
-## Desarrollo local — Sistema_Web_Final
+Desde backend, instala dependencias con npm ci y ejecuta npm run dev. Desde frontend, instala con npm ci y ejecuta npm run dev. Vite reenvía /api al backend local. El esquema de instalación se usa exclusivamente en una base vacía. Los cambios a una base existente se aplican explícitamente y nunca al arrancar. Consulta [la guía de base de datos](database/README.md).
 
-El desarrollo usa el proyecto local y la base PostgreSQL local **sistema_web_final**, esquema
-`public`. La conexión se lee de `backend/.env`; se conserva ese archivo privado y no se
-necesitan manifiestos, OID ni configuraciones QA.
+## Código activo
 
-Las modificaciones aprobadas ya están aplicadas: clasificación recibido/emitido y decisión de Dirección
-(guardar o delegar), con confirmación de entrega por Secretaría, consulta recíproca y documentos relacionados. No se aplican migraciones al arrancar. Para una instalación local que todavía no las tenga:
+- frontend/src/main.tsx y frontend/src/routes/AppRoutes.tsx definen la entrada y las pantallas. features agrupa autenticación, dashboard, documentos, administración y ubicaciones. public contiene fuentes y recursos estáticos.
+- backend/src/server.ts inicia el servicio y backend/src/app.ts monta las rutas. modules contiene operaciones de dominio. shared/documental/nucleo.ts concentra la identidad, el alcance de consulta y los permisos.
+- database/sistema_documental_instalacion.sql instala el modelo vigente. database/schema lo documenta por dominio y database/changes contiene los incrementales.
+- backend/scripts y frontend/scripts contienen herramientas. Algunos scripts y fuentes se refieren a circuitos anteriores. Verifica su destino y sus consumidores antes de ejecutarlos.
+- docs conserva informes y evidencias. El [inventario de fase 5](docs/LIMPIEZA_FRONTEND_FASE_5_20261103.md) distingue las rutas activas de consumidores históricos.
 
-```powershell
-Set-Location C:\Users\David\Sistema_Web_Final\backend
-npm run migrate:local
-```
+## Registro, delegación y PDF
 
-Este comando verifica localhost, nombre de base, puerto y esquema, y aplica exclusivamente
-`20261027-clasificacion-local.sql`, `20261027-entrega-secretaria-local.sql` y
-`20261027-decision-direccion-local.sql`, `20261027-documentos-relacionados-local.sql`,
-`20261027-flujo-propio-direccion-local.sql`, `20261027-decision-secretaria-local.sql` y
-`20261027-delegacion-personal-local.sql` en una transacción.
-Registra sus checksums en `migraciones_locales`; no crea bases ni importa datos. Conserva los registros,
-códigos, historial y secuencias anteriores. No aplica la integración descartada de archivos/ingresos/relevos.
+Dirección, Secretaría y Usuario registran documentos Recibidos o Emitidos. Dirección parte de Pendiente de Dirección, Secretaría elige Mesa de Partes o envío a Dirección y Usuario parte de Personal. El alta permite delegar inmediatamente. Secretaría delega desde Mesa de Partes y Dirección elige entre delegar o registrar ubicación. PostgreSQL confirma alta y delegación juntas. La delegación deja constancia de la persona indicada y su observación.
 
-Arranque habitual: mantener estas dos terminales en ejecución.
+El destinatario se puede buscar por nombre y oficina o indicar manualmente. La API limita las coincidencias a 20 y vuelve a validar la cuenta seleccionada al guardar. Usuario consulta sus documentos personales y delegados, dentro de su ámbito.
 
-```powershell
-# Terminal 1 — API en puerto 3000
-Set-Location C:\Users\David\Sistema_Web_Final\backend
-npm run dev
-```
+El autor de un registro vigente puede cargar o reemplazar el PDF tras delegarlo. Dirección y Secretaría mantienen sus permisos sobre el ámbito compartido. Usuario delegado conserva la carga y el reemplazo de sus propios archivos, con la eliminación sujeta a su permiso previo. La carga opcional se procesa después del alta. Si falla, el registro persiste y se puede reintentar desde el detalle.
 
-```powershell
-# Terminal 2 — Vite en puerto 5173
-Set-Location C:\Users\David\Sistema_Web_Final\frontend
-npm run dev
-```
+## Configuración PostgreSQL
 
-Abrir [http://localhost:5173](http://localhost:5173). Vite reenvía `/api` a `http://127.0.0.1:3000`.
-El backend utiliza `tsx watch src/server.ts` y valida cada conexión local antes de prestarla al
-código de aplicación. Si apunta a otro destino o falta el esquema requerido, rechaza el arranque;
-no migra automáticamente y no selecciona una copia como alternativa.
+- env.ts resuelve el perfil y valida variables y URL remota antes de conectar.
+- local.ts verifica loopback, base local, puerto, esquema y ausencia de rama Neon. También se usa desde herramientas locales.
+- neon.ts contiene los validadores de URL e identidad remotas, incluyendo el TLS y la rama esperados.
+- database.ts crea el pool, valida cada conexión nueva y usa la identidad verificada al arrancar.
+- esquema.ts reúne las sondas comunes de documentos y PDF. Neon añade la comprobación de miembros del ámbito.
 
-Las cuentas son las existentes en sistema_web_final. Las cuentas de las antiguas pruebas QA no
-se importan. Los nombres anteriores `dev:clasificacion` y `prepare:clasificacion:dev` son alias
-del arranque/migración local actual; ya no crean ni seleccionan copias.
+## Pruebas y publicación
 
-Verificación opcional con ambos servidores encendidos:
+Ejecuta typecheck, lint y build en cada proyecto. Para el backend usa npm test y npm run test:revision:local con PostgreSQL 18 disponible para el ejecutor aislado. Para el frontend usa npm test.
 
-```powershell
-Set-Location C:\Users\David\Sistema_Web_Final\backend
-npm run test:local
-```
+El despliegue usa main en GitHub, Render con el API compilado y Pages con frontend/dist. Compila el frontend con VITE_API_URL del API público. Aplica primero los incrementales requeridos y comprueba el commit activo en Render antes de cargar Pages. El almacenamiento productivo usa el prefijo produccion/ en R2.
 
-Esta prueba usa las cuentas locales existentes y crea documentos identificados como verificación local; comprueba registro recibido/emitido,
-las dos decisiones, destinatarios, entrega, privacidad, conflictos y conservación de antecedentes.
-Si Dirección aún no tiene ubicación, crea el estante DIRECCION con archivador 1 usando el módulo existente. No crea usuarios ni bases de prueba. El detalle de la corrección
-está en [DESARROLLO_LOCAL.md](docs/DESARROLLO_LOCAL.md).
-
-La consulta ordinaria es recíproca entre Secretaría y Dirección; compartir consulta no permite editar
-ni anular registros ajenos. Secretaría puede registrar un documento relacionado desde un origen suyo,
-incluso después de finalizar su recorrido. Consultar [DOCUMENTOS_RELACIONADOS_LOCAL.md](docs/DOCUMENTOS_RELACIONADOS_LOCAL.md)
-para el contrato, la auditoría y las comprobaciones ejecutadas.
-
-Los ajustes del listado, los cuadros destacados y la presentación histórica se documentan en
-[PANEL_LISTADO_AUDITORIA_LOCAL.md](docs/PANEL_LISTADO_AUDITORIA_LOCAL.md).
-
-## Publicación del flujo vigente
-
-Clasificación, consulta recíproca Dirección–Secretaría, decisiones y entrega, documentos relacionados,
-delegaciones personales y correcciones H1/H2/H3: véase [PUBLICACION_FLUJO_VIGENTE.md](docs/PUBLICACION_FLUJO_VIGENTE.md).
-Los apartados posteriores del circuito de cinco estados se conservan como antecedentes técnicos;
-no describen las decisiones actuales de los registros ordinarios.
-
-## Despliegue vigente
-
-Backend convencional Node.js 24 y Express en Render Free; frontend estático en
-Cloudflare Pages; PostgreSQL directo en Neon, rama `production`, base `neondb`.
-La rama anterior `qa-pruebas` fue eliminada y no se utiliza en el despliegue.
-Workers e Hyperdrive fueron retirados del backend. R2 queda preparado para
-respaldos cifrados, sujeto a su activación manual y configuración de secretos.
-Consultar [la guía vigente de producción](docs/PRODUCCION.md).
-Los informes anteriores de Workers se conservan como documentación histórica.
-
-## Stack aprobado
-
-Frontend: React, TypeScript, Vite, Tailwind CSS, React Router, React Hook Form,
-Zod, Fetch API, CSS Modules y ESLint.
-
-Backend: Node.js, Express, TypeScript, PostgreSQL, `pg`, JWT con `jsonwebtoken`,
-`scrypt` de `node:crypto`, Zod, Helmet, `tsx` y ESLint.
-
-ExcelJS: biblioteca de Node.js usada en el backend para generar archivos Excel `.xlsx`.
-La exportación mensual está documentada en [docs/EXPORTACION_EXCEL_LOCAL.md](docs/EXPORTACION_EXCEL_LOCAL.md); esta referencia se conserva para la actualización posterior del fundamento técnico y los conceptos técnicos del entregable académico.
-
-PostgreSQL utiliza `pg` y SQL directo parametrizado, sin ORM. Fetch API, CSS Modules
-y `scrypt` no necesitan dependencias independientes. Se conservan `dotenv` y
-`express-rate-limit`, que ya forman parte de la implementación existente.
-Los paquetes de tipos y el soporte de ESLint para TypeScript son herramientas de
-desarrollo del stack.
-
-No retirar tecnologías aprobadas porque todavía no tengan consumidores. Consultar
-al usuario antes de introducir tecnologías distintas. No modificar la base de
-datos ni desarrollar funcionalidades fuera del alcance autorizado.
-
-## Arquitectura del frontend
-
-Arquitectura modular por funcionalidades dentro de `frontend/src/`:
-
-- `api/`: infraestructura HTTP compartida.
-- `assets/`: recursos de la aplicación.
-- `components/layout/` y `components/ui/`: componentes compartidos.
-- `features/`: `auth`, `dashboard`, `documentos`, `movimientos`, `oficinas`, `roles`,
-  `siseve`, `tipos-documentales`, `ubicaciones` y `usuarios`.
-- `hooks/`, `lib/`, `routes/` y `types/`: elementos comunes según responsabilidad.
-- `App.tsx` y `main.tsx`: composición y entrada de la aplicación.
-
-Cada funcionalidad utiliza `components/`, `pages/`, `hooks/`, `api/` o `services/`,
-`schemas/`, `types/` y `styles/` cuando haya archivos que lo requieran. Mantener
-estilos exclusivos dentro del módulo y globales centralizados en `src/index.css`.
-Evitar concentrar nueva lógica en `App.tsx`. No crear carpetas vacías innecesarias.
-
-## Arquitectura del backend
-
-Monolito modular por capas en `backend/src/`. Conservar `config/`, `middlewares/`,
-`modules/`, `shared/`, `app.ts` y `server.ts`. Los módulos previstos son los mismos
-del frontend: `auth`, `roles`, `oficinas`, `usuarios`, `tipos-documentales`, `ubicaciones`,
-`documentos`, `movimientos`, `siseve` y `dashboard`.
-
-`Routes → Controllers → Services → Repositories → PostgreSQL`
-
-- Routes: endpoints y middlewares.
-- Controllers: solicitudes y respuestas HTTP; sin SQL directo.
-- Services: reglas de negocio.
-- Repositories: acceso a PostgreSQL y consultas parametrizadas.
-- Schemas/DTOs: validación y contratos de entrada y salida.
-- Mappers: transformación de modelos y respuestas cuando sea necesario.
-
-Aplicar SOLID y separación de responsabilidades. Ubicar elementos compartidos en
-carpetas comunes adecuadas y evitar duplicación. No trasladar archivos funcionales
-solo para reproducir visualmente una estructura de referencia.
-
-## Calidad y documentación
-
-Usar nombres claros, funciones acotadas y TypeScript coherente. Documentar
-componentes, funciones y métodos importantes mediante JSDoc/TSDoc cuando
-corresponda. Explicar reglas de negocio, validaciones y operaciones complejas,
-sin repetir instrucciones evidentes. Mantener documentación y código sincronizados.
-
-Ambos proyectos tienen `eslint.config.js` con reglas recomendadas de ESLint y
-typescript-eslint. Se permiten parámetros no utilizados con prefijo `_` para
-conservar las firmas HTTP de Express. Se excluyen dependencias y código generado.
-ESLint reemplaza a Oxlint en el frontend.
-
-## Instalación y comprobaciones
-
-Ejecutar `npm ci` en `frontend/` y `backend/` para reproducir sus archivos de bloqueo.
-El entorno verificado utiliza Node.js 24.21.0 y npm 11.19.0.
-
-En ambos proyectos:
-
-```sh
-npm run typecheck
-npm run lint
-npm run build
-```
-
-Para desarrollo, ejecutar `npm run dev` en cada proyecto. El backend mantiene su
-configuración privada y su conexión mediante `pg`.
-
-## Estado actual: autenticación y navegación integradas
-
-Los módulos Roles, Oficinas y Usuarios están implementados sobre el esquema real,
-con endpoints exclusivos de Administrador y navegación en el shell autenticado.
-Consultar [docs/ADMINISTRACION.md](docs/ADMINISTRACION.md) para reglas, API y pruebas,
-y [docs/CAMBIOS_ADMINISTRACION.md](docs/CAMBIOS_ADMINISTRACION.md) para los archivos.
-
-- Dependencias directas sin conflictos reportados por `npm ls --depth=0`.
-- Manifiestos y archivos de bloqueo sincronizados en ambos proyectos.
-- TypeScript y ESLint correctos en ambos proyectos; backend compilado.
-- React Router implementa /, /login, /dashboard protegido y 404, con redirecciones.
-- Los módulos administrativos añaden /roles, /oficinas y /usuarios con páginas de
-  listado, creación, detalle y edición. Solo Administrador ve y accede a estas rutas.
-- React Hook Form y Zod validan el formulario y los contratos de respuestas existentes.
-- Tailwind 4.3.3 integrado con Vite 8.3.4; CSS Modules encapsula login y perfil.
-- Compilación completa del frontend correcta; el login utiliza estilos reales de su módulo.
-- `App.tsx` compone las rutas. AuthProvider y AuthSession comparten estado y persisten
-  solo el JWT en sessionStorage; /me valida la recuperación antes de mostrar el panel.
-- Autenticación backend con tipos internos/públicos separados y mapper explícito.
-- Duración JWT conservada en 900 segundos, compartida entre firma y respuesta.
-  `JWT_EXPIRES_IN` no controlaba la duración y se retiró del esquema de configuración;
-  no se modificó el entorno privado ni se activó una política de vencimiento distinta.
-- PostgreSQL verificado mediante consultas de lectura, sin modificar datos ni esquema.
-- Acceso real verificado con una cuenta autorizada introducida por el usuario en el
-  navegador, incluyendo recarga, recuperación, redirecciones y cierre de sesión.
-
-La arquitectura, seguridad, pruebas reales y manifiesto de la integración están en
-[docs/AUTENTICACION.md](docs/AUTENTICACION.md). La revisión anterior se conserva como
-informe histórico en [docs/REVISION_CODIGO.md](docs/REVISION_CODIGO.md).
-
-## Pruebas de regresión
-
-`npm test` en cada proyecto ejecuta pruebas nativas de Node.js, sin tecnologías
-adicionales. El backend se compila antes de sus pruebas; su pool se sustituye por
-datos ficticios. El frontend verifica transporte y gestor de sesión con adaptadores
-aislados. Estas regresiones complementan la prueba positiva real con PostgreSQL.
-
-`npm run test:admin` en backend ejecuta HTTP y SQL reales dentro de ROLLBACK y exige
-autorización explícita mediante ADMIN_WRITE_TESTS=ROLLBACK_AUTHORIZED. No altera el
-esquema ni deja registros de QA; las secuencias pueden avanzar, como se advirtió y
-autorizó. El detalle de ejecución segura está en docs/ADMINISTRACION.md.
-
-En backend, `npm run check:db` verifica identidad, metadatos y resúmenes agregados
-con una transacción READ ONLY y ROLLBACK. Usa el entorno local sin imprimir secretos.
-
-Opcionalmente, para reproducir la QA visual aislada de la revisión anterior, compilar backend y ejecutar
-`node tests/visual-server.mjs` desde backend y frontend en dos terminales.
-Abrir `http://127.0.0.1:5174`. Las credenciales ficticias se definen en el verificador
-del backend y no corresponden a una cuenta real. Los puertos 3107 y 5174 y su proxy
-solo se utilizan en esos procesos de prueba; detenerlos con Ctrl+C.
-
-La sesión conserva el vencimiento absoluto del JWT: recargar no concede otros 900
-segundos. sessionStorage normalmente termina con la pestaña y es accesible a JavaScript,
-por lo que no protege ante XSS. Logout limpia el navegador, pero no revoca una copia
-del JWT en el servidor. No se implementaron cookies, sesiones de servidor, refresh
-tokens ni revocación individual del token al cerrar sesión. Los módulos documentales
-implementados posteriormente se describen en las secciones siguientes.
-
-## Tipos documentales y ubicaciones físicas
-
-Implementados catálogo institucional, estantes y archivadores con permisos por
-responsable, consulta de Dirección y administración/reasignación institucional.
-El cambio autorizado estantes.oficina_id mantiene fija la oficina del estante.
-Consultar [reglas, endpoints y pruebas](docs/TIPOS_UBICACIONES.md) y
-[manifiesto de archivos](docs/CAMBIOS_TIPOS_UBICACIONES.md).
-
-
-## Documentos y movimientos documentales
-
-Implementados sobre el esquema de cinco estados aprobado y aplicado mediante autorizacion expresa.
-El registro, las decisiones de Direccion, la salida fisica, recepcion, rechazo, recuperacion,
-cancelacion y anulacion conservan custodia e historial. El detalle de contratos, permisos,
-pruebas reales y limites esta en [docs/DOCUMENTOS_MOVIMIENTOS.md](docs/DOCUMENTOS_MOVIMIENTOS.md).
-La mencion anterior a ausencia de modulos documentales describe la etapa historica de autenticacion.
-
-Desde backend, `npm run test:migracion-documental` requiere
-`VALIDAR_FLUJO_DOCUMENTAL=ROLLBACK_Y_QA_AISLADA`. Crea una base QA efimera con solo el
-esquema y los catalogos institucionales; no copia cuentas personales. Las escrituras se
-confirman exclusivamente en QA y la base se elimina al terminar. Compara estructura y
-huellas de datos de la base institucional antes y despues. No vuelve a aplicar la migracion
-si ya detecta las columnas aprobadas. Necesita pg_dump/psql de PostgreSQL 18 y permiso
-CREATEDB del entorno de pruebas. `npm test` continua ejecutando regresiones aisladas.
-
-
-## SíseVe
-
-Implementado el módulo restringido con autorización individual y contraseña compartida
-verificadas en cada operación. Administración y contenido están separados; ser Administrador
-no concede acceso documental. El usuario aprobó el prefijo SISEVE y se actualizó el catálogo
-sin cambios de esquema ni generador paralelo. Ver [docs/SISEVE.md](docs/SISEVE.md).
-
-El Administrador debe configurar privadamente la clave institucional y las autorizaciones en
-`/siseve/administracion`. No se dejaron claves ni autorizaciones de QA en la base real.
-`npm run test:siseve` en backend ejecuta la integración real aislada, con la misma guarda
-VALIDAR_FLUJO_DOCUMENTAL=ROLLBACK_Y_QA_AISLADA documentada arriba.
-
-## Revisión integral del 22 de octubre de 2026
-
-Los diez módulos se revisaron mediante análisis de código, HTTP directo, PostgreSQL QA
-y navegador. El estado por módulo, las correcciones, los resultados y los pendientes
-para habilitación institucional están en [docs/REVISION_FINAL.md](docs/REVISION_FINAL.md).
-La evidencia estructurada está en [docs/RESULTADOS_REVISION_FINAL.json](docs/RESULTADOS_REVISION_FINAL.json).
-
-`npm run test:revision-final` desde backend ejecuta la revisión nueva con una base QA
-efímera y Chrome. No debe confundirse una validación funcional QA con una habilitación
-institucional: siguen pendientes los privilegios mínimos de PostgreSQL y la configuración
-privada de la clave adicional SíseVe en el entorno institucional.
-
-## Optimización técnica final
-
-Las pantallas utilizan carga diferida por rutas con React.lazy/Suspense; el layout y
-los guards conservan la autorización existente. El diagnóstico de bundles, reducción
-de solicitudes, contraste, pruebas del build productivo y pendientes de producción
-están en [docs/OPTIMIZACION_FINAL.md](docs/OPTIMIZACION_FINAL.md).
-Desde frontend, `npm run analyze:bundle -- despues` genera la medición actual.
-
-## Organización y documentación del código
-
-La responsabilidad de las capas, los diez módulos, la sesión, la circulación y las
-reglas de confidencialidad están descritas en [docs/ARQUITECTURA_CODIGO.md](docs/ARQUITECTURA_CODIGO.md).
-El informe de refactorización, su inventario y los resultados de regresión están en
-[docs/REFACTORIZACION_CODIGO.md](docs/REFACTORIZACION_CODIGO.md).
-
-Desde la raíz, `node frontend/scripts/auditar-documentacion.mjs --check` comprueba
-la presencia de documentación de implementaciones propias en `src`, `tests` y
-`scripts`, incluidos métodos, constructores y callbacks. La guía técnica distingue
-esta comprobación automática de la revisión de precisión de los comentarios.
+Consulta [la publicación de la base productiva](docs/PUBLICACION_BASE_LIMPIA_20261103.md) y [la gestión de tipos propios](docs/CORRECCION_TIPOS_DOCUMENTALES_20261103.md) para el historial reciente.

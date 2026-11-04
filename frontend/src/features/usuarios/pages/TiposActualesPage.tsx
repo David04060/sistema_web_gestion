@@ -5,7 +5,6 @@ import { EstadoCarga } from '../../../components/ui/EstadoCarga';
 import { useConsulta } from '../../../hooks/useConsulta';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { TipoDocumentalForm, type TipoEditable } from '../components/TipoDocumentalForm';
-export { OficinasActualesPage } from './OficinasPages';
 
 /** El servidor determina qué tipos pertenecen al creador; el ámbito compartido solo permite consultarlos. */
 export function TiposActualesPage() {

@@ -90,7 +90,6 @@ export const opcionesSchema = z.object({
   unidades: z.array(
     z.object({ id, clase: z.string(), nombre: z.string(), padre_id: id.nullable() }),
   ),
-  destinatarios: z.array(z.object({ id, nombre: z.string(), oficina_id: id.nullable() })),
   oficinas: z.array(z.object({ id, nombre: z.string() })),
 });
 export type OpcionesActuales = z.infer<typeof opcionesSchema>;
@@ -262,7 +261,18 @@ export const auditoriaSchema = z.object({
     }),
   ),
 });
+const destinatariosSchema = z.object({
+  personas: z.array(z.object({
+    id, nombre: z.string(), nombre_usuario: z.string(), oficina: z.string().nullable(),
+  })),
+  hay_mas: z.boolean(),
+});
 export const api = {
+  destinatarios: (token: string, q: string, oficina: string, signal: AbortSignal) => {
+    const filtros = new URLSearchParams({ q });
+    if (oficina) filtros.set('oficina_id', oficina);
+    return apiRequest('/api/documentos/destinatarios?' + filtros, destinatariosSchema, { signal }, token);
+  },
   auditoria: (t: string, d: string) =>
     apiRequest('/api/documentos/' + encodeURIComponent(d) + '/auditoria', auditoriaSchema, {}, t),
   lista: (t: string, q: string) =>

@@ -119,7 +119,7 @@ export function AccionesDocumento({
             }}
           >
             <fieldset className={styles.grupoDestino} disabled={ocupado || confirmacion !== null}>
-              <DestinoDocumental valor={destino} cambiar={setDestino} opciones={opciones.datos} />
+              <DestinoDocumental token={token} valor={destino} cambiar={setDestino} opciones={opciones.datos} />
             </fieldset>
             <button className={styles.boton} disabled={ocupado}>
               {ocupado ? 'Procesando…' : 'Confirmar delegación'}
