@@ -57,6 +57,26 @@ test('Alta delegada, rollback y PDF de autor con PostgreSQL real y almacenamient
     assert.ok((await buscarDestinatarios(usuario.id, { q: 'fixture', oficina_id: director.oficina_id }))
       .personas.every((p) => p.id === director.id));
     await assert.rejects(buscarDestinatarios(admin.id, { q: 'fixture' }), (e) => e.status === 403);
+    const sugerir = async (actor, oficina_id) =>
+      (await buscarDestinatarios(actor.id, { q: '', oficina_id })).personas.map((p) => p.id);
+    assert.ok((await sugerir(usuario)).length <= 8);
+    for (const receptor of [director, secretaria, director]) {
+      await registrar(usuario.id, entrada(fixture.tipos.usuario, { destino: { usuario_id: receptor.id } }));
+    }
+    await registrar(director.id, entrada(fixture.tipos.director, { destino: { usuario_id: usuario.id } }));
+    assert.deepEqual(await sugerir(usuario), [director.id, secretaria.id]);
+    assert.equal((await sugerir(director))[0], usuario.id);
+    assert.deepEqual(await sugerir(usuario, secretaria.oficina_id), [secretaria.id]);
+    await pool.query('UPDATE usuarios SET activo=false WHERE id=$1', [secretaria.id]);
+    try {
+      assert.deepEqual(await sugerir(usuario), [director.id]);
+      await assert.rejects(registrar(usuario.id, entrada(fixture.tipos.usuario, {
+        destino: { usuario_id: secretaria.id },
+      })), (e) => e.status === 400);
+    } finally {
+      await pool.query('UPDATE usuarios SET activo=true WHERE id=$1', [secretaria.id]);
+    }
+    assert.ok((await buscarDestinatarios(usuario.id, { q: 'f' })).personas.some((p) => p.id === director.id));
     const idsHomonimos = [director.id, secretaria.id];
     const nombresPrevios = (await pool.query(
       'SELECT id::text,nombre,apellido FROM usuarios WHERE id=ANY($1::bigint[])',

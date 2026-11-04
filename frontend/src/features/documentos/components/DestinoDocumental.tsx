@@ -38,7 +38,7 @@ export function DestinoDocumental({
   const listaId = useId();
   const [intento, setIntento] = useState(0);
   const consulta = texto.trim();
-  const activa = abierto && !v.usuario && v.modo === 'usuario' && consulta.length >= 2;
+  const activa = abierto && !v.usuario && v.modo === 'usuario';
   const clave = JSON.stringify([token, consulta, v.oficina, intento]);
   const [resultado, setResultado] = useState<{
     clave: string;
@@ -56,7 +56,7 @@ export function DestinoDocumental({
             setResultado({ clave, error: 'No se pudo buscar destinatarios.' });
         },
       );
-    }, 250);
+    }, consulta ? 250 : 0);
     return () => { clearTimeout(espera); control.abort(); };
   }, [activa, clave, token, consulta, v.oficina]);
   const actual = activa && resultado?.clave === clave ? resultado : undefined;
@@ -111,7 +111,7 @@ export function DestinoDocumental({
                 aria-activedescendant={opcionActiva}
                 autoComplete="off"
                 maxLength={100}
-                placeholder="Escribe un nombre"
+                placeholder="Elige o escribe un nombre"
                 value={v.usuario ? v.etiqueta : texto}
                 onFocus={(e) => { setAbierto(true); if (v.usuario) e.currentTarget.select(); }}
                 onClick={() => { setAbierto(true); if (resultado?.clave === clave && resultado.error) setIntento((n) => n + 1); }}
@@ -156,14 +156,13 @@ export function DestinoDocumental({
                     </div>
                   ))}
                 </div>
-                {!activa && !v.usuario && <p>Escribe al menos dos caracteres.</p>}
                 {v.usuario && <p>Persona seleccionada. Edita el nombre para buscar otra.</p>}
                 {activa && !actual && <p role="status">Buscando destinatarios…</p>}
                 {actual?.error && (
                   <p role="alert">{actual.error} Vuelve a escribir o abre el selector de nuevo.</p>
                 )}
                 {actual?.datos?.personas.length === 0 && <p role="status">No se encontraron personas.</p>}
-                {actual?.datos?.hay_mas && <p role="status">Se muestran 20 resultados. Precisa el nombre.</p>}
+                {actual?.datos?.hay_mas && <p role="status">Hay más personas. Escribe para acotar la búsqueda.</p>}
               </div>
             )}
           </div>

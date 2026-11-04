@@ -172,16 +172,29 @@ export async function historial(actor: string, documentoId: string) {
 export async function buscarDestinatarios(actor: string, filtro: z.infer<typeof consultaDestinatarios>) {
   return operacion(actor, 'Buscar destinatarios', async (cliente, identidad) => {
     exigirAmbito(identidad);
+    const limite = filtro.q ? 20 : 8;
     const resultado = await cliente.query(
-      `SELECT u.id::text,concat_ws(' ',u.nombre,u.apellido) nombre,
-              u.nombre_usuario,o.nombre oficina
-       FROM usuarios u LEFT JOIN oficinas o ON o.id=u.oficina_id
-       WHERE u.activo AND ($2::bigint IS NULL OR u.oficina_id=$2)
-         AND strpos(lower(concat_ws(' ',u.nombre,u.apellido)),lower($1))>0
-       ORDER BY u.nombre,u.apellido,u.id LIMIT 21`,
-      [filtro.q, filtro.oficina_id ?? null],
+      `WITH recientes AS (
+         SELECT usuario_indicado_id, max(delegado_en) ultima
+         FROM delegaciones_documento
+         WHERE $1='' AND delegado_por=$3 AND usuario_indicado_id IS NOT NULL
+         GROUP BY usuario_indicado_id
+       ), elegibles AS (
+         SELECT u.id,u.nombre,u.apellido,u.nombre_usuario,o.nombre oficina,r.ultima
+         FROM usuarios u
+         LEFT JOIN oficinas o ON o.id=u.oficina_id
+         LEFT JOIN recientes r ON r.usuario_indicado_id=u.id
+         WHERE u.activo AND ($2::bigint IS NULL OR u.oficina_id=$2)
+           AND ($1='' OR strpos(lower(concat_ws(' ',u.nombre,u.apellido)),lower($1))>0
+             OR strpos(lower(u.nombre_usuario),lower($1))>0)
+       )
+       SELECT id::text,concat_ws(' ',nombre,apellido) nombre,nombre_usuario,oficina
+       FROM elegibles
+       WHERE ultima IS NOT NULL OR NOT EXISTS (SELECT 1 FROM elegibles WHERE ultima IS NOT NULL)
+       ORDER BY ultima DESC NULLS LAST,nombre,apellido,id LIMIT $4`,
+      [filtro.q, filtro.oficina_id ?? null, identidad.id, limite + 1],
     );
-    return { personas: resultado.rows.slice(0, 20), hay_mas: resultado.rows.length > 20 };
+    return { personas: resultado.rows.slice(0, limite), hay_mas: resultado.rows.length > limite };
   });
 }
 

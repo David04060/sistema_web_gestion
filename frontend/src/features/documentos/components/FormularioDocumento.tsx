@@ -232,7 +232,7 @@ export function FormularioDocumento({
               </label>
             )}
             {!id && (
-              <details onToggle={(e) => setDelegar(e.currentTarget.open)}>
+              <details className={styles.campoCompleto} onToggle={(e) => setDelegar(e.currentTarget.open)}>
                 <summary>Delegar</summary>
                 {delegar && (
                   <DestinoDocumental token={token} valor={destino} cambiar={setDestino} opciones={opciones} />
