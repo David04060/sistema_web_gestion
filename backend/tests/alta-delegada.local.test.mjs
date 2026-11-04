@@ -57,6 +57,22 @@ test('Alta delegada, rollback y PDF de autor con PostgreSQL real y almacenamient
     assert.ok((await buscarDestinatarios(usuario.id, { q: 'fixture', oficina_id: director.oficina_id }))
       .personas.every((p) => p.id === director.id));
     await assert.rejects(buscarDestinatarios(admin.id, { q: 'fixture' }), (e) => e.status === 403);
+    const idsHomonimos = [director.id, secretaria.id];
+    const nombresPrevios = (await pool.query(
+      'SELECT id::text,nombre,apellido FROM usuarios WHERE id=ANY($1::bigint[])',
+      [idsHomonimos],
+    )).rows;
+    try {
+      await pool.query("UPDATE usuarios SET nombre='Nombre Homónimo',apellido='Prueba' WHERE id=ANY($1::bigint[])", [idsHomonimos]);
+      const { personas } = await buscarDestinatarios(usuario.id, { q: 'homónimo' });
+      assert.equal(personas.length, 2);
+      assert.equal(personas[0].nombre, personas[1].nombre);
+      assert.notEqual(personas[0].nombre_usuario, personas[1].nombre_usuario);
+      assert.notEqual(personas[0].oficina, personas[1].oficina);
+    } finally {
+      for (const u of nombresPrevios)
+        await pool.query('UPDATE usuarios SET nombre=$2,apellido=$3 WHERE id=$1', [u.id, u.nombre, u.apellido]);
+    }
     for (const [actor, tipo, conservar] of [
       [director, fixture.tipos.director, false],
       [secretaria, fixture.tipos.director, true],
