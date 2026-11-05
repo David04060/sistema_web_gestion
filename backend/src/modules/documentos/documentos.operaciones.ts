@@ -27,10 +27,11 @@ import {
   exigirRevision,
   lecturaSQL,
   permisos,
+  type Actor,
 } from '../../shared/documental/nucleo.js';
 import { HttpError } from '../../shared/http/HttpError.js';
 
-/** Consulta catálogos del ámbito y unidades/campos propios; los destinatarios no adquieren permisos por aparecer aquí. */
+/** Consulta catálogos del ámbito y campos propios. */
 export async function opciones(actor: string) {
   return operacion(actor, 'Opciones documentales', async (cliente, identidad) => {
     const ambito = exigirAmbito(identidad);
@@ -48,12 +49,6 @@ export async function opciones(actor: string) {
           [identidad.id],
         )
       ).rows,
-      unidades: (
-        await cliente.query(
-          'SELECT id::text,clase,nombre,padre_id::text FROM unidades_ubicacion WHERE propietario_id=$1 AND activo ORDER BY id',
-          [identidad.id],
-        )
-      ).rows,
       // Compatibilidad con pestañas que aún cargaron el selector anterior.
       destinatarios: (await cliente.query(
         "SELECT id::text,concat_ws(' ',nombre,apellido) nombre,oficina_id::text FROM usuarios WHERE activo ORDER BY nombre,apellido,id LIMIT 20",
@@ -62,6 +57,38 @@ export async function opciones(actor: string) {
         await cliente.query('SELECT id::text,nombre FROM oficinas WHERE activa ORDER BY nombre')
       ).rows,
     };
+  });
+}
+
+const unidadPropiaActiva = 'u.propietario_id=$1 AND u.oficina_id=$2 AND u.activo';
+
+/** Recorre ramas activas de la cuenta autenticada y limita los resultados en PostgreSQL. */
+export async function buscarUbicaciones(actor: string, q: string) {
+  return operacion(actor, 'Buscar ubicación', async (cliente, identidad) => {
+    exigirAmbito(identidad);
+    const limite = q ? 20 : 5;
+    const { rows } = await cliente.query<{ id: string; ruta: string }>(
+      `WITH RECURSIVE lugares AS (
+         SELECT u.id,
+           CASE WHEN u.clase='Lugar' THEN u.nombre ELSE u.clase||': '||u.nombre END AS ruta,
+           u.clase, false AS contenido
+         FROM unidades_ubicacion u JOIN oficinas o ON o.id=u.oficina_id AND o.activa
+         WHERE ${unidadPropiaActiva} AND u.padre_id IS NULL
+         UNION ALL
+         SELECT u.id, l.ruta||' › '||u.nombre, u.clase, true
+         FROM lugares l JOIN unidades_ubicacion u ON u.padre_id=l.id
+         WHERE ${unidadPropiaActiva}
+       ), etiquetas AS (
+         SELECT id, CASE WHEN contenido THEN ruta||' · '||clase ELSE ruta END AS ruta
+         FROM lugares
+       )
+       SELECT id::text, ruta FROM etiquetas
+       WHERE strpos(translate(lower(ruta), 'áéíóúü', 'aeiouu'),
+                    translate(lower($3), 'áéíóúü', 'aeiouu')) > 0
+       ORDER BY ruta, etiquetas.id LIMIT $4`,
+      [identidad.id, identidad.oficina_id, q, limite + 1],
+    );
+    return { ubicaciones: rows.slice(0, limite), hay_mas: rows.length > limite };
   });
 }
 /** Aplica lectura autorizada antes de contar y paginar; los anulados exigen petición expresa del Superadministrador. */
@@ -208,6 +235,11 @@ export async function registrar(actor: string, datos: z.infer<typeof alta>) {
       throw new HttpError(400, 'Para delegar al registrar, Secretaría debe conservar en Mesa de Partes');
     if (datos.destino && identidad.rol_id === 3 && datos.unidad_id)
       throw new HttpError(400, 'La delegación inmediata no admite guardar en Dirección');
+    if (datos.unidad_id) {
+      if (identidad.rol_id === 4 && !datos.conservar_en_mesa)
+        throw new HttpError(400, 'Para indicar ubicación, conserva el documento en Mesa de Partes');
+      await exigirUnidadVigente(cliente, identidad, datos.unidad_id);
+    }
     if (datos.origen_id) {
       const origen = await documento(cliente, identidad, datos.origen_id, true);
       if (origen.ambito_id !== ambito) throw new HttpError(403, 'Origen fuera de su ámbito');
@@ -323,13 +355,35 @@ export async function ubicar(actor: string, documentoId: string, datos: z.infer<
     const d = await documento(cliente, identidad, documentoId, true);
     if (!permisos(identidad, d).ubicar) throw new HttpError(403, 'Ubicación no autorizada');
     exigirRevision(d, datos.revision);
+    await exigirUnidadVigente(cliente, identidad, datos.unidad_id);
     await cliente.query(
       'UPDATE ubicaciones_documento SET vigente=false WHERE documento_id=$1 AND vigente',
       [documentoId],
     );
     await registrarUbicacion(cliente, documentoId, datos.unidad_id, identidad.id);
+    // El trigger de ubicación ya actualiza el documento cuando pasa a Guardado en Dirección.
+    if (d.situacion !== 'PENDIENTE_DIRECCION')
+      await cliente.query('UPDATE documentos SET revision=revision+1 WHERE id=$1', [documentoId]);
   });
   return detalle(actor, documentoId);
+}
+
+/** Comprueba la unidad y sus antecesores dentro de la transacción que la asigna. */
+async function exigirUnidadVigente(cliente: PoolClient, identidad: Actor, unidadId: string) {
+  const resultado = await cliente.query(
+    `WITH RECURSIVE cadena AS (
+       SELECT u.id,u.padre_id
+       FROM unidades_ubicacion u JOIN oficinas o ON o.id=u.oficina_id AND o.activa
+       WHERE ${unidadPropiaActiva} AND u.id=$3
+       UNION
+       SELECT u.id,u.padre_id FROM cadena c JOIN unidades_ubicacion u ON u.id=c.padre_id
+       WHERE ${unidadPropiaActiva}
+     )
+     SELECT 1 FROM cadena WHERE padre_id IS NULL`,
+    [identidad.id, identidad.oficina_id, unidadId],
+  );
+  if (!resultado.rowCount)
+    throw new HttpError(400, 'Selecciona una ubicación propia y vigente');
 }
 /** Anulación lógica autorizada; conserva registro, historia y vínculo PDF. */
 export async function anular(actor: string, documentoId: string, datos: z.infer<typeof anulacion>) {

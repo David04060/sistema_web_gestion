@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { config, rutaUnidades, padresElegibles } from '../../../api/documental';
 import { esAdministracion } from '../../../lib/perfiles';
@@ -58,6 +58,8 @@ type Unidad = {
   padre_id: string | null;
   activo: boolean;
 };
+const vistaBreve = 5;
+
 function UnidadesCuenta({
   token,
   usuario,
@@ -70,6 +72,16 @@ function UnidadesCuenta({
   const consulta = useConsulta(
     useCallback(() => config.unidades(token, admin ? usuario : undefined), [token, usuario, admin]),
   );
+  const arbolId = useId();
+  const [expandidos, setExpandidos] = useState<Set<string>>(() => new Set());
+  function alternar(id: string) {
+    setExpandidos((previos) => {
+      const siguientes = new Set(previos);
+      if (siguientes.has(id)) siguientes.delete(id);
+      else siguientes.add(id);
+      return siguientes;
+    });
+  }
   const [modo, setModo] = useState<'lugar' | 'contenido'>('lugar'),
     [edicion, setEdicion] = useState<Unidad>(),
     [clase, setClase] = useState(''),
@@ -130,6 +142,9 @@ function UnidadesCuenta({
     if (visitados.has(u.id)) return null;
     const siguientes = new Set([...visitados, u.id]);
     const hijos = unidades.filter((v) => v.padre_id === u.id);
+    const expandido = expandidos.has(u.id);
+    const ocultos = hijos.length - vistaBreve;
+    const listaId = arbolId + '-' + u.id;
     return (
       <li key={u.id}>
         <div className={styles.filaOficina}>
@@ -142,7 +157,27 @@ function UnidadesCuenta({
             Editar {u.padre_id ? 'contenido' : 'lugar'}
           </button>
         </div>
-        {!!hijos.length && <ul>{hijos.map((h) => grupo(h, siguientes))}</ul>}
+        {!!hijos.length && (
+          <ul id={listaId}>
+            {(expandido ? hijos : hijos.slice(0, vistaBreve)).map((h) => grupo(h, siguientes))}
+          </ul>
+        )}
+        {ocultos > 0 && (
+          <div className={styles.resumenUbicaciones}>
+            {!expandido && (
+              <small>{ocultos} {ocultos === 1 ? 'elemento oculto' : 'elementos ocultos'}</small>
+            )}
+            <button
+              type="button"
+              className={styles.secundario}
+              aria-expanded={expandido}
+              aria-controls={listaId}
+              onClick={() => alternar(u.id)}
+            >
+              {expandido ? 'Mostrar menos' : 'Ver todos'}
+            </button>
+          </div>
+        )}
       </li>
     );
   }

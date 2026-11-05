@@ -1,10 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { api, rutaUnidades, type DocumentoActual } from '../../../api/documental';
+import { useNavigate } from 'react-router-dom';
+import { api, type DocumentoActual, type UbicacionElegible } from '../../../api/documental';
 import { ApiError } from '../../../api/client';
 import { useConsulta } from '../../../hooks/useConsulta';
 import { EstadoCarga } from '../../../components/ui/EstadoCarga';
 import { DestinoDocumental, destinoVacio, datosDestino } from './DestinoDocumental';
+import { SelectorUbicacion } from './SelectorUbicacion';
 import styles from '../../../components/ui/Admin.module.css';
 /** Envía solo acciones concedidas por el servidor; la revisión protege contra escrituras concurrentes. */
 export function AccionesDocumento({
@@ -18,13 +19,13 @@ export function AccionesDocumento({
 }) {
   const navegar = useNavigate(),
     [destino, setDestino] = useState(destinoVacio),
-    [unidad, setUnidad] = useState(''),
+    [unidad, setUnidad] = useState<UbicacionElegible | null>(null),
     [motivo, setMotivo] = useState(''),
     [error, setError] = useState(''),
     [ocupado, setOcupado] = useState(false);
   const enviando = useRef(false),
     [confirmacion, setConfirmacion] = useState<'delegar' | 'anular' | null>(null);
-  const necesitaOpciones = d.permisos.delegar || d.permisos.ubicar;
+  const necesitaOpciones = d.permisos.delegar;
   const opciones = useConsulta(
     useCallback(() => api.opciones(token), [token]),
     { habilitada: necesitaOpciones },
@@ -52,7 +53,7 @@ export function AccionesDocumento({
         if (!unidad) throw Error('Selecciona una unidad propia.');
         const resultado = await api.ubicar(token, d.id, {
           revision: d.revision,
-          unidad_id: unidad,
+          unidad_id: unidad.id,
         });
         actualizar(resultado.documento, 'Ubicación guardada correctamente.');
         return;
@@ -127,7 +128,7 @@ export function AccionesDocumento({
           </form>
         </details>
       )}
-      {d.permisos.ubicar && opciones.datos && (
+      {d.permisos.ubicar && (
         <details>
           <summary>Guardar en una ubicación propia</summary>
           <form
@@ -136,22 +137,12 @@ export function AccionesDocumento({
               void ejecutar('ubicar');
             }}
           >
-            <label className={styles.campo}>
-              Unidad
-              <select required value={unidad} onChange={(e) => setUnidad(e.target.value)}>
-                <option value="">Seleccionar unidad</option>
-                {opciones.datos.unidades.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {rutaUnidades(opciones.datos?.unidades ?? [], u.id)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {!opciones.datos.unidades.length && (
-              <p>
-                Primero crea una <Link to="/ubicaciones">unidad de ubicación</Link>.
-              </p>
-            )}
+            <SelectorUbicacion
+              token={token}
+              valor={unidad}
+              cambiar={setUnidad}
+              deshabilitado={ocupado}
+            />
             <button className={styles.boton} disabled={ocupado || !unidad}>
               Guardar ubicación
             </button>

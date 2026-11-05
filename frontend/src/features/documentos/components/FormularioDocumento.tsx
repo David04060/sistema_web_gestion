@@ -2,11 +2,12 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   api,
-  rutaUnidades,
   type DocumentoActual,
   type OpcionesActuales,
+  type UbicacionElegible,
 } from '../../../api/documental';
 import { DestinoDocumental, datosDestino, destinoVacio } from './DestinoDocumental';
+import { SelectorUbicacion } from './SelectorUbicacion';
 import { ArchivoPdf } from './ArchivoPdf';
 import { clientePdf, comprobarSeleccion, subirPdf } from '../api/pdf.api';
 import styles from '../../../components/ui/Admin.module.css';
@@ -37,13 +38,13 @@ export function FormularioDocumento({
   const enviando = useRef(false);
   const [delegar, setDelegar] = useState(false);
   const [destino, setDestino] = useState(destinoVacio);
+  const [ubicacion, setUbicacion] = useState<UbicacionElegible | null>(null);
   const [datos, setDatos] = useState({
     tipo_id: inicial?.tipo_id ?? '',
     clasificacion: inicial?.clasificacion ?? clasificacion,
     asunto: inicial?.asunto ?? '',
     remitente: inicial?.remitente ?? '',
     observaciones: inicial?.observaciones ?? '',
-    unidad_id: '',
     conservar_en_mesa: false,
     motivo: '',
   });
@@ -90,7 +91,7 @@ export function FormularioDocumento({
               ...(delegar ? { destino: datosDestino(destino) } : {}),
               clasificacion: datos.clasificacion,
               conservar_en_mesa: conservarEnMesa,
-              ...(ubicable && datos.unidad_id ? { unidad_id: datos.unidad_id } : {}),
+              ...(ubicable && ubicacion ? { unidad_id: ubicacion.id } : {}),
               ...(origen ? { origen_id: origen.id } : {}),
             });
       if (!id) {
@@ -207,7 +208,7 @@ export function FormularioDocumento({
                   value={conservarEnMesa ? 'mesa' : 'direccion'}
                   onChange={(e) => {
                     cambiar('conservar_en_mesa', e.target.value === 'mesa');
-                    cambiar('unidad_id', '');
+                    setUbicacion(null);
                   }}
                 >
                   <option value="direccion">Pendiente de decisión de Dirección</option>
@@ -216,20 +217,13 @@ export function FormularioDocumento({
               </label>
             )}
             {!id && ubicable && (
-              <label className={styles.campo}>
-                Ubicación opcional
-                <select
-                  value={datos.unidad_id}
-                  onChange={(e) => cambiar('unidad_id', e.target.value)}
-                >
-                  <option value="">Sin ubicación</option>
-                  {opciones.unidades.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {rutaUnidades(opciones.unidades, u.id)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <SelectorUbicacion
+                token={token}
+                valor={ubicacion}
+                cambiar={setUbicacion}
+                opcional
+                deshabilitado={ocupado}
+              />
             )}
             {!id && (
               <details className={styles.campoCompleto} onToggle={(e) => setDelegar(e.currentTarget.open)}>

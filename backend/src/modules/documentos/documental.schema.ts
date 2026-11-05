@@ -7,6 +7,7 @@ export const id = idSchema;
 const texto = z.string().trim().max(20000).nullable().optional().default(null);
 const motivo = z.string().trim().min(1).max(1000);
 export const consultaDestinatarios = z.object({ q: z.string().trim().max(100).default(''), oficina_id: id.optional() }).strict();
+export const consultaUbicaciones = z.object({ q: z.string().trim().max(250).default('') }).strict();
 
 const destinoDelegacion = z
   .object({

@@ -87,9 +87,6 @@ export const opcionesSchema = z.object({
   ambito_id: id,
   tipos: z.array(z.object({ id, nombre: z.string(), prefijo: z.string() })),
   campos: z.array(z.object({ id, nombre_actual: z.string() })),
-  unidades: z.array(
-    z.object({ id, clase: z.string(), nombre: z.string(), padre_id: id.nullable() }),
-  ),
   oficinas: z.array(z.object({ id, nombre: z.string() })),
 });
 export type OpcionesActuales = z.infer<typeof opcionesSchema>;
@@ -267,7 +264,20 @@ const destinatariosSchema = z.object({
   })),
   hay_mas: z.boolean(),
 });
+const ubicacionElegibleSchema = z.object({ id, ruta: z.string() });
+export type UbicacionElegible = z.infer<typeof ubicacionElegibleSchema>;
+const ubicacionesElegiblesSchema = z.object({
+  ubicaciones: z.array(ubicacionElegibleSchema),
+  hay_mas: z.boolean(),
+});
 export const api = {
+  buscarUbicaciones: (token: string, q: string, signal: AbortSignal) =>
+    apiRequest(
+      '/api/documentos/ubicaciones?' + new URLSearchParams({ q }),
+      ubicacionesElegiblesSchema,
+      { signal },
+      token,
+    ),
   destinatarios: (token: string, q: string, oficina: string, signal: AbortSignal) => {
     const filtros = new URLSearchParams({ q });
     if (oficina) filtros.set('oficina_id', oficina);

@@ -11,6 +11,7 @@
   "GET /api/documentos/destinatarios",
   "GET /api/documentos/exportar-excel",
   "GET /api/documentos/opciones",
+  "GET /api/documentos/ubicaciones",
   "GET /api/health",
   "GET /api/oficinas",
   "GET /api/oficinas/:id",

@@ -1084,6 +1084,13 @@
 .formularioTipo > label { margin: 16px 0; }
 
 .selectorPersona { position: relative; min-width: 0; }
+.resumenUbicaciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-block: 0.75rem;
+}
 .coincidenciasPersona {
   position: absolute;
   inset-inline: 0;
