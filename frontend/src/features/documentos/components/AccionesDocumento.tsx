@@ -130,7 +130,7 @@ export function AccionesDocumento({
       )}
       {d.permisos.ubicar && (
         <details>
-          <summary>Guardar en una ubicación propia</summary>
+          <summary>{d.ubicacion ? 'Actualizar ubicación' : 'Guardar en una ubicación propia'}</summary>
           <form
             onSubmit={(e) => {
               e.preventDefault();

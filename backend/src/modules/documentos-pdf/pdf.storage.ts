@@ -151,6 +151,16 @@ export function crearAlmacenS3(s3: S3Client, bucket: string): AlmacenPdf {
       await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: clave }), {
         abortSignal: AbortSignal.timeout(20_000),
       });
+      // R2 es consistente: un DELETE aceptado no basta si HEAD aún encuentra el objeto.
+      try {
+        await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: clave }), {
+          abortSignal: AbortSignal.timeout(20_000),
+        });
+      } catch (error) {
+        if ((error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) return;
+        throw error;
+      }
+      throw new HttpError(503, 'La ausencia del PDF no se pudo confirmar');
     },
   };
 }

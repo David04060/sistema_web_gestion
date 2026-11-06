@@ -65,6 +65,7 @@ try{
  const esquema=path.join(raiz,'esquema-prueba.sql');
  await fs.writeFile(esquema,fuente.replace('\nINSERT INTO roles(','\nSET search_path = public;\nINSERT INTO roles('));
  await bin('psql',['-X','-v','ON_ERROR_STOP=1','-f',esquema]);
+ await bin('psql',['-X','-v','ON_ERROR_STOP=1','-f',path.resolve(backend,'../database/changes/007-retencion-pdf-anulados.sql')]);
  for(const key of Object.keys(process.env))if(/^(PG|R2_|NEON_|RENDER$)/.test(key))delete process.env[key];
  Object.assign(process.env,testEnv);
  const fixture=await crearFixtures();

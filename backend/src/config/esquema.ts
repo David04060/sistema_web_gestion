@@ -6,4 +6,5 @@ export async function verificarEsquemaDocumental(cliente: Pick<ClientBase, 'quer
     'SELECT ambito_id,tipo_id,registrado_por,situacion,revision FROM documentos LIMIT 0',
   );
   await cliente.query('SELECT revision_esperada FROM pdf_cargas LIMIT 0');
+  await cliente.query('SELECT documento_id,vence_en,eliminado_en FROM pdf_retenciones_anulacion LIMIT 0');
 }

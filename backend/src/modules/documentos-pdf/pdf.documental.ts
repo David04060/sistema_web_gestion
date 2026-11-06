@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { z } from 'zod';
 import { limpiarObjetosPdf } from './pdf.limpieza.js';
+import { limpiarRetencionesPdf } from './pdf.retencion.js';
 import { operacion, documento, permisos, type Actor, type Registro } from '../../shared/documental/nucleo.js';
 import { HttpError } from '../../shared/http/HttpError.js';
 import { crearAlmacenR2, prefijoPdf, type AlmacenPdf } from './pdf.storage.js';
@@ -169,7 +170,9 @@ export function pdfDocumental(almacen: () => AlmacenPdf = crearAlmacenR2) {
   }
   /** Comparte el adaptador de esta instancia con el recolector, incluido el adaptador aislado de pruebas. */
   async function limpiar(limite = 20, id?: string) {
-    return limpiarObjetosPdf(almacen, limite, id);
+    const retencion = await limpiarRetencionesPdf(almacen, limite, id);
+    const objetos = await limpiarObjetosPdf(almacen, limite, id);
+    return { eliminados: retencion.eliminados + objetos.eliminados, pendientes: retencion.pendientes + objetos.pendientes };
   }
   return { consultar, iniciar, confirmar, eliminar, abrir, limpiar };
 }

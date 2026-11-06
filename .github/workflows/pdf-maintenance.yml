@@ -1,0 +1,20 @@
+name: Activar mantenimiento PDF
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+permissions: {}
+concurrency:
+  group: pdf-maintenance
+  cancel-in-progress: false
+jobs:
+  activar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # No recibe credenciales ni documentos. El arranque y el temporizador del backend procesan la cola.
+      - name: Despertar backend y comprobar disponibilidad
+        run: >-
+          curl --fail --silent --show-error --retry 2 --retry-delay 10
+          --max-time 120 --output /dev/null
+          https://sistema-documental-hw7t.onrender.com/api/health

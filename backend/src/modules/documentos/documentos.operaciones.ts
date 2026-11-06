@@ -407,10 +407,11 @@ export async function auditoria(actor: string, documentoId: string) {
         `SELECT 'doc:'||h.id::text id,h.accion,h.motivo,h.anterior,h.posterior,
   h.fecha,concat_ws(' ',u.nombre,u.apellido) actor FROM auditoria_documental h JOIN usuarios
   u ON u.id=h.actor_id WHERE h.documento_id=$1
- UNION ALL SELECT 'pdf:'||p.id::text,'PDF_'||p.accion,NULL,NULL,
+ UNION ALL SELECT 'pdf:'||p.id::text,'PDF_'||p.accion,
+  CASE WHEN p.accion LIKE 'RETENCION_14_DIAS_%' THEN 'Política automática: PDF de registro anulado, retención de 14 días' ELSE NULL END,NULL,
   NULL,p.fecha,CASE WHEN u.id IS NULL THEN NULL ELSE concat_ws(' ',
   u.nombre,u.apellido) END FROM pdf_eventos p LEFT JOIN usuarios u ON u.id=p.actor_id WHERE
-  p.documento_id=$1 AND p.accion IN ('LIMPIEZA_PENDIENTE','LIMPIEZA_COMPLETADA') ORDER BY fecha,
+  p.documento_id=$1 AND p.accion IN ('LIMPIEZA_PENDIENTE','LIMPIEZA_COMPLETADA','RETENCION_14_DIAS_PENDIENTE','RETENCION_14_DIAS_ELIMINADA') ORDER BY fecha,
   id`,
         [documentoId],
       )

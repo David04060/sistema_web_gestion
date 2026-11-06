@@ -97,3 +97,7 @@ La configuración privada local reutiliza actualmente la conexión de mantenimie
 existente (`postgres`); no es una recomendación para producción. El esquema
 entregado no incluye un rol de conexión limitado. Este backend no se publica
 ni conecta a Neon en esta etapa.
+
+## Incremental posterior a la instantánea
+
+Aplicar también changes/007-retencion-pdf-anulados.sql en instalaciones nuevas. Programa la retención de PDF anulados desde su auditoría, sin eliminar documentos. Véase [RETENCION_PDF_ANULADOS](../docs/RETENCION_PDF_ANULADOS.md).

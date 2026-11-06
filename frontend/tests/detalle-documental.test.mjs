@@ -24,10 +24,12 @@ import {OficinaDetallePage} from '${resolve('src/features/usuarios/pages/Oficina
 import {OficinaFormularioPage} from '${resolve('src/features/usuarios/pages/OficinaFormularioPage.tsx').split(String.fromCharCode(92)).join('/')}';
 import {DocumentoFormularioPage} from '${resolve('src/features/documentos/pages/DocumentoFormularioPage.tsx').split(String.fromCharCode(92)).join('/')}';
 import {PrevisualizacionRegistroPdf} from '${resolve('src/features/documentos/components/PrevisualizacionRegistroPdf.tsx').split(String.fromCharCode(92)).join('/')}';
+import {AccionesDocumento} from '${resolve('src/features/documentos/components/AccionesDocumento.tsx').split(String.fromCharCode(92)).join('/')}';
 import {elegir} from 'virtual:estado';
 function inspeccionar(elemento){if(!React.isValidElement(elemento))return;const hijos=[elemento.props.children].flat(Infinity).filter(React.isValidElement);const claves=hijos.filter(h=>h.key!==null).map(h=>h.key);if(new Set(claves).size!==claves.length)throw Error('Claves hermanas duplicadas: '+claves.join(','));hijos.forEach(inspeccionar);}
 function Detalle(){const arbol=DocumentoDetallePage();inspeccionar(arbol);return arbol;}
 export function renderizar(pantalla,cuentaCampo='',mensaje=''){elegir(pantalla);const componentes={detalle:Detalle,listado:DocumentosListaPage,docRegistro:DocumentoFormularioPage,usuarioForm:UsuarioFormularioPage,usuarioDetalle:UsuarioDetallePage,usuarios:UsuariosListaPage,ubicaciones:UbicacionesPage,campos:CamposActualesPage,oficinas:OficinasActualesPage,oficinaDetalle:OficinaDetallePage,oficinaForm:OficinaFormularioPage};const path=pantalla.startsWith('oficina')?'/oficinas/:id':pantalla.startsWith('usuario')?'/usuarios/:id':pantalla==='campos'?'/campos-opcionales':pantalla==='docRegistro'?'/documentos/nuevo':'/documentos/:id';const url=pantalla.startsWith('oficina')?'/oficinas/9':pantalla.startsWith('usuario')?'/usuarios/3':pantalla==='campos'?'/campos-opcionales'+(cuentaCampo?'?usuario='+cuentaCampo:''):pantalla==='docRegistro'?'/documentos/nuevo':'/documentos/4';return renderToStaticMarkup(React.createElement(MemoryRouter,{initialEntries:[mensaje?{pathname:url,state:{mensaje}}:url+(pantalla==='listado'&&cuentaCampo?'?'+cuentaCampo:'')]},React.createElement(Routes,null,React.createElement(Route,{path,element:React.createElement(componentes[pantalla])}))));}
+export function acciones(ubicacion,permitir){return renderToStaticMarkup(React.createElement(MemoryRouter,null,React.createElement(AccionesDocumento,{token:'sintetico',documento:{id:'4',revision:'1',ubicacion,permisos:{delegar:false,ubicar:permitir,anular:false}},actualizar:()=>{}})));}
 export function previsualizar(){return renderToStaticMarkup(React.createElement(PrevisualizacionRegistroPdf,{archivo:{name:'archivo seleccionado.pdf',size:1048576},bytes:new Uint8Array(),ocupado:false,quitar:()=>{}}));}
 
 `;
@@ -35,7 +37,7 @@ const r=await build({configFile:false,logLevel:'silent',plugins:[{name:'render-d
 const chunk=r.output.find(c=>c.type==='chunk'&&c.isEntry);
 mkdirSync('.private/render-documental',{recursive:true});
 const archivo=resolve('.private/render-documental/entrada.mjs');writeFileSync(archivo,chunk.code);
-const {renderizar,previsualizar}=await import(pathToFileURL(archivo).href);
+const {renderizar,previsualizar,acciones}=await import(pathToFileURL(archivo).href);
 test('Detalle real renderizado: PDF y acciones tienen claves distintas; historial muestra todos los eventos',()=>{
  const html=renderizar('detalle');assert.ok(html.includes('Confirmar delegación'));assert.ok(html.includes('Archivo PDF'));
  assert.ok(!html.includes('La delegación deja constancia'));assert.equal((html.match(/data-evento=/g)??[]).length,2);for(const h of historia)assert.ok(html.includes('data-evento="'+h.id+'"'));
@@ -82,3 +84,5 @@ test('Filtros de registro: tres precisiones, criterios activos, limpiar y fecha 
 test('Las confirmaciones de registro, corrección y anulación llegan a la pantalla de destino',()=>{
  for(const [pantalla,mensaje] of [['detalle','Documento registrado.'],['detalle','Datos corregidos.'],['listado','Registro anulado. Se conserva su historial.']]){const html=renderizar(pantalla,'',mensaje);assert.ok(html.includes(mensaje));assert.ok(html.includes('role="status"'));}
 });
+
+test('Acción de ubicación: texto por ubicación vigente y permiso',()=>{assert.ok(acciones(null,true).includes('Guardar en una ubicación propia'));assert.ok(acciones({unidad_id:'1'},true).includes('Actualizar ubicación'));for(const ubicacion of [null,{unidad_id:'1'}]){const html=acciones(ubicacion,false);assert.ok(!html.includes('Guardar en una ubicación propia'));assert.ok(!html.includes('Actualizar ubicación'));}});

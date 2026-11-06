@@ -8,7 +8,8 @@ export function iniciarMantenimientoPdf(): () => void {
     if (ocupado || detenido) return;
     ocupado = true;
     try {
-      await pdfActual.limpiar(10);
+      const resultado = await pdfActual.limpiar(10);
+      console.info('Mantenimiento PDF revisado', resultado);
     } catch {
       console.error('Mantenimiento PDF no completado; se reintentará sin descartar pendientes.');
     } finally {
