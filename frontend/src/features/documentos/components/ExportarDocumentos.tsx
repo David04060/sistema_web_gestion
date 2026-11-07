@@ -31,7 +31,7 @@ function periodoActual() {
 }
 
 /** La primera acción solo abre el diálogo. La generación comienza exclusivamente al confirmar el formulario. */
-export function ExportarDocumentos({ token, rol }: { token: string; rol: string }) {
+export function ExportarDocumentos({ token, rol, conRelacionados = false }: { token: string; rol: string; conRelacionados?: boolean }) {
   const [abierto, setAbierto] = useState(false),
     [periodo, setPeriodo] = useState(periodoActual),
     [ocupado, setOcupado] = useState(false),
@@ -82,6 +82,7 @@ export function ExportarDocumentos({ token, rol }: { token: string; rol: string 
     control.current = abortar;
     try {
       const q = new URLSearchParams(periodo);
+      if(conRelacionados) q.set('con_relacionados','true');
       const { blob, total } = await apiArchivo(
         '/api/documentos/exportar-excel?' + q,
         token,

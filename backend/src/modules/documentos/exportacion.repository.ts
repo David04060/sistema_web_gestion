@@ -31,7 +31,8 @@ export interface RegistroExcel {
   pdf_fecha: Date | null;
 }
 const condicion = `${lecturaSQL} AND d.creado_en >= (make_date($4::int,$5::int,1)::timestamp AT TIME ZONE 'America/Lima')
- AND d.creado_en < ((make_date($4::int,$5::int,1)+interval '1 month') AT TIME ZONE 'America/Lima')`;
+ AND d.creado_en < ((make_date($4::int,$5::int,1)+interval '1 month') AT TIME ZONE 'America/Lima')
+ AND (NOT $6::boolean OR public.documento_tiene_relacion_visible($1,d.id))`;
 const seleccion = `SELECT d.codigo_visible codigo,d.tipo_nombre_guardado tipo,d.asunto,
   d.clasificacion,d.remitente,d.observaciones,
  concat_ws(' ',u.nombre,u.apellido) registrador,d.situacion,d.creado_en registro,
@@ -47,7 +48,9 @@ const seleccion = `SELECT d.codigo_visible codigo,d.tipo_nombre_guardado tipo,d.
   '[]'::jsonb) opcionales,
  p.nombre pdf_nombre,p.tamano_bytes pdf_bytes,p.tipo_mime pdf_mime,
   p.actualizado_en pdf_fecha
- FROM documentos d JOIN usuarios u ON u.id=d.registrado_por LEFT JOIN oficinas o ON o.id=u.oficina_id
+ FROM documentos d JOIN usuarios u ON u.id=d.registrado_por
+ LEFT JOIN documentos_oficina h ON h.documento_id=d.id LEFT JOIN oficina_periodos periodo ON periodo.id=h.periodo_id
+ LEFT JOIN oficinas o ON o.id=periodo.oficina_id
  LEFT JOIN ubicaciones_documento l ON l.documento_id=d.id AND l.vigente
  LEFT JOIN delegaciones_documento e ON e.documento_id=d.id LEFT JOIN oficinas oe ON oe.id=e.oficina_indicada_id
  LEFT JOIN usuarios de ON de.id=e.delegado_por LEFT JOIN documentos_pdf p ON p.documento_id=d.id
@@ -59,10 +62,11 @@ export async function leerRegistrosExcel(
   a: Actor,
   anio: number,
   mes: number,
+  conRelacionados = false,
 ): Promise<RegistroExcel[]> {
   if (![1, 3, 4, 5].includes(a.rol_id))
     throw new HttpError(403, 'Este perfil no puede exportar documentos');
-  const valores = [a.id, a.rol_id, a.ambito_id, anio, mes];
+  const valores = [a.id, a.rol_id, a.ambito_id, anio, mes, conRelacionados];
   const total = Number(
     (
       await c.query(

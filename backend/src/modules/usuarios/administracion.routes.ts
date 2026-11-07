@@ -4,6 +4,7 @@ import { requiereAuth, type RequestAutenticada } from '../../middlewares/auth.mi
 import { validar } from '../../shared/http/validar.js';
 import { idSchema as id } from '../../shared/admin/admin.schema.js';
 import * as operaciones from './administracion.operaciones.js';
+import {opcionesRelevo,relevarOficina,relevoSchema} from './relevo.operaciones.js';
 export const administracionRouter = Router();
 administracionRouter.use((req, _r, next) => {
   if (
@@ -19,6 +20,8 @@ administracionRouter.use(requiereAuth, (_q, res, next) => {
   next();
 });
 const actor = (req: RequestAutenticada) => req.usuario!.id;
+administracionRouter.get('/oficinas/:id/relevo',async(req:RequestAutenticada,res)=>res.json(await opcionesRelevo(actor(req),validar(id,req.params.id))));
+administracionRouter.post('/oficinas/:id/relevo',async(req:RequestAutenticada,res)=>res.json(await relevarOficina(actor(req),validar(id,req.params.id),validar(relevoSchema,req.body))));
 administracionRouter.get('/usuarios', async (req: RequestAutenticada, res) =>
   res.json(await operaciones.usuarios(actor(req), validar(operaciones.filtrosUsuarios, req.query))),
 );

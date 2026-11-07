@@ -11,6 +11,10 @@ export const manejarError: ErrorRequestHandler = (error: unknown, _req, res, nex
     return;
   }
   const codigo = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
+  if (codigo === '42501') {
+    res.status(403).json({ error: 'Operación no autorizada sobre este registro' });
+    return;
+  }
   if (codigo === 'P0001' || codigo === '40001' || codigo === '40P01') {
     res
       .status(409)
@@ -21,6 +25,10 @@ export const manejarError: ErrorRequestHandler = (error: unknown, _req, res, nex
     return;
   }
   if (codigo === '23505') {
+    if (error && typeof error === 'object' && 'constraint' in error && error.constraint === 'usuarios_oficina_activa_unica') {
+      res.status(409).json({ error: 'La oficina ya tiene una cuenta activa; utiliza el relevo' });
+      return;
+    }
     res
       .status(409)
       .json({ error: 'El nombre de usuario, correo o denominación ya está registrado' });

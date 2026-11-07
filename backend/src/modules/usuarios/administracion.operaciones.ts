@@ -47,7 +47,7 @@ async function validarOficina(
     throw new HttpError(409, 'La oficina está inactiva; selecciona una oficina activa');
   if ([1, 2].includes(rol) && oficina)
     throw new HttpError(400, 'Las cuentas administrativas no tienen oficina documental');
-  if ((rol === 3 && o?.nombre !== 'Dirección') || (rol === 4 && o?.nombre !== 'Mesa de Partes'))
+  if (oficina && ((rol === 3 && o?.nombre !== 'Dirección') || (rol === 4 && o?.nombre !== 'Mesa de Partes')))
     throw new HttpError(400, 'Selecciona la oficina correspondiente al rol');
   if (rol === 5 && ['Dirección', 'Mesa de Partes'].includes(o?.nombre))
     throw new HttpError(400, 'Usuario no puede asignarse a Dirección ni a Mesa de Partes');

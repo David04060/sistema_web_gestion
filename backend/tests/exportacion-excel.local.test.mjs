@@ -7,6 +7,7 @@ import {app} from '../dist/app.js';
 import {pool} from '../dist/config/database.js';
 import {generarToken} from '../dist/shared/security/jwt.js';
 import {leerRegistrosExcel} from '../dist/modules/documentos/exportacion.repository.js';
+import {clienteConLecturaSintetica} from './helpers/lectura-sintetica.mjs';
 
 test('API Excel real: cinco perfiles, autorización, filas independientes, vacío y conservación',async()=>{
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
@@ -37,7 +38,7 @@ test('API Excel real: cinco perfiles, autorización, filas independientes, vací
  }finally{await new Promise(r=>server.close(r));}
 });
 
-test('SQL aislado: más de una página, límites de Lima y valores posteriores actuales sin tocar registros existentes',async()=>{
+test('SQL de exportación pg_temp: volumen/calendario con lectura sintética explícita; permisos reales comprobados por HTTP',async()=>{
  const c=await pool.connect();try{
   await c.query('BEGIN');
   await c.query('CREATE TEMP TABLE documentos(id bigint,ambito_id bigint,registrado_por bigint,situacion text,codigo_visible text,tipo_nombre_guardado text,asunto text,clasificacion text,remitente text,observaciones text,creado_en timestamptz,actualizado_en timestamptz) ON COMMIT DROP');
@@ -48,13 +49,13 @@ test('SQL aislado: más de una página, límites de Lima y valores posteriores a
   await c.query("INSERT INTO usuarios VALUES(5,'Propio','Personal',NULL),(6,'Ajeno','Privado',NULL)");
   await c.query("INSERT INTO documentos SELECT n,20,5,'PERSONAL','INF'||n,'Informe','Original','RECIBIDO',NULL,NULL,'2026-11-10T12:00:00Z','2026-11-10T12:00:00Z' FROM generate_series(1,55) n");
   await c.query("INSERT INTO documentos VALUES(56,20,5,'PERSONAL','BORDE1','Informe','Antes','RECIBIDO',NULL,NULL,'2026-11-01T04:59:59Z','2026-11-01T04:59:59Z'),(57,20,5,'PERSONAL','BORDE2','Informe','Dentro','RECIBIDO',NULL,NULL,'2026-12-01T04:59:59Z','2026-12-01T04:59:59Z'),(58,30,6,'PERSONAL','PRIVADO','Informe','Ajeno','RECIBIDO',NULL,NULL,'2026-11-10T12:00:00Z','2026-11-10T12:00:00Z'),(59,20,5,'ANULADO','ANULADO','Informe','Anulado','RECIBIDO',NULL,NULL,'2026-11-10T12:00:00Z','2026-11-10T12:00:00Z')");
-  const a={id:'5',rol_id:5,ambito_id:'20',oficina_id:null,activo:true};assert.equal((await leerRegistrosExcel(c,a,2026,11)).length,56);
+  const a={id:'5',rol_id:5,ambito_id:'20',oficina_id:null,activo:true};assert.equal((await leerRegistrosExcel(clienteConLecturaSintetica(c),a,2026,11)).length,56);
   await c.query("UPDATE pg_temp.documentos SET situacion='DELEGADO',asunto='Corregido en diciembre',actualizado_en='2026-12-02T12:00:00Z' WHERE id=1");await c.query("INSERT INTO pg_temp.delegaciones_documento VALUES(1,NULL,5,'Persona de diciembre','2026-12-02T12:00:00Z','Observación actual')");await c.query("INSERT INTO pg_temp.valores_documento VALUES(1,1,'Nombre histórico','Valor actual')");
-  const filas=await leerRegistrosExcel(c,a,2026,11);assert.equal(filas.length,56);assert.equal(filas[0].situacion,'DELEGADO');assert.equal(filas[0].asunto,'Corregido en diciembre');assert.equal(filas[0].delegado,'Persona de diciembre');assert.deepEqual(filas[0].opcionales,[{nombre:'Nombre histórico',valor:'Valor actual'}]);assert.ok(!filas.some(f=>['PRIVADO','ANULADO','BORDE1'].includes(f.codigo)));
-  assert.equal((await leerRegistrosExcel(c,{...a,id:'1',rol_id:1},2026,11)).length,58);
-  await assert.rejects(leerRegistrosExcel(c,{...a,id:'2',rol_id:2},2026,11),e=>e.status===403);
-  await c.query("INSERT INTO pg_temp.documentos SELECT n,20,5,'PERSONAL','M'||n,'Informe','Volumen','RECIBIDO',NULL,NULL,'2026-11-10T12:00:00Z','2026-11-10T12:00:00Z' FROM generate_series(100,10150) n");await assert.rejects(leerRegistrosExcel(c,a,2026,11),e=>e.status===422);
-  await c.query('DELETE FROM pg_temp.documentos WHERE id>=100');await c.query("INSERT INTO pg_temp.valores_documento SELECT d,n,'Campo de volumen',repeat('x',20000) FROM generate_series(1,55) d CROSS JOIN generate_series(2,21) n");await assert.rejects(leerRegistrosExcel(c,a,2026,11),e=>e.status===422&&e.message.includes('16 MiB'));
+  const filas=await leerRegistrosExcel(clienteConLecturaSintetica(c),a,2026,11);assert.equal(filas.length,56);assert.equal(filas[0].situacion,'DELEGADO');assert.equal(filas[0].asunto,'Corregido en diciembre');assert.equal(filas[0].delegado,'Persona de diciembre');assert.deepEqual(filas[0].opcionales,[{nombre:'Nombre histórico',valor:'Valor actual'}]);assert.ok(!filas.some(f=>['PRIVADO','ANULADO','BORDE1'].includes(f.codigo)));
+  assert.equal((await leerRegistrosExcel(clienteConLecturaSintetica(c),{...a,id:'1',rol_id:1},2026,11)).length,58);
+  await assert.rejects(leerRegistrosExcel(clienteConLecturaSintetica(c),{...a,id:'2',rol_id:2},2026,11),e=>e.status===403);
+  await c.query("INSERT INTO pg_temp.documentos SELECT n,20,5,'PERSONAL','M'||n,'Informe','Volumen','RECIBIDO',NULL,NULL,'2026-11-10T12:00:00Z','2026-11-10T12:00:00Z' FROM generate_series(100,10150) n");await assert.rejects(leerRegistrosExcel(clienteConLecturaSintetica(c),a,2026,11),e=>e.status===422);
+  await c.query('DELETE FROM pg_temp.documentos WHERE id>=100');await c.query("INSERT INTO pg_temp.valores_documento SELECT d,n,'Campo de volumen',repeat('x',20000) FROM generate_series(1,55) d CROSS JOIN generate_series(2,21) n");await assert.rejects(leerRegistrosExcel(clienteConLecturaSintetica(c),a,2026,11),e=>e.status===422&&e.message.includes('16 MiB'));
  }finally{await c.query('ROLLBACK');c.release();}
 });
 

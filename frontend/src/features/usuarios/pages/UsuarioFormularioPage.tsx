@@ -40,7 +40,7 @@ export function UsuarioFormularioPage() {
     </main>
   );
 }
-function Formulario({
+export function Formulario({
   token,
   id,
   inicial,
@@ -103,7 +103,6 @@ function Formulario({
       setOcupado(false);
     }
   }
-  const oficinaObligatoria = ['3', '4'].includes(v.rol);
   const opciones = oficinas.filter((o) =>
     v.rol === '3'
       ? o.nombre === 'Dirección'
@@ -175,13 +174,12 @@ function Formulario({
           </label>
           {!['1', '2'].includes(v.rol) && (
             <label className={styles.campo}>
-              Oficina{oficinaObligatoria ? ' obligatoria' : ' opcional'}
+              Oficina opcional
               <select
-                required={oficinaObligatoria}
                 value={v.oficina}
                 onChange={(e) => cambio('oficina', e.target.value)}
               >
-                <option value="">Sin oficina</option>
+                <option value="">Sin asignar</option>
                 {opciones.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.nombre}

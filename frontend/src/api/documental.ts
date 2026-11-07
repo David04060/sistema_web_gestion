@@ -64,8 +64,10 @@ export const detalleSchema = z.object({
       })
       .nullable(),
     relacionados: z.array(
-      z.object({ id, codigo_visible: z.string(), asunto: z.string(), origen_id: id }),
+      z.object({ id, codigo_visible: z.string(), asunto: z.string(), origen_id: id.nullable() }),
     ),
+    historico_solo_lectura: z.boolean().optional(),
+    grupo: z.object({ primero_id:id.nullable(),inicio_visible:z.boolean(),documentos:z.array(z.object({id,codigo_visible:z.string(),asunto:z.string(),origen_id:id.nullable(),creado_en:z.string()})) }).optional(),
     permisos: permisosSchema,
   }),
 });
@@ -145,6 +147,7 @@ export const config = {
       {},
       t,
     ),
+  relevo: (t:string,oficina:string) => apiRequest('/api/oficinas/'+encodeURIComponent(oficina)+'/relevo',z.object({responsable:z.object({id,nombre:z.string(),version_autenticacion:z.number().int()}).nullable(),candidatos:z.array(z.object({id,nombre:z.string(),version_autenticacion:z.number().int()}))}),{},t),
   tipos: (t: string) => apiRequest('/api/tipos-documentales', tiposSchema, {}, t),
   unidades: (t: string, u?: string) =>
     apiRequest(
@@ -271,6 +274,7 @@ const ubicacionesElegiblesSchema = z.object({
   hay_mas: z.boolean(),
 });
 export const api = {
+  origenes:(token:string,q:string,signal:AbortSignal)=>apiRequest('/api/documentos/origenes?'+new URLSearchParams({q}),z.object({documentos:z.array(z.object({id,codigo_visible:z.string(),asunto:z.string()})),hay_mas:z.boolean()}),{signal},token),
   buscarUbicaciones: (token: string, q: string, signal: AbortSignal) =>
     apiRequest(
       '/api/documentos/ubicaciones?' + new URLSearchParams({ q }),

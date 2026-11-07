@@ -51,20 +51,12 @@ export function exigirAdministracion(identidad: Actor) {
 }
 /** Los roles documentales necesitan pertenencia vigente para registrar en su ámbito. */
 export function exigirAmbito(identidad: Actor) {
-  if (!identidad.ambito_id || ![3, 4, 5].includes(identidad.rol_id))
+  if (!identidad.ambito_id || ![3, 4, 5].includes(identidad.rol_id) || ([3,4].includes(identidad.rol_id) && identidad.oficina_id === null))
     throw new HttpError(403, 'No tiene ámbito documental');
   return identidad.ambito_id;
 }
 // Parámetros: identidad autenticada, rol y ámbito. Administrador carece de lectura documental.
-export const lecturaSQL = `(
-  $1::bigint IS NOT NULL AND (
-    $2::smallint=1 OR (
-      d.situacion<>'ANULADO' AND (
-        $2::smallint IN (3,4) OR ($2::smallint=5 AND d.ambito_id=$3::bigint)
-      )
-    )
-  )
-)`;
+export const lecturaSQL = `($1::bigint IS NOT NULL AND $2::smallint IS NOT NULL AND ($3::bigint IS NULL OR $3::bigint IS NOT NULL) AND documento_consultable($1::bigint,d.id))`;
 export interface Registro {
   id: string;
   ambito_id: string;
@@ -85,11 +77,11 @@ export async function documento(
     await cliente.query<Registro>(
       `SELECT d.*,d.id::text,d.ambito_id::text,d.tipo_id::text,d.registrado_por::text,
   d.revision::text,(SELECT concat_ws(' ',u.nombre,u.apellido) FROM usuarios u WHERE u.id=d.registrado_por)
-  registrado_por_nombre,
+  registrado_por_nombre,documento_periodo_cerrado(d.id) historico_solo_lectura,
   (SELECT l.propietario_id::text FROM ubicaciones_documento u
    JOIN unidades_ubicacion l ON l.id=u.unidad_id WHERE u.documento_id=d.id AND u.vigente)
-  titular_ubicacion FROM documentos d WHERE d.id=$1 AND ${lecturaSQL}`,
-      [id, identidad.rol_id, identidad.ambito_id],
+  titular_ubicacion FROM documentos d WHERE d.id=$4 AND ${lecturaSQL}`,
+      [identidad.id, identidad.rol_id, identidad.ambito_id, id],
     )
   ).rows[0];
   if (!d) throw new HttpError(404, 'Documento inexistente o no autorizado');
@@ -97,9 +89,9 @@ export async function documento(
 }
 /** Separa lectura de escritura: ver documentos de otro ámbito nunca concede corrección, delegación ni PDF. */
 export function permisos(identidad: Actor, d: Registro) {
-  const propio = d.registrado_por === identidad.id,
+  const propio = d.registrado_por === identidad.id && !d.historico_solo_lectura,
     compartido = identidad.ambito_id === d.ambito_id && [3, 4].includes(identidad.rol_id),
-    vigente = d.situacion !== 'ANULADO',
+    vigente = d.situacion !== 'ANULADO' && !d.historico_solo_lectura && (identidad.rol_id === 5 || identidad.oficina_id !== null),
     antes = vigente && d.situacion !== 'DELEGADO';
   const direccionPendiente =
     compartido && identidad.rol_id === 3 && d.situacion === 'PENDIENTE_DIRECCION';
@@ -107,7 +99,9 @@ export function permisos(identidad: Actor, d: Registro) {
   const puedeCerrarUbicacion = d.titular_ubicacion == null || ubicacionPropia;
   return {
     relacionar:
-      vigente && identidad.ambito_id === d.ambito_id && [3, 4, 5].includes(identidad.rol_id),
+      d.situacion !== 'ANULADO' && !!identidad.ambito_id &&
+      ((identidad.rol_id === 5 && (identidad.ambito_id === d.ambito_id || d.historico_solo_lectura === true)) ||
+       ([3,4].includes(identidad.rol_id) && identidad.oficina_id !== null)),
     corregir: vigente && propio && (identidad.rol_id !== 5 || d.situacion !== 'DELEGADO'),
     anular: antes && (propio || direccionPendiente),
     delegar:

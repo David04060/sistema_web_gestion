@@ -10,9 +10,11 @@ import { pool } from '../../config/database.js';
 import { actorActual } from '../../shared/documental/nucleo.js';
 import { HttpError } from '../../shared/http/HttpError.js';
 import { leerRegistrosExcel, type RegistroExcel } from './exportacion.repository.js';
+import { filtroRelacionados } from './documental.schema.js';
 
 export const periodoExportacion = z
   .object({
+    con_relacionados: filtroRelacionados,
     anio: z
       .string()
       .regex(/^\d{4}$/, 'Selecciona un año de cuatro cifras')
@@ -36,7 +38,7 @@ const columnas: Columna[] = [
   { header: 'Situación actual', key: 'situacion', width: 25 },
   { header: 'Fecha de registro (hora de Perú)', key: 'registro', width: 27, fecha: true },
   { header: 'Última actualización (hora de Perú)', key: 'actualizacion', width: 27, fecha: true },
-  { header: 'Oficina del registrador (actual)', key: 'oficina', width: 30 },
+  { header: 'Oficina de registro (histórica)', key: 'oficina', width: 30 },
   { header: 'Oficina de ubicación (registrada)', key: 'ubicacion_oficina', width: 30 },
   { header: 'Ubicación física vigente', key: 'ubicacion', width: 45 },
   {
@@ -236,7 +238,7 @@ async function leerInstantaneaExcel(actorId: string, periodo: z.infer<typeof per
     await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
     await c.query("SET LOCAL statement_timeout='30s'");
     const actor = await actorActual(c, actorId);
-    registros = await leerRegistrosExcel(c, actor, periodo.anio, periodo.mes);
+    registros = await leerRegistrosExcel(c, actor, periodo.anio, periodo.mes, periodo.con_relacionados);
     actualizado = (await c.query('SELECT transaction_timestamp() fecha')).rows[0].fecha;
     await c.query('COMMIT');
   } catch (e) {

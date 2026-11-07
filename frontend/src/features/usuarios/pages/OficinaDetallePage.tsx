@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { RelevoOficina } from '../components/RelevoOficina';
 import { config } from '../../../api/documental';
 import styles from '../../../components/ui/Admin.module.css';
 import { EstadoCarga } from '../../../components/ui/EstadoCarga';
@@ -69,7 +70,8 @@ export function OficinaDetallePage() {
               </span>
             </p>
             <div className={styles.acciones}>
-              {!institucional(o.nombre) && (
+              {o.activa && <RelevoOficina token={token} oficina={id} alCambiar={consulta.recargar}/>}
+          {!institucional(o.nombre) && (
                 <Link className={styles.boton} to={'/oficinas/' + id + '/editar'}>
                   Editar nombre
                 </Link>

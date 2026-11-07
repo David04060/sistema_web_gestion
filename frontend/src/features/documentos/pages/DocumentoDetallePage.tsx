@@ -1,3 +1,4 @@
+import { GrupoDocumental } from '../components/GrupoDocumental';
 import { useCallback,useState } from 'react';
 import { Link,useLocation,useParams } from 'react-router-dom';
 import { api,etiquetas,type DocumentoActual } from '../../../api/documental';
@@ -61,6 +62,7 @@ export function DocumentoDetallePage() {
           <section className={styles.tarjeta}>
             <h2>{d.codigo_visible}</h2>
             <p>{d.asunto}</p>
+            {d.historico_solo_lectura && <p className={styles.aviso}>Archivo de un periodo anterior: consulta de solo lectura. Se conservan su registrador, ubicación e historial originales.</p>}
             <dl className={styles.datos}>
               <div>
                 <dt>Registrado por</dt>
@@ -166,21 +168,7 @@ export function DocumentoDetallePage() {
               actualizar={actualizar}
             />
           )}
-          <section className={styles.tarjeta}>
-            <h2>Documentos relacionados</h2>
-            {d.relacionados.length ? (
-              <ul>
-                {d.relacionados.map((v) => (
-                  <li key={v.id}>
-                    <Link to={'/documentos/' + v.id}>{v.codigo_visible}</Link> — {v.asunto}
-                    {v.id === v.origen_id ? ' (origen)' : ''}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>Sin documentos relacionados.</p>
-            )}
-          </section>
+          <GrupoDocumental documento={d} />
           <HistorialDocumento historial={consulta.datos?.historial.historial ?? []} />
           <AuditoriaDocumento
             key={'auditoria-' + d.id}

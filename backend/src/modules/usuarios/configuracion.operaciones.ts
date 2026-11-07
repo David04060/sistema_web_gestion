@@ -142,7 +142,8 @@ export async function eliminarTipo(actor: string, id: string, datos: z.infer<typ
   return operacion(actor, datos.motivo, async (cliente, identidad) => {
     const anterior = await tipoPropio(cliente, identidad, id);
     if ((await cliente.query(`SELECT 1 FROM documentos WHERE tipo_id=$1
-      UNION ALL SELECT 1 FROM correlativos_documentales WHERE tipo_id=$1 LIMIT 1`, [id])).rowCount)
+      UNION ALL SELECT 1 FROM correlativos_documentales WHERE tipo_id=$1
+      UNION ALL SELECT 1 FROM tipos_relevo WHERE origen_id=$1 OR tipo_id=$1 LIMIT 1`, [id])).rowCount)
       throw new HttpError(409, 'El tipo tiene documentos o numeración reservada; desactívalo para conservar el historial');
     await cliente.query('DELETE FROM tipos_documentales WHERE id=$1', [id]);
     await auditarConfiguracion(cliente, identidad, 'TIPO_DOCUMENTAL', id, 'ELIMINAR', anterior, null);

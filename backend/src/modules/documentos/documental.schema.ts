@@ -8,6 +8,8 @@ const texto = z.string().trim().max(20000).nullable().optional().default(null);
 const motivo = z.string().trim().min(1).max(1000);
 export const consultaDestinatarios = z.object({ q: z.string().trim().max(100).default(''), oficina_id: id.optional() }).strict();
 export const consultaUbicaciones = z.object({ q: z.string().trim().max(250).default('') }).strict();
+export const consultaOrigenes = z.object({ q: z.string().trim().max(250).default('') }).strict();
+export const filtroRelacionados = z.union([z.boolean(),z.enum(['true','false']).transform(v=>v==='true')]).optional().default(false);
 
 const destinoDelegacion = z
   .object({
@@ -68,6 +70,7 @@ export const anulacion = z.object({ revision: id, motivo }).strict();
 export const filtros = z
   .object({
     q: z.string().trim().max(250).default(''),
+    con_relacionados: filtroRelacionados,
     fecha: fechaRegistro.optional(),
     situacion: z
       .enum([

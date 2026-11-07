@@ -30,9 +30,12 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
  async function ok(actor,ruta,method='GET',body,status=200){const r=await pedir(actor,ruta,method,body);assert.equal(r.status,status,JSON.stringify({ruta,...r}));return r.body;}
  const ids={},motivo='PRUEBA REVISIÓN INTEGRAL — rollback',marca=randomBytes(4).toString('hex');
  try{
-  await t.test('Dos Usuarios en la misma oficina tienen ámbito y catálogos separados',async()=>{
+  await t.test('Una cuenta activa por oficina; Usuarios de oficinas distintas conservan ámbitos y catálogos separados',async()=>{
    ids.oficina=(await ok(admin,'/oficinas','POST',{nombre:'PRUEBA REVISIÓN '+marca},201)).id;
-   for(const n of ['a','b'])ids[n]=(await ok(admin,'/usuarios','POST',{nombre:'PRUEBA REVISIÓN',apellido:n,nombre_usuario:'revision_'+marca+n,rol_id:5,oficina_id:ids.oficina,contrasena:randomBytes(16).toString('hex')},201)).id;
+   ids.a=(await ok(admin,'/usuarios','POST',{nombre:'PRUEBA REVISIÓN',apellido:'a',nombre_usuario:'revision_'+marca+'a',rol_id:5,oficina_id:ids.oficina,contrasena:randomBytes(16).toString('hex')},201)).id;
+   assert.equal((await pedir(admin,'/usuarios','POST',{nombre:'PRUEBA REVISIÓN',apellido:'Ocupada',nombre_usuario:'revision_'+marca+'_ocupada',rol_id:5,oficina_id:ids.oficina,contrasena:randomBytes(16).toString('hex')})).status,409);
+   ids.oficinaB=(await ok(admin,'/oficinas','POST',{nombre:'PRUEBA REVISIÓN B '+marca},201)).id;
+   ids.b=(await ok(admin,'/usuarios','POST',{nombre:'PRUEBA REVISIÓN',apellido:'b',nombre_usuario:'revision_'+marca+'b',rol_id:5,oficina_id:ids.oficinaB,contrasena:randomBytes(16).toString('hex')},201)).id;
    ids.sinOficina=(await ok(admin,'/usuarios','POST',{nombre:'PRUEBA REVISIÓN',apellido:'Sin oficina',nombre_usuario:'revision_'+marca+'_sin_oficina',rol_id:5,oficina_id:null,contrasena:randomBytes(16).toString('hex')},201)).id;
    assert.equal((await ok(admin,'/usuarios/'+ids.sinOficina)).usuario.oficina_id,null);
    for(const actor of [ids.a,ids.b,sec]){const tipo=(await ok(actor,'/tipos-documentales','POST',{nombre:'PRUEBA REVISIÓN '+marca,prefijo:'REVINT'},201)).id;ids['tipo'+actor]=tipo;}
@@ -113,7 +116,7 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
    assert.ok(acciones.includes('LIMPIEZA_PENDIENTE'));assert.ok(acciones.includes('LIMPIEZA_COMPLETADA'));
   });
   await t.test('Lectura institucional sin escritura y aislamiento por API directa, historial y PDF',async()=>{
-   const d=ids['doc'+ids.a];for(const actor of [dir,sec]){const r=await ok(actor,'/documentos/'+d.id);assert.ok(Object.values(r.documento.permisos).every(x=>!x));await ok(actor,'/documentos/'+d.id+'/historial');await ok(actor,'/documentos/'+d.id+'/auditoria');await ok(actor,'/documentos/'+d.id+'/pdf');assert.equal((await pedir(actor,'/documentos/'+d.id,'PUT',{revision:d.revision,motivo,asunto:'Prohibido'})).status,403);assert.equal((await pedir(actor,'/documentos/'+d.id+'/pdf/cargas','POST',{nombre:'test.pdf',tamano:100,mime:'application/pdf',revision:null})).status,403);}
+   const d=ids['doc'+ids.a];for(const actor of [dir,sec]){const r=await ok(actor,'/documentos/'+d.id);assert.equal(r.documento.permisos.relacionar,true);assert.ok(Object.entries(r.documento.permisos).filter(([k])=>k!=='relacionar').every(([,v])=>!v));await ok(actor,'/documentos/'+d.id+'/historial');await ok(actor,'/documentos/'+d.id+'/auditoria');await ok(actor,'/documentos/'+d.id+'/pdf');assert.equal((await pedir(actor,'/documentos/'+d.id,'PUT',{revision:d.revision,motivo,asunto:'Prohibido'})).status,403);assert.equal((await pedir(actor,'/documentos/'+d.id+'/pdf/cargas','POST',{nombre:'test.pdf',tamano:100,mime:'application/pdf',revision:null})).status,403);}
    for(const actor of [ids.b,existente,admin])for(const ruta of ['', '/historial','/auditoria','/pdf'])assert.equal((await pedir(actor,'/documentos/'+d.id+ruta)).status,404);
   });
   await t.test('Campos: configuración por administración, etiquetas históricas y corrección auditada',async()=>{
@@ -140,7 +143,7 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
    assert.equal((await c.query('SELECT count(*)::int n FROM documentos')).rows[0].n,antes);assert.equal((await c.query('SELECT ultimo_numero FROM correlativos_documentales WHERE tipo_id=$1',[ids['tipo'+ids.a]])).rows[0].ultimo_numero,correlativo);
   });
   await t.test('Delegación personal informativa: no transfiere, no concede acceso; bloquea mutaciones',async()=>{
-   const d=(await ok(ids.a,'/documentos/'+ids['doc'+ids.a].id)).documento;const r=(await ok(ids.a,'/documentos/'+d.id+'/delegar','POST',{revision:d.revision,usuario_id:ids.b,oficina_id:ids.oficina})).documento;assert.equal(r.ambito_id,d.ambito_id);assert.equal(r.registrado_por,ids.a);assert.equal(r.situacion,'DELEGADO');
+   const d=(await ok(ids.a,'/documentos/'+ids['doc'+ids.a].id)).documento;const r=(await ok(ids.a,'/documentos/'+d.id+'/delegar','POST',{revision:d.revision,usuario_id:ids.b,oficina_id:ids.oficinaB})).documento;assert.equal(r.ambito_id,d.ambito_id);assert.equal(r.registrado_por,ids.a);assert.equal(r.situacion,'DELEGADO');
    assert.equal((await pedir(ids.b,'/documentos/'+d.id)).status,404);await ok(ids.a,'/documentos/'+d.id+'/pdf');assert.equal((await ok(ids.a,'/documentos/'+d.id+'/pdf')).modificar,true);
    for(const [ruta,body] of [['/delegar',{revision:r.revision,nombre:'Otra persona'}],['/anular',{revision:r.revision,motivo}]])assert.equal((await pedir(ids.a,'/documentos/'+d.id+ruta,'POST',body)).status,403);
    assert.equal((await pedir(ids.a,'/documentos/'+d.id,'PUT',{revision:r.revision,motivo,asunto:'Prohibido'})).status,403);

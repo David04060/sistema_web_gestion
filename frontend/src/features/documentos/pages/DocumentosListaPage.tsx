@@ -45,6 +45,7 @@ export function DocumentosListaPage() {
       setPrecision(fechaUrl.length === 4 ? 'anio' : fechaUrl.length === 7 ? 'mes' : 'dia');
   }, [busquedaUrl, fechaUrl]);
   const criterios = [
+    params.get('con_relacionados') === 'true' ? 'Con documentos relacionados' : null,
     params.get('q') ? 'Código o asunto: ' + params.get('q') : null,
     params.get('situacion') ? 'Situación: ' + etiquetas[params.get('situacion')!] : null,
     params.get('clasificacion')
@@ -99,10 +100,11 @@ export function DocumentosListaPage() {
         )}
         {['Usuario', 'Director(a)', 'Secretaria de Dirección', 'Superadministrador'].includes(
           usuario.rol,
-        ) && <ExportarDocumentos key={token} token={token} rol={usuario.rol} />}
+        ) && <ExportarDocumentos key={token} token={token} rol={usuario.rol} conRelacionados={params.get('con_relacionados') === 'true'} />}
       </div>
       <section className={styles.tarjeta}>
         <form onSubmit={buscar} className={styles.filtrosDocumentos}>
+          <label className={styles.campo}><input type="checkbox" checked={params.get('con_relacionados')==='true'} onChange={e=>filtro('con_relacionados',e.target.checked?'true':'')}/>Con documentos relacionados</label>
           <label className={styles.campo}>
             Buscar por código o asunto
             <input

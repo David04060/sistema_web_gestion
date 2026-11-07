@@ -156,7 +156,9 @@ test('Alta delegada, rollback y PDF de autor con PostgreSQL real y almacenamient
     const reemplazo = await adjuntar(usuario, delegado, previo.archivo.revision);
     assert.notEqual(reemplazo.archivo.revision, previo.archivo.revision);
     assert.equal(reemplazo.eliminar, false);
-    await pool.query('UPDATE usuarios SET oficina_id=$2 WHERE id=$1', [sinOficina.id, usuario.oficina_id]);
+    await assert.rejects(pool.query('UPDATE usuarios SET oficina_id=$2 WHERE id=$1', [sinOficina.id, usuario.oficina_id]), e=>e.code==='23505');
+    const otraOficina=(await pool.query("INSERT INTO oficinas(nombre) VALUES('Otra oficina sintética para aislamiento PDF') RETURNING id::text")).rows[0].id;
+    await pool.query('UPDATE usuarios SET oficina_id=$2 WHERE id=$1', [sinOficina.id, otraOficina]);
     await assert.rejects(adjuntar(sinOficina, delegado, reemplazo.archivo.revision),
       (e) => [403, 404].includes(e.status));
     assert.equal((await listar(sinOficina.id, filtros.parse({ q: delegado.codigo_visible }))).total, 0);

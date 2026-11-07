@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requiereAuth, type RequestAutenticada } from '../../middlewares/auth.middleware.js';
 import { validar } from '../../shared/http/validar.js';
 import * as operaciones from './documentos.operaciones.js';
-import { consultaDestinatarios, consultaUbicaciones } from './documental.schema.js';
+import { consultaDestinatarios, consultaUbicaciones, consultaOrigenes } from './documental.schema.js';
 import { descargarExcel } from './exportacion.controller.js';
 export const documentosRouter = Router();
 documentosRouter.use(requiereAuth, (_q, res, next) => {
@@ -20,6 +20,9 @@ documentosRouter.get('/ubicaciones', async (req: RequestAutenticada, res) =>
   res.json(await operaciones.buscarUbicaciones(actor(req), validar(consultaUbicaciones, req.query).q)),
 );
 documentosRouter.get('/exportar-excel', descargarExcel);
+documentosRouter.get('/origenes', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.buscarOrigenes(actor(req), validar(consultaOrigenes, req.query).q)),
+);
 documentosRouter.get('/', async (req: RequestAutenticada, res) =>
   res.json(await operaciones.listar(actor(req), validar(operaciones.filtros, req.query))),
 );

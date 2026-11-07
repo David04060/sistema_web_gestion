@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import * as dashboard from '../dist/modules/dashboard/dashboard.documental.js';
 import {pool} from '../dist/config/database.js';
+import {clienteConLecturaSintetica} from './helpers/lectura-sintetica.mjs';
 
-test('Estadísticas reales: cinco roles, privacidad administrativa, ámbitos disjuntos y meses de Perú', async () => {
+test('Agregación SQL real en tablas temporales: calendario y volumen con lectura sintética explícita; permisos HTTP en suite separada', async () => {
  const c=await pool.connect();
  try {
   await c.query('BEGIN');
@@ -24,7 +25,7 @@ test('Estadísticas reales: cinco roles, privacidad administrativa, ámbitos dis
    (6,10,3,'GUARDADO_DIRECCION','Informe','I4','Compartido C','2026-11-03T12:00:00Z'),
    (7,20,5,'DELEGADO','Oficio','O2','Fuera del periodo','2024-01-01T12:00:00Z')`);
   const referencia=new Date('2026-11-15T12:00:00Z');
-  const leer=rol=>dashboard.consultarDashboard(c,{id:String(rol),rol_id:rol,oficina_id:rol===3?'1':rol===4?'2':null,ambito_id:[3,4].includes(rol)?'10':rol===5?'20':null,activo:true},referencia);
+  const leer=rol=>dashboard.consultarDashboard(clienteConLecturaSintetica(c),{id:String(rol),rol_id:rol,oficina_id:rol===3?'1':rol===4?'2':null,ambito_id:[3,4].includes(rol)?'10':rol===5?'20':null,activo:true},referencia);
   const admin=await leer(2);
   assert.equal(admin.usuarios,5);
   assert.equal('documentos' in admin,false);

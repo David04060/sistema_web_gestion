@@ -217,8 +217,8 @@ export async function consultarDashboard(cliente: Conexion, identidad: Actor, re
         identidad,
         reloj,
         'personal',
-        'Tu ámbito personal',
-        'd.ambito_id=$3::bigint',
+        'Documentos propios y archivo de tu oficina',
+        'true',
       ),
     );
   else {

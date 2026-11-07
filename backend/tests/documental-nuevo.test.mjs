@@ -1,5 +1,5 @@
 import './helpers/exigir-aislamiento.mjs';
-import {verificarEntornoPrueba} from './helpers/entorno-prueba.mjs';
+import {verificarEntornoPrueba,leerFixtures} from './helpers/entorno-prueba.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes} from 'node:crypto';
@@ -65,10 +65,14 @@ test('PostgreSQL aislado: identidad, esquema, acceso SQL y bloqueo concurrente s
   assert.equal((await a.query("SELECT count(*)::int n FROM information_schema.columns WHERE table_name='pdf_cargas' AND column_name='revision_esperada'")).rows[0].n,1);
   const antes=(await a.query('SELECT count(*)::int n FROM usuarios')).rows[0].n;
   const total=(await a.query("SELECT count(*)::int total,count(*) FILTER(WHERE situacion<>'ANULADO')::int ordinarios FROM documentos")).rows[0];
-  for(const rol of [1,2,3,4,5]){const q=await a.query(`SELECT count(*)::int n FROM documentos d WHERE ${lecturaSQL}`,['1',rol,null]);assert.equal(q.rows[0].n,rol===1?total.total:[3,4].includes(rol)?total.ordinarios:0);}
-  const esperados={1:[1,2,3],2:[],3:[1,2],4:[1,2],5:[1]};
+  const f=leerFixtures(),actores={1:f.cuentas.superadmin,2:f.cuentas.admin,3:f.cuentas.director,4:f.cuentas.secretaria,5:f.cuentas.usuario};
+  for(const rol of [1,2,3,4,5]){const u=actores[rol];const q=await a.query(`SELECT count(*)::int n FROM documentos d WHERE ${lecturaSQL}`,[u.id,rol,u.ambito_id??null]);const propios=(await a.query("SELECT count(*)::int n FROM documentos WHERE ambito_id=$1 AND situacion<>'ANULADO'",[u.ambito_id??null])).rows[0].n;assert.equal(q.rows[0].n,rol===1?total.total:[3,4].includes(rol)?total.ordinarios:rol===5?propios:0);}
+  const ids=[f.documentos.personal.id,f.documentos.otroPersonal.id,f.documentos.anulado.id];
+  const ordenar=x=>x.toSorted((a,b)=>BigInt(a)<BigInt(b)?-1:1);
+  const esperados={1:ordenar(ids),2:[],3:ordenar(ids.slice(0,2)),4:ordenar(ids.slice(0,2)),5:[ids[0]]};
   for(const rol of [1,2,3,4,5]){
-   const visibles=(await a.query(`WITH d(id,ambito_id,situacion) AS (VALUES (1,20::bigint,'PERSONAL'),(2,30::bigint,'DELEGADO'),(3,20::bigint,'ANULADO')) SELECT id FROM d WHERE ${lecturaSQL} ORDER BY id`,['1',rol,'20'])).rows.map(r=>r.id);
+   const u=actores[rol];
+   const visibles=(await a.query(`SELECT d.id::text FROM documentos d WHERE d.id=ANY($4::bigint[]) AND ${lecturaSQL} ORDER BY d.id`,[u.id,rol,u.ambito_id??null,ids])).rows.map(r=>r.id);
    assert.deepEqual(visibles,esperados[rol]);
   }
   await a.query('BEGIN');await b.query('BEGIN');await a.query("SELECT pg_advisory_xact_lock(hashtext('documental-configuracion'))");

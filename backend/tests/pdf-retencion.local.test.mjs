@@ -32,6 +32,7 @@ test('Retención PDF: 14 días, permisos, fallos de almacenamiento/commit, reint
   assert.equal((await pool.query("SELECT fecha FROM auditoria_documental WHERE documento_id=$1 AND accion='ANULACION'",[d.id])).rows[0].fecha.getTime(),r.anulado_en.getTime());
   assert.ok((await servicio.consultar(f.cuentas.superadmin.id,d.id)).archivo);assert.ok((await servicio.abrir(f.cuentas.superadmin.id,d.id,false)).url);
   for(const key of ['admin','director','secretaria','usuario']){await assert.rejects(servicio.consultar(f.cuentas[key].id,d.id),e=>e.status===404);await assert.rejects(servicio.abrir(f.cuentas[key].id,d.id,false),e=>e.status===404);}
+  await pool.query('UPDATE usuarios SET activo=false WHERE id=$1',[u.id]);
   assert.deepEqual(await limpiarRetencionesPdf(()=>storage,20,d.id),{eliminados:0,pendientes:0});assert.equal(llamadas,0);await access(objeto);
   await assert.rejects(pool.query('SELECT finalizar_retencion_pdf($1,$2)',[d.id,r.revision]));
   // Solo en cluster efímero verificado: se mueve la fecha sintética para ensayar el límite temporal.
@@ -54,5 +55,5 @@ test('Retención PDF: 14 días, permisos, fallos de almacenamiento/commit, reint
   const auditoria=await docs.auditoria(f.cuentas.superadmin.id,d.id);assert.ok(auditoria.eventos.some(x=>x.accion==='PDF_RETENCION_14_DIAS_ELIMINADA'&&x.motivo.includes('14 días')));
   const eventos=(await pool.query("SELECT accion FROM pdf_eventos WHERE documento_id=$1 AND accion LIKE 'RETENCION_%'",[d.id])).rows;assert.equal(eventos.filter(x=>x.accion==='RETENCION_14_DIAS_ELIMINADA').length,1);
   assert.deepEqual(await limpiarRetencionesPdf(()=>storage,20,d.id),{eliminados:0,pendientes:0});
- }finally{await rm(dir,{recursive:true,force:true});await pool.end();}
+ }finally{await pool.query('UPDATE usuarios SET activo=true WHERE id=$1',[u.id]);await rm(dir,{recursive:true,force:true});await pool.end();}
 });
