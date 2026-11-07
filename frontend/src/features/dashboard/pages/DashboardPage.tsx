@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api, etiquetas } from '../../../api/documental';
-import { rolesRegistro, esAdministracion } from '../../../lib/perfiles';
+import { rolesRegistro } from '../../../lib/perfiles';
 import { useAuth } from '../../auth/hooks/useAuth';
 import type { Usuario } from '../../auth/schemas/auth.schema';
 import { useConsulta } from '../../../hooks/useConsulta';
@@ -24,8 +24,7 @@ const acentos: Record<string, string> = {
 export function DashboardPage(_props: { usuario?: Usuario } = {}) {
   const { token, usuario } = useAuth().sesion!;
   const consulta = useConsulta(useCallback(() => api.dashboard(token), [token]));
-  const datos = consulta.datos,
-    admin = esAdministracion(usuario.rol);
+  const datos = consulta.datos;
   const estados = datos
     ? 'estados' in datos
       ? datos.estados
@@ -115,41 +114,6 @@ export function DashboardPage(_props: { usuario?: Usuario } = {}) {
           {datos.estadisticas && (
             <GraficosDashboard estadisticas={datos.estadisticas} rol={usuario.rol} />
           )}
-          <section className={styles.tarjeta}>
-            <h2>Accesos rápidos</h2>
-            <div className={styles.acciones}>
-              {usuario.rol !== 'Administrador' && (
-                <Link className={styles.secundario} to="/documentos">
-                  Consultar documentos
-                </Link>
-              )}
-              {usuario.rol === 'Superadministrador' && (
-                <Link className={styles.secundario} to="/documentos?situacion=ANULADO">
-                  Consultar anulados
-                </Link>
-              )}
-              {admin && (
-                <>
-                  <Link className={styles.secundario} to="/usuarios">
-                    Usuarios y asignaciones
-                  </Link>
-                  <Link className={styles.secundario} to="/oficinas">
-                    Editar oficinas
-                  </Link>
-                </>
-              )}
-              {rolesRegistro.includes(usuario.rol) && (
-                <Link className={styles.secundario} to="/tipos-documentales">
-                  Mis tipos documentales
-                </Link>
-              )}
-              {(admin || usuario.oficina_id) && (
-                <Link className={styles.secundario} to="/ubicaciones">
-                  {admin ? 'Ubicaciones por cuenta' : 'Mis ubicaciones'}
-                </Link>
-              )}
-            </div>
-          </section>
           {'recientes' in datos && (
             <section className={styles.tarjeta}>
               <h2>Documentos recientes</h2>
