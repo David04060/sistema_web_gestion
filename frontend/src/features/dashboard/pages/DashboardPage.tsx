@@ -136,9 +136,6 @@ export function DashboardPage(_props: { usuario?: Usuario } = {}) {
                   <Link className={styles.secundario} to="/oficinas">
                     Editar oficinas
                   </Link>
-                  <Link className={styles.secundario} to="/campos-opcionales">
-                    Campos opcionales
-                  </Link>
                 </>
               )}
               {rolesRegistro.includes(usuario.rol) && (

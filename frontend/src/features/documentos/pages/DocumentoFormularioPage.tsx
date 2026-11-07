@@ -27,8 +27,8 @@ export function DocumentoFormularioPage() {
   return (
     <main className={styles.pagina}>
       <h1>{id ? 'Corregir documento' : 'Registrar documento'}</h1>
-      {!id && <section className={styles.tarjeta} aria-label="Modalidad de registro">
-        <label className={styles.campo}><input type="checkbox" checked={modoRelacionado || !!origen} onChange={e=>{setModoRelacionado(e.target.checked);if(!e.target.checked){const q=new URLSearchParams(params);q.delete('origen');setParams(q);}}}/>Registrar documento relacionado</label>
+      {!id && <section className={styles.modalidadRegistro} aria-label="Modalidad de registro">
+        <label className={styles.opcionRelacionada}>Registrar documento relacionado<input type="checkbox" checked={modoRelacionado || !!origen} onChange={e=>{setModoRelacionado(e.target.checked);if(!e.target.checked){const q=new URLSearchParams(params);q.delete('origen');setParams(q);}}}/></label>
         {(modoRelacionado || !!origen) && <SelectorDocumentoOrigen token={token} valor={consulta.datos?.origen?{id:consulta.datos.origen.id,ruta:consulta.datos.origen.codigo_visible+' — '+consulta.datos.origen.asunto}:null} cambiar={d=>{const q=new URLSearchParams(params);if(d)q.set('origen',d.id);else q.delete('origen');setParams(q);}}/>}
         {modoRelacionado && !origen && <p>Selecciona el documento de origen para continuar con el registro.</p>}
       </section>}

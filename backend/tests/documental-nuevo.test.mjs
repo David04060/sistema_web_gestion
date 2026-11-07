@@ -50,8 +50,8 @@ test('HTTP nuevo: salud, validación y rutas retiradas; sin cuentas ni datos de 
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
  try{const base='http://127.0.0.1:'+server.address().port;
  assert.equal((await fetch(base+'/api/health')).status,200);
- for(const ruta of ['/api/siseve/acceso','/api/movimientos'])assert.equal((await fetch(base+ruta)).status,404);
- for(const ruta of ['/api/documentos','/api/usuarios','/api/campos-opcionales','/api/ubicaciones'])assert.equal((await fetch(base+ruta)).status,401);
+ for(const ruta of ['/api/siseve/acceso','/api/movimientos','/api/campos-opcionales'])assert.equal((await fetch(base+ruta)).status,404);
+ for(const ruta of ['/api/documentos','/api/usuarios','/api/ubicaciones'])assert.equal((await fetch(base+ruta)).status,401);
  const login=await fetch(base+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});assert.equal(login.status,400);
  }finally{await new Promise(r=>server.close(r));}
 });

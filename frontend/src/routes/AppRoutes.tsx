@@ -70,11 +70,6 @@ const Roles = lazy(() =>
     default: m.RolesActualesPage,
   })),
 );
-const Campos = lazy(() =>
-  import('../features/usuarios/pages/CamposActualesPage').then((m) => ({
-    default: m.CamposActualesPage,
-  })),
-);
 function EstadoSesion() {
   const auth = useAuth();
   return (
@@ -175,7 +170,6 @@ export function AppRoutes() {
                   <Route path="/oficinas/nuevo" element={<OficinaFormulario />} />
                   <Route path="/oficinas/:id" element={<OficinaDetalle />} />
                   <Route path="/oficinas/:id/editar" element={<OficinaFormulario />} />
-                  <Route path="/campos-opcionales" element={<Campos />} />
                 </Route>
               </Route>
             </Route>

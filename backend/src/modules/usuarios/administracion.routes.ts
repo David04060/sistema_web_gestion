@@ -8,7 +8,7 @@ import {opcionesRelevo,relevarOficina,relevoSchema} from './relevo.operaciones.j
 export const administracionRouter = Router();
 administracionRouter.use((req, _r, next) => {
   if (
-    !/^\/(usuarios|roles|oficinas|tipos-documentales|ubicaciones|campos-opcionales)(\/|$)/.test(
+    !/^\/(usuarios|roles|oficinas|tipos-documentales|ubicaciones)(\/|$)/.test(
       req.path,
     )
   )
@@ -66,7 +66,15 @@ administracionRouter.post('/usuarios/:id/clave', async (req: RequestAutenticada,
   res.json(await operaciones.cambiarClave(actor(req), validar(id, req.params.id), v.contrasena));
 });
 administracionRouter.get('/roles', async (req: RequestAutenticada, res) =>
-  res.json({ roles: (await operaciones.catalogos(actor(req))).roles }),
+  res.json(await operaciones.catalogos(actor(req))),
+);
+administracionRouter.get('/roles/:id', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.detalleRol(actor(req), validar(id, req.params.id))),
+);
+administracionRouter.put('/roles/:id', async (req: RequestAutenticada, res) =>
+  res.json(await operaciones.editarRol(
+    actor(req), validar(id, req.params.id), validar(operaciones.nombre, req.body),
+  )),
 );
 administracionRouter.get('/oficinas', async (req: RequestAutenticada, res) =>
   res.json(await operaciones.oficinas(actor(req))),
@@ -132,28 +140,6 @@ administracionRouter.put('/ubicaciones/:id', async (req: RequestAutenticada, res
       actor(req),
       validar(id, req.params.id),
       validar(operaciones.unidad, req.body),
-    ),
-  ),
-);
-administracionRouter.get('/campos-opcionales', async (req: RequestAutenticada, res) =>
-  res.json(
-    await operaciones.campos(
-      actor(req),
-      req.query.usuario_id === undefined ? undefined : validar(id, req.query.usuario_id),
-    ),
-  ),
-);
-administracionRouter.post('/campos-opcionales', async (req: RequestAutenticada, res) =>
-  res
-    .status(201)
-    .json(await operaciones.crearCampo(actor(req), validar(operaciones.campo, req.body))),
-);
-administracionRouter.put('/campos-opcionales/:id', async (req: RequestAutenticada, res) =>
-  res.json(
-    await operaciones.renombrarCampo(
-      actor(req),
-      validar(id, req.params.id),
-      validar(operaciones.renombrar, req.body),
     ),
   ),
 );

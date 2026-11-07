@@ -119,12 +119,24 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
    const d=ids['doc'+ids.a];for(const actor of [dir,sec]){const r=await ok(actor,'/documentos/'+d.id);assert.equal(r.documento.permisos.relacionar,true);assert.ok(Object.entries(r.documento.permisos).filter(([k])=>k!=='relacionar').every(([,v])=>!v));await ok(actor,'/documentos/'+d.id+'/historial');await ok(actor,'/documentos/'+d.id+'/auditoria');await ok(actor,'/documentos/'+d.id+'/pdf');assert.equal((await pedir(actor,'/documentos/'+d.id,'PUT',{revision:d.revision,motivo,asunto:'Prohibido'})).status,403);assert.equal((await pedir(actor,'/documentos/'+d.id+'/pdf/cargas','POST',{nombre:'test.pdf',tamano:100,mime:'application/pdf',revision:null})).status,403);}
    for(const actor of [ids.b,existente,admin])for(const ruta of ['', '/historial','/auditoria','/pdf'])assert.equal((await pedir(actor,'/documentos/'+d.id+ruta)).status,404);
   });
-  await t.test('Campos: configuración por administración, etiquetas históricas y corrección auditada',async()=>{
-   ids.campo=(await ok(admin,'/campos-opcionales','POST',{usuario_id:ids.a,nombre:'Etiqueta anterior'},201)).id;
-   const d=(await ok(ids.a,'/documentos','POST',{tipo_id:ids['tipo'+ids.a],clasificacion:'EMITIDO',asunto:'Campo histórico '+marca,valores:[{campo_id:ids.campo,valor:'Valor conservado'}]},201)).documento;ids.campoDoc=d;
-   await ok(admin,'/campos-opcionales/'+ids.campo,'PUT',{nombre:'Etiqueta actual',motivo});const detalle=(await ok(ids.a,'/documentos/'+d.id)).documento;assert.equal(detalle.valores[0].nombre_guardado,'Etiqueta anterior');
-   assert.equal((await pedir(ids.a,'/campos-opcionales','POST',{usuario_id:ids.a,nombre:'Prohibido'})).status,403);
-   const corregido=(await ok(ids.a,'/documentos/'+d.id,'PUT',{revision:d.revision,motivo,asunto:d.asunto+' corregido',valores:[{campo_id:ids.campo,valor:'Valor nuevo'}]})).documento;assert.notEqual(corregido.revision,d.revision);const h=await ok(ids.a,'/documentos/'+d.id+'/auditoria');assert.ok(h.eventos.some(e=>e.motivo===motivo));
+  await t.test('Los valores históricos se consultan después de retirar su alta y edición',async()=>{
+   const alta={tipo_id:ids['tipo'+ids.a],clasificacion:'EMITIDO',asunto:'Campo histórico '+marca};
+   const d=(await ok(ids.a,'/documentos','POST',alta,201)).documento;ids.campoDoc=d;
+   // Reproduce un documento creado antes de la retirada de la funcionalidad.
+   await c.query("SELECT set_config('app.actor_id',$1,true),set_config('app.motivo',$2,true)",[ids.a,motivo]);
+   const campo=(await c.query("INSERT INTO campos_opcionales(usuario_id,nombre_actual,creado_por) VALUES($1,'Sitacion',$2) RETURNING id::text",[ids.a,admin])).rows[0].id;
+   await c.query("INSERT INTO valores_documento(documento_id,campo_id,nombre_guardado,valor) VALUES($1,$2,'Sitacion','Valor conservado')",[d.id,campo]);
+   const detalle=(await ok(ids.a,'/documentos/'+d.id)).documento;
+   const valores=[{campo_id:campo,nombre_guardado:'Sitacion',valor:'Valor conservado'}];
+   assert.deepEqual(detalle.valores,valores);
+   assert.equal((await pedir(ids.a,'/documentos','POST',{...alta,valores:[{campo_id:campo,valor:'Prohibido'}]})).status,400);
+   const correccion={revision:detalle.revision,motivo,asunto:d.asunto+' corregido'};
+   assert.equal((await pedir(ids.a,'/documentos/'+d.id,'PUT',{...correccion,valores:[{campo_id:campo,valor:'Prohibido'}]})).status,400);
+   const corregido=(await ok(ids.a,'/documentos/'+d.id,'PUT',correccion)).documento;
+   assert.deepEqual(corregido.valores,valores);
+   const h=await ok(ids.a,'/documentos/'+d.id+'/auditoria');
+   assert.ok(h.eventos.some(e=>e.motivo===motivo));
+   assert.match(JSON.stringify(h.eventos),/Valor conservado/);
   });
   await t.test('Ubicaciones propias, padre obligatorio de contenido, rutas y sin oficina',async()=>{
    const lugar=(await ok(ids.a,'/ubicaciones','POST',{clase:'Lugar',nombre:'Estante revisión'},201)).id;

@@ -45,11 +45,8 @@ export const alta = z
     unidad_id: id.nullable().optional(),
     origen_id: id.optional(),
     destino: destinoDelegacion.superRefine(validarDestino).optional(),
-    valores: z
-      .array(z.object({ campo_id: id, valor: z.string().max(20000) }).strict())
-      .max(100)
-      .optional()
-      .default([]),
+    // Acepta el arreglo vacío de pestañas abiertas antes de la retirada.
+    valores: z.tuple([]).optional(),
   })
   .strict();
 export const correccion = z
@@ -59,10 +56,8 @@ export const correccion = z
     asunto: z.string().trim().min(1).max(20000),
     remitente: texto,
     observaciones: texto,
-    valores: z
-      .array(z.object({ campo_id: id, valor: z.string().max(20000) }).strict())
-      .max(100)
-      .optional(),
+    // Acepta el arreglo vacío de pestañas abiertas antes de la retirada.
+    valores: z.tuple([]).optional(),
   })
   .strict();
 export const ubicacion = z.object({ revision: id, unidad_id: id }).strict();

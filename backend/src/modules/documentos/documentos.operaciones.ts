@@ -31,7 +31,7 @@ import {
 } from '../../shared/documental/nucleo.js';
 import { HttpError } from '../../shared/http/HttpError.js';
 
-/** Consulta catálogos del ámbito y campos propios. */
+/** Consulta catálogos del ámbito activos. */
 export async function opciones(actor: string) {
   return operacion(actor, 'Opciones documentales', async (cliente, identidad) => {
     const ambito = exigirAmbito(identidad);
@@ -43,12 +43,7 @@ export async function opciones(actor: string) {
           [ambito],
         )
       ).rows,
-      campos: (
-        await cliente.query(
-          'SELECT id::text,nombre_actual FROM campos_opcionales WHERE usuario_id=$1 ORDER BY id',
-          [identidad.id],
-        )
-      ).rows,
+      campos: [], // Compatibilidad durante el despliegue del frontend.
       // Compatibilidad con pestañas que aún cargaron el selector anterior.
       destinatarios: (await cliente.query(
         "SELECT id::text,concat_ws(' ',nombre,apellido) nombre,oficina_id::text FROM usuarios WHERE activo ORDER BY nombre,apellido,id LIMIT 20",
@@ -299,7 +294,6 @@ export async function registrar(actor: string, datos: z.infer<typeof alta>) {
         ],
       )
     ).rows[0];
-    await registrarValoresIniciales(cliente, identidad.id, d.id, datos.valores);
     if (datos.origen_id)
       await cliente.query(
         'INSERT INTO documentos_relaciones(documento_id,origen_id,creado_por) VALUES($1,$2,$3)',
@@ -316,7 +310,7 @@ export async function registrar(actor: string, datos: z.infer<typeof alta>) {
   });
   return detalle(actor, nuevo);
 }
-/** Solo el autor autorizado corrige contenido y campos ya existentes con revisión y motivo. */
+/** Solo el autor autorizado corrige contenido con revisión y motivo. */
 export async function corregir(
   actor: string,
   documentoId: string,
@@ -330,13 +324,6 @@ export async function corregir(
       'UPDATE documentos SET asunto=$2,remitente=$3,observaciones=$4 WHERE id=$1',
       [documentoId, datos.asunto, datos.remitente, datos.observaciones],
     );
-    for (const campo of datos.valores ?? []) {
-      const r = await cliente.query(
-        'UPDATE valores_documento SET valor=$3 WHERE documento_id=$1 AND campo_id=$2',
-        [documentoId, campo.campo_id, campo.valor],
-      );
-      if (!r.rowCount) throw new HttpError(400, 'Campo histórico inexistente');
-    }
   });
   return detalle(actor, documentoId);
 }
@@ -459,28 +446,6 @@ export async function auditoria(actor: string, documentoId: string) {
       })),
     };
   });
-}
-
-/** Captura el nombre histórico de cada campo propio dentro de la misma transacción del alta. */
-async function registrarValoresIniciales(
-  cliente: PoolClient,
-  actorId: string,
-  documentoId: string,
-  valores: z.infer<typeof alta>['valores'],
-) {
-  for (const campo of valores) {
-    const etiqueta = (
-      await cliente.query(
-        'SELECT nombre_actual FROM campos_opcionales WHERE id=$1 AND usuario_id=$2 FOR SHARE',
-        [campo.campo_id, actorId],
-      )
-    ).rows[0];
-    if (!etiqueta) throw new HttpError(400, 'Campo opcional ajeno');
-    await cliente.query(
-      'INSERT INTO valores_documento(documento_id,campo_id,nombre_guardado,valor) VALUES($1,$2,$3,$4)',
-      [documentoId, campo.campo_id, etiqueta.nombre_actual, campo.valor],
-    );
-  }
 }
 
 /** El trigger guarda la ruta y oficina históricas; el cliente aporta solo una unidad propia. */

@@ -88,7 +88,6 @@ export const historialSchema = z.object({
 export const opcionesSchema = z.object({
   ambito_id: id,
   tipos: z.array(z.object({ id, nombre: z.string(), prefijo: z.string() })),
-  campos: z.array(z.object({ id, nombre_actual: z.string() })),
   oficinas: z.array(z.object({ id, nombre: z.string() })),
 });
 export type OpcionesActuales = z.infer<typeof opcionesSchema>;
@@ -125,9 +124,6 @@ export const respuestaCambio = z.object({ actualizado: z.boolean() }).or(z.objec
 export const tiposSchema = z.object({
   tipos: z.array(z.object({ id, nombre: z.string(), prefijo: z.string(), activo: z.boolean(), editable: z.boolean().default(false), en_uso: z.boolean().default(true) })),
 });
-export const camposSchema = z.object({
-  campos: z.array(z.object({ id, usuario_id: id, nombre_actual: z.string() })),
-});
 export const config = {
   usuarios: (t: string) =>
     apiRequest('/api/usuarios', z.object({ usuarios: z.array(cuentaSchema) }), {}, t),
@@ -156,8 +152,6 @@ export const config = {
       {},
       t,
     ),
-  campos: (t: string, u: string) =>
-    apiRequest('/api/campos-opcionales?usuario_id=' + encodeURIComponent(u), camposSchema, {}, t),
   guardar: (t: string, ruta: string, v: unknown, metodo = 'POST') =>
     apiRequest('/api/' + ruta, respuestaCambio, { method: metodo, body: JSON.stringify(v) }, t),
 };

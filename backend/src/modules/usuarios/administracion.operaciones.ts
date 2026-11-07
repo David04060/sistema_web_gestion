@@ -12,7 +12,6 @@ export {
   nombre,
   tipo,
   unidad,
-  campo,
   renombrar,
   oficinaEdicion,
   oficinaActividad,
@@ -259,6 +258,8 @@ export async function cambiarClave(actor: string, usuario: string, contrasena: s
 // Fachada conservada para los consumidores de las operaciones administrativas vigentes.
 export {
   catalogos,
+  detalleRol,
+  editarRol,
   oficinas,
   crearOficina,
   editarOficina,
@@ -269,9 +270,6 @@ export {
   unidades,
   crearUnidad,
   editarUnidad,
-  campos,
-  crearCampo,
-  renombrarCampo,
   detalleOficina,
   cambiarActividadOficina,
 } from './configuracion.operaciones.js';

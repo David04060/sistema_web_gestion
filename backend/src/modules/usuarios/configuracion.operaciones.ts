@@ -12,25 +12,55 @@ import {
   nombre,
   tipo,
   unidad,
-  campo,
-  renombrar,
   oficinaEdicion,
   oficinaActividad,
   tipoEdicion,
   motivoTipo,
 } from './administracion.schema.js';
 import { nombresRolSQL } from '../../shared/security/roles.js';
+const columnasRol = `r.id,COALESCE(r.nombre_visible,${nombresRolSQL}) nombre,r.codigo`;
+const rolVisibleSQL = "(r.codigo <> 'SUPERADMINISTRADOR' OR $1::smallint = 1)";
+
 /** Sirve GET /roles; las oficinas se consultan por su propia ruta. */
 export async function catalogos(actor: string) {
   return operacion(actor, 'Catálogos administrativos', async (cliente, identidad) => {
     exigirAdministracion(identidad);
     return {
       roles: (
-        await cliente.query(`SELECT r.id,${nombresRolSQL} nombre,r.codigo FROM roles r ORDER BY id`)
+        await cliente.query(`SELECT ${columnasRol} FROM roles r WHERE ${rolVisibleSQL} ORDER BY id`, [identidad.rol_id])
       ).rows,
     };
   });
 }
+export async function detalleRol(actor: string, id: string) {
+  return operacion(actor, 'Consulta de rol', async (cliente, identidad) => {
+    exigirAdministracion(identidad);
+    const rol = (await cliente.query(
+      `SELECT ${columnasRol} FROM roles r WHERE ${rolVisibleSQL} AND r.id=$2::bigint`,
+      [identidad.rol_id, id],
+    )).rows[0];
+    if (!rol) throw new HttpError(404, 'Rol inexistente');
+    return { rol };
+  });
+}
+
+export async function editarRol(actor: string, id: string, datos: z.infer<typeof nombre>) {
+  return operacion(actor, 'Cambiar nombre visible de rol', async (cliente, identidad) => {
+    exigirAdministracion(identidad);
+    const anterior = (await cliente.query(
+      `SELECT ${columnasRol} FROM roles r WHERE ${rolVisibleSQL} AND r.id=$2::bigint FOR UPDATE`,
+      [identidad.rol_id, id],
+    )).rows[0];
+    if (!anterior) throw new HttpError(404, 'Rol inexistente');
+    if (anterior.nombre !== datos.nombre) {
+      await cliente.query('UPDATE roles SET nombre_visible=$2 WHERE id=$1', [id, datos.nombre]);
+      await auditarConfiguracion(cliente, identidad, 'ROL', id, 'EDITAR',
+        { nombre: anterior.nombre }, { nombre: datos.nombre });
+    }
+    return { actualizado: true };
+  });
+}
+
 /** Incluye las oficinas inactivas para conservar visibles las asociaciones existentes. */
 export async function oficinas(actor: string) {
   return operacion(actor, 'Oficinas', async (cliente, identidad) => {
@@ -216,58 +246,6 @@ export async function editarUnidad(actor: string, unidadId: string, datos: z.inf
       [unidadId, datos.clase, datos.nombre, datos.padre_id],
     );
     await auditarConfiguracion(cliente, identidad, 'UBICACION', unidadId, 'EDITAR', u, datos);
-    return { actualizado: true };
-  });
-}
-/** Consulta nombres actuales sin alterar los nombres históricos de documentos. */
-export async function campos(actor: string, usuario?: string) {
-  return operacion(actor, 'Campos', async (cliente, identidad) => {
-    const titular = await propietario(cliente, identidad, usuario);
-    return {
-      campos: (
-        await cliente.query(
-          'SELECT id::text,usuario_id::text,nombre_actual FROM campos_opcionales WHERE usuario_id=$1 ORDER BY id',
-          [titular],
-        )
-      ).rows,
-    };
-  });
-}
-/** Reserva la creación a administración y a titulares con rol documental. */
-export async function crearCampo(actor: string, datos: z.infer<typeof campo>) {
-  return operacion(actor, 'Crear campo', async (cliente, identidad) => {
-    exigirAdministracion(identidad);
-    if (
-      !(
-        await cliente.query('SELECT 1 FROM usuarios WHERE id=$1 AND rol_id IN (3,4,5)', [
-          datos.usuario_id,
-        ])
-      ).rowCount
-    )
-      throw new HttpError(400, 'El campo pertenece a una cuenta documental');
-    const t = (
-      await cliente.query(
-        'INSERT INTO campos_opcionales(usuario_id,nombre_actual,creado_por) VALUES($1,$2,$3) RETURNING id::text',
-        [datos.usuario_id, datos.nombre, identidad.id],
-      )
-    ).rows[0];
-    await auditarConfiguracion(cliente, identidad, 'CAMPO_OPCIONAL', t.id, 'CREAR', null, datos);
-    return t;
-  });
-}
-/** El trigger conserva la historia del nombre y el motivo de esta transacción. */
-export async function renombrarCampo(
-  actor: string,
-  campoId: string,
-  datos: z.infer<typeof renombrar>,
-) {
-  return operacion(actor, datos.motivo, async (cliente, identidad) => {
-    exigirAdministracion(identidad);
-    const r = await cliente.query('UPDATE campos_opcionales SET nombre_actual=$2 WHERE id=$1', [
-      campoId,
-      datos.nombre,
-    ]);
-    if (!r.rowCount) throw new HttpError(404, 'Campo inexistente');
     return { actualizado: true };
   });
 }

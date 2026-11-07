@@ -37,7 +37,6 @@ export function enlacesPerfil(rol: string, oficina: string | null) {
     resultado.push(
       { ruta: '/usuarios', titulo: 'Usuarios', icono: 'usuarios' },
       { ruta: '/oficinas', titulo: 'Oficinas', icono: 'oficinas' },
-      { ruta: '/campos-opcionales', titulo: 'Campos opcionales', icono: 'tipos' },
       { ruta: '/roles', titulo: 'Roles', icono: 'roles' },
     );
   return resultado;

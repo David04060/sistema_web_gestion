@@ -38,7 +38,7 @@ test('CORS, protección de rutas y límite por IP detrás de un proxy', async t 
             }
         });
         await t.test('rutas protegidas siguen requiriendo JWT', async () => {
-            for (const ruta of ['/api/auth/me', '/api/documentos', '/api/campos-opcionales', '/api/dashboard']) {
+            for (const ruta of ['/api/auth/me', '/api/documentos', '/api/dashboard']) {
                 assert.equal((await fetch(base + ruta)).status, 401);
             }
         });

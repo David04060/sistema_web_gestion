@@ -28,7 +28,7 @@ test('Mejoras locales por HTTP y PostgreSQL real: fixtures revertidos íntegrame
  const existentes=(await c.query('SELECT id::text,rol_id FROM usuarios WHERE activo ORDER BY id')).rows;
  const porRol=rol=>existentes.find(u=>u.rol_id===rol).id;
  async function pedir(actor,ruta,method='GET',body){const u=(await c.query('SELECT version_autenticacion FROM usuarios WHERE id=$1',[actor])).rows[0];const r=await fetch(base+ruta,{method,headers:{Authorization:'Bearer '+generarToken(actor,u.version_autenticacion),'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,body:await r.json()};}
- let oficina,usuario,documento,campo,unidad,lugar;
+ let oficina,usuario,documento,unidad,lugar;
  const razon='Verificación local con rollback';
  try{
   const admin=porRol(2),director=porRol(3),secretaria=porRol(4),superadmin=porRol(1);
@@ -72,8 +72,11 @@ test('Mejoras locales por HTTP y PostgreSQL real: fixtures revertidos íntegrame
    assert.equal((await pedir(director,'/usuarios/'+usuario+'/actividad','POST',{activo:false,motivo:razon})).status,403);
    assert.equal((await pedir(usuario,'/usuarios/'+usuario+'/actividad','POST',{activo:false,motivo:razon})).status,403);
   });
-  await t.test('Campos configurables de Directora, Secretaría y Usuario, separados por cuenta',async()=>{
-   for(const cuenta of [director,secretaria,usuario]){const r=await pedir(admin,'/campos-opcionales','POST',{usuario_id:cuenta,nombre:'Referencia PRUEBA LOCAL'});assert.equal(r.status,201);const opciones=await pedir(cuenta,'/documentos/opciones');assert.equal(opciones.status,200);assert.ok(opciones.body.campos.some(v=>v.id===r.body.id));if(cuenta===usuario)campo=r.body.id;else{const doc=await pedir(cuenta,'/documentos','POST',{tipo_id:opciones.body.tipos[0].id,clasificacion:'RECIBIDO',asunto:'[PRUEBA LOCAL MEJORAS] Campos por cuenta',valores:[{campo_id:r.body.id,valor:'Valor de prueba'}]});assert.equal(doc.status,201);assert.equal(doc.body.documento.valores[0].nombre_guardado,'Referencia PRUEBA LOCAL');}}
+  await t.test('Los campos opcionales se retiran de la API de configuración y de las opciones de alta',async()=>{
+   for (const [ruta, metodo] of [['/campos-opcionales','GET'],['/campos-opcionales','POST'],['/campos-opcionales/1','PUT']])
+    assert.equal((await pedir(admin,ruta,metodo)).status,404);
+   for(const cuenta of [director,secretaria,usuario])
+    assert.deepEqual((await pedir(cuenta,'/documentos/opciones')).body.campos,[]);
   });
   await t.test('Crear lugar y contenido propio; rechazar padre ajeno y ciclos; ruta documental legible',async()=>{
    const r=await pedir(usuario,'/ubicaciones','POST',{clase:'Lugar',nombre:'Estante PRUEBA LOCAL',padre_id:null});assert.equal(r.status,201);lugar=r.body.id;
@@ -82,14 +85,13 @@ test('Mejoras locales por HTTP y PostgreSQL real: fixtures revertidos íntegrame
    assert.equal((await pedir(usuario,'/ubicaciones','POST',{clase:'Portafolio',nombre:'No válido',padre_id:ajeno.body.id})).status,409);
    assert.equal((await pedir(usuario,'/ubicaciones/'+lugar,'PUT',{clase:'Lugar',nombre:'Estante PRUEBA LOCAL',padre_id:unidad})).status,409);
    const tipo=await pedir(usuario,'/tipos-documentales','POST',{nombre:'PRUEBA LOCAL mejoras',prefijo:'MJL'});assert.equal(tipo.status,201);
-   const doc=await pedir(usuario,'/documentos','POST',{tipo_id:tipo.body.id,clasificacion:'RECIBIDO',asunto:'[PRUEBA LOCAL MEJORAS] Ubicación y auditoría',unidad_id:lugar,valores:[{campo_id:campo,valor:'Valor histórico'}]});assert.equal(doc.status,201);documento=doc.body.documento.id;
+   const doc=await pedir(usuario,'/documentos','POST',{tipo_id:tipo.body.id,clasificacion:'RECIBIDO',asunto:'[PRUEBA LOCAL MEJORAS] Ubicación y auditoría',unidad_id:lugar});assert.equal(doc.status,201);documento=doc.body.documento.id;
    assert.equal(doc.body.documento.ubicacion.ruta_ubicacion_guardada,'Estante PRUEBA LOCAL');
    const ubicado=await pedir(usuario,'/documentos/'+documento+'/ubicacion','POST',{revision:doc.body.documento.revision,unidad_id:unidad});assert.equal(ubicado.status,200);assert.equal(ubicado.body.documento.ubicacion.ruta_ubicacion_guardada,'Estante PRUEBA LOCAL / Informes de marzo');
    const lista=await pedir(usuario,'/documentos');assert.ok(lista.body.documentos.some(d=>d.id===documento&&d.ubicacion_ruta==='Estante PRUEBA LOCAL / Informes de marzo'));
   });
-  await t.test('Etiquetas históricas, resumen y auditoría completa mantienen permiso de lectura por API directa',async()=>{
-   assert.equal((await pedir(admin,'/campos-opcionales/'+campo,'PUT',{nombre:'Referencia renombrada',motivo:razon})).status,200);
-   const detalle=await pedir(usuario,'/documentos/'+documento);assert.equal(detalle.body.documento.valores[0].nombre_guardado,'Referencia PRUEBA LOCAL');
+  await t.test('Resumen y auditoría completa mantienen permiso de lectura por API directa',async()=>{
+   const detalle=await pedir(usuario,'/documentos/'+documento);
    const editado=await pedir(usuario,'/documentos/'+documento,'PUT',{revision:detalle.body.documento.revision,motivo:razon,asunto:'[PRUEBA LOCAL MEJORAS] Asunto corregido'});assert.equal(editado.status,200);
    const audit=await pedir(usuario,'/documentos/'+documento+'/auditoria');assert.equal(audit.status,200);assert.ok(audit.body.eventos.some(e=>e.accion==='CORRECCION'&&e.motivo===razon&&e.datos.some(d=>d.campo==='Asunto')));assert.ok(audit.body.eventos.some(e=>e.accion==='UBICACION'&&e.datos.some(d=>d.posterior==='Estante PRUEBA LOCAL / Informes de marzo')));
    assert.ok(audit.body.eventos.every(e=>e.actor));assert.ok(!JSON.stringify(audit.body.eventos).includes('clave_r2'));

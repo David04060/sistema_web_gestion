@@ -48,12 +48,6 @@ export function FormularioDocumento({
     conservar_en_mesa: false,
     motivo: '',
   });
-  const campos = inicial
-    ? inicial.valores.map((v) => ({ id: v.campo_id, nombre_actual: v.nombre_guardado }))
-    : opciones.campos;
-  const [valores, setValores] = useState<Record<string, string>>(() =>
-    Object.fromEntries(inicial?.valores.map((v) => [v.campo_id, v.valor]) ?? []),
-  );
   const [pdf, setPdf] = useState<{
       archivo: File;
       bytes: Uint8Array;
@@ -74,9 +68,6 @@ export function FormularioDocumento({
         asunto: datos.asunto.trim(),
         remitente: datos.remitente.trim() || null,
         observaciones: datos.observaciones.trim() || null,
-        valores: campos
-          .filter((c) => id || valores[c.id]?.trim())
-          .map((c) => ({ campo_id: c.id, valor: valores[c.id] ?? '' })),
       };
       const resultado =
         id && inicial
@@ -233,16 +224,6 @@ export function FormularioDocumento({
                 )}
               </details>
             )}
-            {campos.map((c) => (
-              <label key={c.id} className={styles.campo}>
-                {c.nombre_actual}
-                <textarea
-                  maxLength={20000}
-                  value={valores[c.id] ?? ''}
-                  onChange={(e) => setValores((v) => ({ ...v, [c.id]: e.target.value }))}
-                />
-              </label>
-            ))}
             {id && (
               <label className={`${styles.campo} ${styles.campoCompleto}`}>
                 Motivo de corrección

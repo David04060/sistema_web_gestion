@@ -49,9 +49,6 @@ export const unidad = z
     padre_id: id.nullable().optional().default(null),
   })
   .strict();
-export const campo = z
-  .object({ usuario_id: id, nombre: z.string().trim().min(1).max(250) })
-  .strict();
 export const renombrar = z
   .object({ nombre: z.string().trim().min(1).max(250), motivo: z.string().trim().min(1).max(1000) })
   .strict();

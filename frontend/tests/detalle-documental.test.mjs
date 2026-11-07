@@ -18,7 +18,6 @@ import {UsuarioFormularioPage} from '${resolve('src/features/usuarios/pages/Usua
 import {UsuarioDetallePage} from '${resolve('src/features/usuarios/pages/UsuarioDetallePage.tsx').split(String.fromCharCode(92)).join('/')}';
 import {UsuariosListaPage} from '${resolve('src/features/usuarios/pages/UsuariosListaPage.tsx').split(String.fromCharCode(92)).join('/')}';
 import {UbicacionesPage} from '${resolve('src/features/ubicaciones/pages/UbicacionesPage.tsx').split(String.fromCharCode(92)).join('/')}';
-import {CamposActualesPage} from '${resolve('src/features/usuarios/pages/CamposActualesPage.tsx').split(String.fromCharCode(92)).join('/')}';
 import {OficinasActualesPage} from '${resolve('src/features/usuarios/pages/OficinasListaPage.tsx').split(String.fromCharCode(92)).join('/')}';
 import {OficinaDetallePage} from '${resolve('src/features/usuarios/pages/OficinaDetallePage.tsx').split(String.fromCharCode(92)).join('/')}';
 import {OficinaFormularioPage} from '${resolve('src/features/usuarios/pages/OficinaFormularioPage.tsx').split(String.fromCharCode(92)).join('/')}';
@@ -30,7 +29,7 @@ import {Formulario as FormularioCuenta} from '${resolve('src/features/usuarios/p
 import {elegir} from 'virtual:estado';
 function inspeccionar(elemento){if(!React.isValidElement(elemento))return;const hijos=[elemento.props.children].flat(Infinity).filter(React.isValidElement);const claves=hijos.filter(h=>h.key!==null).map(h=>h.key);if(new Set(claves).size!==claves.length)throw Error('Claves hermanas duplicadas: '+claves.join(','));hijos.forEach(inspeccionar);}
 function Detalle(){const arbol=DocumentoDetallePage();inspeccionar(arbol);return arbol;}
-export function renderizar(pantalla,cuentaCampo='',mensaje=''){elegir(pantalla);const componentes={detalle:Detalle,listado:DocumentosListaPage,docRegistro:DocumentoFormularioPage,usuarioForm:UsuarioFormularioPage,usuarioDetalle:UsuarioDetallePage,usuarios:UsuariosListaPage,ubicaciones:UbicacionesPage,campos:CamposActualesPage,oficinas:OficinasActualesPage,oficinaDetalle:OficinaDetallePage,oficinaForm:OficinaFormularioPage};const path=pantalla.startsWith('oficina')?'/oficinas/:id':pantalla.startsWith('usuario')?'/usuarios/:id':pantalla==='campos'?'/campos-opcionales':pantalla==='docRegistro'?'/documentos/nuevo':'/documentos/:id';const url=pantalla.startsWith('oficina')?'/oficinas/9':pantalla.startsWith('usuario')?'/usuarios/3':pantalla==='campos'?'/campos-opcionales'+(cuentaCampo?'?usuario='+cuentaCampo:''):pantalla==='docRegistro'?'/documentos/nuevo':'/documentos/4';return renderToStaticMarkup(React.createElement(MemoryRouter,{initialEntries:[mensaje?{pathname:url,state:{mensaje}}:url+(pantalla==='listado'&&cuentaCampo?'?'+cuentaCampo:'')]},React.createElement(Routes,null,React.createElement(Route,{path,element:React.createElement(componentes[pantalla])}))));}
+export function renderizar(pantalla,cuentaCampo='',mensaje=''){elegir(pantalla);const componentes={detalle:Detalle,listado:DocumentosListaPage,docRegistro:DocumentoFormularioPage,usuarioForm:UsuarioFormularioPage,usuarioDetalle:UsuarioDetallePage,usuarios:UsuariosListaPage,ubicaciones:UbicacionesPage,oficinas:OficinasActualesPage,oficinaDetalle:OficinaDetallePage,oficinaForm:OficinaFormularioPage};const path=pantalla.startsWith('oficina')?'/oficinas/:id':pantalla.startsWith('usuario')?'/usuarios/:id':pantalla==='docRegistro'?'/documentos/nuevo':'/documentos/:id';const url=pantalla.startsWith('oficina')?'/oficinas/9':pantalla.startsWith('usuario')?'/usuarios/3':pantalla==='docRegistro'?'/documentos/nuevo':'/documentos/4';return renderToStaticMarkup(React.createElement(MemoryRouter,{initialEntries:[mensaje?{pathname:url,state:{mensaje}}:url+(pantalla==='listado'&&cuentaCampo?'?'+cuentaCampo:'')]},React.createElement(Routes,null,React.createElement(Route,{path,element:React.createElement(componentes[pantalla])}))));}
 export function grupo(grupo){return renderToStaticMarkup(React.createElement(MemoryRouter,null,React.createElement(GrupoDocumental,{documento:{id:'4',grupo,relacionados:[]}})));}
 export function usuarioSinAsignar(rol){return renderToStaticMarkup(React.createElement(MemoryRouter,null,React.createElement(FormularioCuenta,{token:'sintetico',inicial:{rol_id:rol,oficina_id:null},roles:[{id:3,nombre:'Dirección'},{id:4,nombre:'Secretaría'}],oficinas:[{id:'1',nombre:'Dirección',activa:true},{id:'2',nombre:'Mesa de Partes',activa:true}]})));}
 export function acciones(ubicacion,permitir){return renderToStaticMarkup(React.createElement(MemoryRouter,null,React.createElement(AccionesDocumento,{token:'sintetico',documento:{id:'4',revision:'1',ubicacion,permisos:{delegar:false,ubicar:permitir,anular:false}},actualizar:()=>{}})));}
@@ -59,9 +58,8 @@ test('Administración renderizada: dos columnas, oficinas compatibles, edición 
  const listado=renderizar('usuarios');assert.ok(listado.includes('/usuarios/3'));assert.ok(!listado.includes('>Editar</a>'));
  const detalle=renderizar('usuarioDetalle');assert.equal((detalle.match(/>Editar cuenta y asignación<\/a>/g)??[]).length,1);assert.ok(detalle.includes('Desactivar cuenta'));assert.ok(detalle.includes('Motivo'));
 });
-test('Lugares y campos: raíz independiente, contenido identificado y selector de las tres cuentas documentales',()=>{
+test('Lugares: raíz independiente y contenido identificado',()=>{
  const ubicaciones=renderizar('ubicaciones');assert.ok(ubicaciones.includes('Crear lugar'));assert.ok(ubicaciones.includes('Agregar contenido a un lugar'));assert.ok(ubicaciones.includes('Nombre del lugar'));assert.ok(!ubicaciones.includes('Clase libre'));assert.ok(ubicaciones.includes('Estante de prueba'));assert.ok(ubicaciones.includes('Informes de marzo'));
- const campos=renderizar('campos');for(const id of ['3','4','5']){assert.ok(campos.includes('value="'+id+'"'));assert.ok(renderizar('campos',id).includes('Añadir campo'));}
 });
 test('Oficinas en vistas separadas: listado sin formulario, nombre sin checkbox y actividad independiente',()=>{
  const lista=renderizar('oficinas');assert.ok(lista.includes('/oficinas/9'));assert.ok(!lista.includes('<form'));
@@ -93,7 +91,7 @@ test('Acción de ubicación: texto por ubicación vigente y permiso',()=>{assert
 
 test('Registro relacionado, filtro y relevo aparecen en los componentes reales',()=>{
  assert.ok(renderizar('docRegistro').includes('Registrar documento relacionado'));
- assert.ok(renderizar('listado','con_relacionados=true').includes('Con documentos relacionados'));
+ assert.match(renderizar('listado','con_relacionados=true'), /<option value="RELACIONADOS" selected="">Documentos relacionados<\/option>/);
  assert.ok(renderizar('oficinaDetalle').includes('Relevo de responsable'));
 });
 

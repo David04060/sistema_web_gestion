@@ -19,6 +19,20 @@ test('API local real: Superadministrador protegido y edición autorizada con rol
  const tokens=new Map(antes.filter(u=>u.activo).map(u=>[u.rol_id,generarToken(String(u.id),u.version_autenticacion)]));
  async function pedir(rol,ruta,method='GET',body){const r=await fetch(base+'/api'+ruta,{method,headers:{Authorization:'Bearer '+tokens.get(rol),'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,body:await r.json()};}
  try{
+  await t.test('Los nombres visibles no cambian sesiones ni permisos y el rol protegido queda oculto',async()=>{
+   const lista=await pedir(2,'/roles');assert.equal(lista.status,200);assert.deepEqual(lista.body.roles.map(r=>r.id),[2,3,4,5]);
+   assert.equal((await pedir(2,'/roles/1')).status,404);
+   assert.equal((await pedir(2,'/roles/1','PUT',{nombre:'Prohibido'})).status,404);
+   assert.equal((await pedir(3,'/roles/3','PUT',{nombre:'Prohibido'})).status,403);
+   assert.equal((await pedir(1,'/roles/1')).status,200);
+   assert.equal((await pedir(1,'/roles/1','PUT',{nombre:'Rol de control'})).status,200);
+   assert.equal((await pedir(2,'/roles/3','PUT',{nombre:'Dirección académica'})).status,200);
+   const rol=(await pedir(1,'/roles')).body.roles.find(r=>r.id===3);
+   assert.deepEqual(rol,{id:3,codigo:'DIRECTOR',nombre:'Dirección académica'});
+   assert.equal((await pedir(3,'/auth/me')).body.usuario.rol,'Director(a)');
+   assert.equal((await pedir(3,'/documentos/opciones')).status,200);
+   assert.equal((await pedir(2,'/documentos/opciones')).status,403);
+  });
   const perfil=(await pedir(1,'/usuarios/'+superadmin.id)).body.usuario;
   const datos=u=>({nombre:u.nombre,apellido:u.apellido,nombre_usuario:u.nombre_usuario,email:u.email,telefono:u.telefono,rol_id:u.rol_id,oficina_id:u.oficina_id?String(u.oficina_id):null,motivo:'Verificación local de permisos sin cambios persistentes'});
   await t.test('Listado, búsqueda, filtros y conteo excluyen la cuenta protegida',async()=>{
@@ -31,7 +45,7 @@ test('API local real: Superadministrador protegido y edición autorizada con rol
     ['/usuarios/'+superadmin.id,'GET'],['/usuarios/'+superadmin.id,'PUT',datos(perfil)],
     ['/usuarios/'+superadmin.id+'/actividad','POST',{activo:false,motivo:'Verificación de protección'}],
     ['/usuarios/'+superadmin.id+'/clave','POST',{contrasena:randomBytes(20).toString('hex')}],
-    ['/ubicaciones?usuario_id='+superadmin.id,'GET'],['/campos-opcionales?usuario_id='+superadmin.id,'GET']
+    ['/ubicaciones?usuario_id='+superadmin.id,'GET']
    ]){const r=await pedir(2,ruta,method,body);assert.equal(r.status,404,ruta);assert.equal(r.body.error,'Cuenta inexistente',ruta);assert.equal(r.body.usuario,undefined);}
   });
   await t.test('Ningún rol administrativo puede crear ni convertir otra cuenta a Superadministrador',async()=>{
