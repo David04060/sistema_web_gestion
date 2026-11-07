@@ -1,14 +1,10 @@
 import { Router } from 'express';
-import { requiereAuth, type RequestAutenticada } from '../../middlewares/auth.middleware.js';
+import type { RequestAutenticada } from '../../middlewares/auth.middleware.js';
 import { validar } from '../../shared/http/validar.js';
 import * as operaciones from './documentos.operaciones.js';
 import { consultaDestinatarios, consultaUbicaciones, consultaOrigenes } from './documental.schema.js';
 import { descargarExcel } from './exportacion.controller.js';
 export const documentosRouter = Router();
-documentosRouter.use(requiereAuth, (_q, res, next) => {
-  res.setHeader('Cache-Control', 'no-store, private');
-  next();
-});
 const actor = (req: RequestAutenticada) => req.usuario!.id;
 documentosRouter.get('/opciones', async (req: RequestAutenticada, res) =>
   res.json(await operaciones.opciones(actor(req))),

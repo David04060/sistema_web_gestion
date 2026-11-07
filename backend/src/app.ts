@@ -29,6 +29,10 @@ app.get('/api/dashboard', requiereAuth, async (q: RequestAutenticada, r) => {
 });
 app.use('/api/auth', authRouter);
 app.use('/api', administracionRouter);
+app.use('/api/documentos', requiereAuth, (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, private');
+  next();
+});
 app.use('/api/documentos', pdfRouter);
 app.use('/api/documentos', documentosRouter);
 app.use((_req, res) => {
