@@ -7,6 +7,13 @@ export async function verificarEsquemaDocumental(cliente: Pick<ClientBase, 'quer
   );
   await cliente.query('SELECT documento_id,periodo_id FROM documentos_oficina LIMIT 0');
   await cliente.query('SELECT id FROM documentos_grupo(NULL::bigint) LIMIT 0');
+  const delegaciones = await cliente.query<{ instalada: boolean }>(`
+    SELECT to_regprocedure('public.documento_consultable_con_delegacion(bigint,bigint)') IS NOT NULL
+       AND to_regprocedure('public.documento_delegado_por(bigint,bigint)') IS NOT NULL
+       AND to_regprocedure('public.documento_tiene_relacion_consultable(bigint,bigint)') IS NOT NULL instalada
+  `);
+  if (!delegaciones.rows[0]?.instalada)
+    throw new Error('Falta aplicar database/changes/011-consulta-delegaciones.sql en la base configurada');
   await cliente.query('SELECT revision_esperada FROM pdf_cargas LIMIT 0');
   await cliente.query('SELECT documento_id,vence_en,eliminado_en FROM pdf_retenciones_anulacion LIMIT 0');
 }
