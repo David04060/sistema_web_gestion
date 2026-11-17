@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { PDFDocument } from 'pdf-lib';
 import { leerFixtures, verificarEntornoPrueba } from './helpers/entorno-prueba.mjs';
 import { pool } from '../dist/config/database.js';
-import { alta, registrar, delegar, listar, filtros, buscarDestinatarios } from '../dist/modules/documentos/documentos.operaciones.js';
+import { alta, registrar, delegar, listar, filtros, buscarDestinatarios, detalle, historial, auditoria, anular, corregir, ubicar } from '../dist/modules/documentos/documentos.operaciones.js';
 import { crearUnidad } from '../dist/modules/usuarios/administracion.operaciones.js';
 import { pdfDocumental } from '../dist/modules/documentos-pdf/pdf.documental.js';
 import { validarPdf } from '../dist/modules/documentos-pdf/pdf.storage.js';
@@ -27,6 +27,7 @@ test('Alta delegada, rollback y PDF de autor con PostgreSQL real y almacenamient
       if (fallar) throw new Error('R2 no disponible');
       await validarPdf(bytes, tamano);
     },
+    leer: async () => bytes,
     eliminar: async () => {},
   }));
   async function adjuntar(actor, doc, revision = null) {
@@ -173,6 +174,58 @@ test('Alta delegada, rollback y PDF de autor con PostgreSQL real y almacenamient
     assert.equal((await servicio.consultar(usuario.id, sinPdf.id)).archivo, null);
     fallar = false;
     assert.ok((await adjuntar(usuario, sinPdf)).archivo);
+    for (const [emisor, tipo] of [[director, fixture.tipos.director], [secretaria, fixture.tipos.director], [usuario, fixture.tipos.usuario]]) {
+      let { documento: doc } = await registrar(emisor.id, entrada(tipo, {
+        ...(emisor === secretaria ? { conservar_en_mesa: true } : {}),
+      }));
+      if (emisor === director) {
+        const unidad = await crearUnidad(emisor.id, { clase: 'Estante', nombre: 'Privado para destinatario', padre_id: null });
+        ({ documento: doc } = await ubicar(emisor.id, doc.id, { revision: doc.revision, unidad_id: unidad.id }));
+      }
+      const adjunto = emisor !== secretaria ? await adjuntar(emisor, doc) : null;
+      ({ documento: doc } = await detalle(emisor.id, doc.id));
+      ({ documento: doc } = await delegar(emisor.id, doc.id, { revision: doc.revision, usuario_id: sinOficina.id }));
+      const receptor = sinOficina.id;
+      const { documentos } = await listar(receptor, filtros.parse({ q: doc.codigo_visible }));
+      assert.equal(documentos[0].delegado_por_nombre, doc.registrado_por_nombre);
+      const { documento: recibido } = await detalle(receptor, doc.id);
+      assert.equal(recibido.registrado_por, emisor.id);
+      assert.equal(recibido.ubicacion, null);
+      assert.ok(Object.values(recibido.permisos).every(v => !v));
+      assert.deepEqual(await historial(receptor, doc.id), { historial: [] });
+      assert.deepEqual(await auditoria(receptor, doc.id), { eventos: [] });
+      if (emisor === director) assert.match(JSON.stringify(await historial(emisor.id, doc.id)), /Privado para destinatario/);
+      await assert.rejects(detalle(admin.id, doc.id), e => e.status === 404);
+      if (emisor !== usuario) await assert.rejects(detalle(usuario.id, doc.id), e => e.status === 404);
+      const revision = doc.revision;
+      const motivo = 'Comprobación sintética';
+      for (const intento of [
+        () => corregir(receptor, doc.id, { revision, motivo, asunto: 'Modificación' }),
+        () => ubicar(receptor, doc.id, { revision, unidad_id: '1' }),
+        () => delegar(receptor, doc.id, { revision, nombre: 'Otra persona' }),
+        () => anular(receptor, doc.id, { revision, motivo }),
+        () => adjuntar(sinOficina, doc),
+        () => servicio.confirmar(receptor, doc.id, '00000000-0000-4000-8000-000000000000'),
+        () => servicio.eliminar(receptor, doc.id, adjunto?.archivo.revision),
+      ]) await assert.rejects(intento, e => e.status === 403);
+      const estado = await servicio.consultar(receptor, doc.id);
+      assert.equal(estado.modificar, false);
+      assert.equal(estado.eliminar, false);
+      if (adjunto) {
+        for (const descargar of [false, true]) {
+          const resultado = await servicio.abrir(receptor, doc.id, descargar);
+          assert.deepEqual(Buffer.from(resultado.contenido, 'base64'), Buffer.from(bytes));
+        }
+      } else {
+        assert.equal(estado.archivo, null);
+        await assert.rejects(servicio.abrir(receptor, doc.id, true), e => e.status === 404);
+      }
+      await anular(emisor.id, doc.id, { revision, motivo });
+      assert.equal((await listar(receptor, filtros.parse({ q: doc.codigo_visible }))).total, 0);
+      await assert.rejects(detalle(receptor, doc.id), e => e.status === 404);
+      await assert.rejects(servicio.abrir(receptor, doc.id, false), e => e.status === 404);
+      assert.equal((await detalle(fixture.cuentas.superadmin.id, doc.id)).documento.situacion, 'ANULADO');
+    }
   } finally {
     await pool.end();
   }

@@ -154,10 +154,10 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
    assert.equal((await pedir(ids.a,'/documentos','POST',{tipo_id:ids['tipo'+ids.a],clasificacion:'RECIBIDO',asunto:'Fallo',valores:[{campo_id:'99999999',valor:'Inválido'}]})).status,400);
    assert.equal((await c.query('SELECT count(*)::int n FROM documentos')).rows[0].n,antes);assert.equal((await c.query('SELECT ultimo_numero FROM correlativos_documentales WHERE tipo_id=$1',[ids['tipo'+ids.a]])).rows[0].ultimo_numero,correlativo);
   });
-  await t.test('Delegación personal informativa: no transfiere, no concede acceso; bloquea mutaciones',async()=>{
+  await t.test('Delegación personal: destinatario consulta sin trasladar autoría ni permisos de escritura',async()=>{
    const d=(await ok(ids.a,'/documentos/'+ids['doc'+ids.a].id)).documento;const r=(await ok(ids.a,'/documentos/'+d.id+'/delegar','POST',{revision:d.revision,usuario_id:ids.b,oficina_id:ids.oficinaB})).documento;assert.equal(r.ambito_id,d.ambito_id);assert.equal(r.registrado_por,ids.a);assert.equal(r.situacion,'DELEGADO');
-   assert.equal((await pedir(ids.b,'/documentos/'+d.id)).status,404);await ok(ids.a,'/documentos/'+d.id+'/pdf');assert.equal((await ok(ids.a,'/documentos/'+d.id+'/pdf')).modificar,true);
-   for(const [ruta,body] of [['/delegar',{revision:r.revision,nombre:'Otra persona'}],['/anular',{revision:r.revision,motivo}]])assert.equal((await pedir(ids.a,'/documentos/'+d.id+ruta,'POST',body)).status,403);
+   const receptor=(await ok(ids.b,'/documentos/'+d.id)).documento;assert.ok(receptor.delegado_por_nombre);assert.ok(Object.values(receptor.permisos).every(v=>!v));assert.equal((await ok(ids.a,'/documentos/'+d.id+'/pdf')).modificar,true);
+   for(const [ruta,body] of [['/delegar',{revision:r.revision,nombre:'Otra persona'}],['/anular',{revision:r.revision,motivo}]])assert.equal((await pedir(ids.b,'/documentos/'+d.id+ruta,'POST',body)).status,403);
    assert.equal((await pedir(ids.a,'/documentos/'+d.id,'PUT',{revision:r.revision,motivo,asunto:'Prohibido'})).status,403);
   });
   await t.test('Secretaría conserva y delega manualmente; Dirección guarda o delega; PDF compartido',async()=>{

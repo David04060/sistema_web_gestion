@@ -157,15 +157,29 @@ export function pdfDocumental(almacen: () => AlmacenPdf = crearAlmacenR2) {
   }
   /** Exige lectura vigente y firma una URL privada de 60 segundos; no concede gestión por poder leer. */
   async function abrir(actor: string, id: string, descargar: boolean) {
-    return operacion(actor, 'Abrir PDF', async (cliente, identidad) => {
-      await documento(cliente, identidad, id);
+    const lectura = await operacion(actor, 'Abrir PDF', async (cliente, identidad) => {
+      const d = await documento(cliente, identidad, id);
       const p = (
-        await cliente.query('SELECT clave_r2,nombre FROM documentos_pdf WHERE documento_id=$1', [
+        await cliente.query('SELECT clave_r2,nombre,tamano_bytes,revision FROM documentos_pdf WHERE documento_id=$1', [
           id,
         ])
       ).rows[0];
       if (!p) throw new HttpError(404, 'Sin PDF adjunto');
-      return { url: await almacen().abrir(p.clave_r2, p.nombre, descargar), vence_en: 60 };
+      if (d.delegado_por_nombre) return { archivo: p };
+      return { enlace: { url: await almacen().abrir(p.clave_r2, p.nombre, descargar), vence_en: 60 } };
+    });
+    if (lectura.enlace) return lectura.enlace;
+
+    const p = lectura.archivo;
+    const bytes = await almacen().leer(p.clave_r2, Number(p.tamano_bytes));
+    return operacion(actor, 'Confirmar consulta PDF', async (cliente, identidad) => {
+      await documento(cliente, identidad, id);
+      const vigente = await cliente.query(
+        'SELECT 1 FROM documentos_pdf WHERE documento_id=$1 AND revision=$2',
+        [id, p.revision],
+      );
+      if (!vigente.rowCount) throw new HttpError(404, 'Sin PDF adjunto');
+      return { contenido: Buffer.from(bytes).toString('base64') };
     });
   }
   /** Comparte el adaptador de esta instancia con el recolector, incluido el adaptador aislado de pruebas. */

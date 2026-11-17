@@ -99,9 +99,11 @@ export function ArchivoPdf({
     const enlace = await pedir(
       'abrir',
       { descargar },
-      z.object({ url: z.url(), vence_en: z.number() }),
+      z.union([z.object({ url: z.url(), vence_en: z.number() }), z.object({ contenido: z.base64() })]),
     );
-    const contenido = await obtenerContenidoPdf(enlace.url, vigente);
+    const contenido = 'contenido' in enlace
+      ? Uint8Array.from(atob(enlace.contenido), caracter => caracter.charCodeAt(0))
+      : await obtenerContenidoPdf(enlace.url, vigente);
     if (!vigente()) return;
     if (descargar) {
       const url = URL.createObjectURL(new Blob([contenido], { type: 'application/pdf' }));

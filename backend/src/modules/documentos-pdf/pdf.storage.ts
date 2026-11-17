@@ -16,6 +16,7 @@ export interface AlmacenPdf {
   subir(clave: string, tamano: number): Promise<string>;
   validarYCopiar(origen: string, destino: string, tamano: number): Promise<void>;
   abrir(clave: string, nombre: string, descargar: boolean): Promise<string>;
+  leer(clave: string, tamano: number): Promise<Uint8Array>;
   eliminar(clave: string): Promise<void>;
 }
 /** El prefijo queda persistido en cada clave; cambiar el entorno no redirige archivos existentes. */
@@ -146,6 +147,18 @@ export function crearAlmacenS3(s3: S3Client, bucket: string): AlmacenPdf {
         }),
         { expiresIn: 60 },
       );
+    },
+    async leer(clave, tamano) {
+      const respuesta = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: clave }), {
+        abortSignal: AbortSignal.timeout(20_000),
+      });
+      if (!respuesta.Body || respuesta.ContentLength !== tamano || tamano < 1 || tamano > MAX_PDF) {
+        if (respuesta.Body && 'destroy' in respuesta.Body) respuesta.Body.destroy();
+        throw new HttpError(502, 'El PDF almacenado tiene un tamaño inválido');
+      }
+      const bytes = await respuesta.Body.transformToByteArray();
+      if (bytes.length !== tamano) throw new HttpError(502, 'El PDF almacenado está incompleto');
+      return bytes;
     },
     async eliminar(clave) {
       await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: clave }), {

@@ -240,6 +240,7 @@ export function DocumentosListaPage() {
                     </td>
                     <td data-label="Registrado por">
                       {d.registrado_por_nombre}
+                      {d.delegado_por_nombre && <div>Delegado por {d.delegado_por_nombre}</div>}
                       {d.registrado_por_oficina && (
                         <span className={styles.oficinaRegistro}>{d.registrado_por_oficina}</span>
                       )}

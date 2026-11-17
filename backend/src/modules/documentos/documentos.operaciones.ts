@@ -64,7 +64,7 @@ export async function buscarOrigenes(actor: string, q: string) {
     const limite = q ? 20 : 5;
     const filas = (await cliente.query(
       `SELECT d.id::text,d.codigo_visible,d.asunto FROM documentos d WHERE ${lecturaSQL}
-       AND d.situacion<>'ANULADO' AND strpos(lower(concat_ws(' ',d.codigo_visible,d.asunto)),lower($4))>0
+       AND public.documento_consultable($1,d.id) AND d.situacion<>'ANULADO' AND strpos(lower(concat_ws(' ',d.codigo_visible,d.asunto)),lower($4))>0
        ORDER BY d.creado_en DESC,d.id DESC LIMIT $5`,
       [identidad.id, identidad.rol_id, identidad.ambito_id, q, limite + 1],
     )).rows;
@@ -78,8 +78,8 @@ async function grupoDocumental(cliente: PoolClient, actor: Actor, id: string) {
     id: string; codigo_visible: string; asunto: string; origen_id: string | null; creado_en: Date;
     visible: boolean;
   }>(`SELECT d.id::text,d.codigo_visible,d.asunto,d.creado_en,
-      public.documento_consultable($1,d.id) visible,
-      CASE WHEN public.documento_consultable($1,r.origen_id) THEN r.origen_id::text ELSE NULL END origen_id
+      public.documento_consultable_con_delegacion($1,d.id) visible,
+      CASE WHEN public.documento_consultable_con_delegacion($1,r.origen_id) THEN r.origen_id::text ELSE NULL END origen_id
       FROM public.documentos_grupo($2) g JOIN documentos d ON d.id=g.id
       LEFT JOIN documentos_relaciones r ON r.documento_id=d.id ORDER BY d.creado_en,d.id`,
     [actor.id, id],
@@ -146,13 +146,14 @@ export async function listar(actor: string, f: z.infer<typeof filtros>) {
   IS NULL OR d.situacion=$5) AND ($6::bigint IS NULL OR d.tipo_id=$6) AND ($7::text IS NULL
   OR d.clasificacion=$7) AND ($10::date IS NULL OR (d.creado_en>=($10::date::timestamp AT TIME
   ZONE 'America/Lima') AND d.creado_en<(($10::date+$11::interval) AT TIME ZONE 'America/Lima')))
-  AND (NOT $12::boolean OR public.documento_tiene_relacion_visible($1,d.id))`;
+  AND (NOT $12::boolean OR public.documento_tiene_relacion_consultable($1,d.id))`;
     const r = await cliente.query(
       `WITH visibles AS (SELECT to_jsonb(d)||jsonb_build_object('id',
   d.id::text,'ambito_id',d.ambito_id::text,'tipo_id',d.tipo_id::text,
   'registrado_por',d.registrado_por::text,'ubicacion_ruta',(SELECT l.ruta_ubicacion_guardada
   FROM ubicaciones_documento l WHERE l.documento_id=d.id AND l.vigente),
-  'revision',d.revision::text,'registrado_por_oficina',(SELECT o.nombre FROM documentos_oficina h
+  'revision',d.revision::text,'delegado_por_nombre',public.documento_delegado_por($1,d.id),
+  'registrado_por_oficina',(SELECT o.nombre FROM documentos_oficina h
   JOIN oficina_periodos p ON p.id=h.periodo_id JOIN oficinas o ON o.id=p.oficina_id WHERE h.documento_id=d.id),
   'registrado_por_nombre',(SELECT concat_ws(' ',u.nombre,u.apellido) FROM usuarios u WHERE
   u.id=d.registrado_por)) fila,d.id orden,d.creado_en ${base}) SELECT (SELECT count(*)::int FROM visibles)
@@ -208,7 +209,8 @@ export async function detalle(actor: string, documentoId: string) {
 /** Exige lectura del documento antes de devolver su historia original. */
 export async function historial(actor: string, documentoId: string) {
   return operacion(actor, 'Consulta', async (cliente, identidad) => {
-    await documento(cliente, identidad, documentoId);
+    const d = await documento(cliente, identidad, documentoId);
+    if (d.delegado_por_nombre) return { historial: [] };
     return {
       historial: (
         await cliente.query(
@@ -269,7 +271,8 @@ export async function registrar(actor: string, datos: z.infer<typeof alta>) {
     }
     if (datos.origen_id) {
       const origen = await documento(cliente, identidad, datos.origen_id, true);
-      if (origen.situacion === 'ANULADO') throw new HttpError(403, 'No se relacionan registros anulados');
+      if (origen.situacion === 'ANULADO' || origen.lectura_ordinaria === false)
+        throw new HttpError(403, 'Origen no autorizado');
     }
     const situacion =
       identidad.rol_id === 5
@@ -420,7 +423,8 @@ export async function anular(actor: string, documentoId: string, datos: z.infer<
 /** Proyecta solo cambios públicos y eventos de limpieza PDF; evita exponer JSON interno o claves R2. */
 export async function auditoria(actor: string, documentoId: string) {
   return operacion(actor, 'Auditoría documental', async (cliente, identidad) => {
-    await documento(cliente, identidad, documentoId);
+    const d = await documento(cliente, identidad, documentoId);
+    if (d.delegado_por_nombre) return { eventos: [] };
     const filas = (
       await cliente.query(
         `SELECT 'doc:'||h.id::text id,h.accion,h.motivo,h.anterior,h.posterior,

@@ -32,7 +32,7 @@ export interface RegistroExcel {
 }
 const condicion = `${lecturaSQL} AND d.creado_en >= (make_date($4::int,$5::int,1)::timestamp AT TIME ZONE 'America/Lima')
  AND d.creado_en < ((make_date($4::int,$5::int,1)+interval '1 month') AT TIME ZONE 'America/Lima')
- AND (NOT $6::boolean OR public.documento_tiene_relacion_visible($1,d.id))`;
+ AND (NOT $6::boolean OR public.documento_tiene_relacion_consultable($1,d.id))`;
 const seleccion = `SELECT d.codigo_visible codigo,d.tipo_nombre_guardado tipo,d.asunto,
   d.clasificacion,d.remitente,d.observaciones,
  concat_ws(' ',u.nombre,u.apellido) registrador,d.situacion,d.creado_en registro,

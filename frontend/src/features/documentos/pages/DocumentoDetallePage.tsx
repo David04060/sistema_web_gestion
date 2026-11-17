@@ -19,10 +19,13 @@ export function DocumentoDetallePage() {
     mensajeRuta = (navegacion.state as { mensaje?: unknown } | null)?.mensaje;
   const consulta = useConsulta(
     useCallback(
-      async () => ({
-        detalle: await api.detalle(token, id),
-        historial: await api.historial(token, id),
-      }),
+      async () => {
+        const detalle = await api.detalle(token, id);
+        const historial = detalle.documento.delegado_por_nombre
+          ? undefined
+          : await api.historial(token, id);
+        return { detalle, historial };
+      },
       [token, id],
     ),
   );
@@ -62,6 +65,7 @@ export function DocumentoDetallePage() {
           <section className={styles.tarjeta}>
             <h2>{d.codigo_visible}</h2>
             <p>{d.asunto}</p>
+            {d.delegado_por_nombre && <p>Delegado por {d.delegado_por_nombre}</p>}
             {d.historico_solo_lectura && <p className={styles.aviso}>Archivo de un periodo anterior: consulta de solo lectura. Se conservan su registrador, ubicación e historial originales.</p>}
             <dl className={styles.datos}>
               <div>
@@ -169,13 +173,13 @@ export function DocumentoDetallePage() {
             />
           )}
           <GrupoDocumental documento={d} />
-          <HistorialDocumento historial={consulta.datos?.historial.historial ?? []} />
-          <AuditoriaDocumento
+          {!d.delegado_por_nombre && <HistorialDocumento historial={consulta.datos?.historial?.historial ?? []} />}
+          {!d.delegado_por_nombre && <AuditoriaDocumento
             key={'auditoria-' + d.id}
             token={token}
             id={d.id}
             revision={d.revision + ':' + revisionAuditoria}
-          />
+          />}
         </>
       )}
     </main>

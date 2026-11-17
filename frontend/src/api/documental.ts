@@ -23,6 +23,7 @@ export const documentoSchema = z.object({
   tipo_id: id,
   registrado_por: id,
   registrado_por_nombre: z.string(),
+  delegado_por_nombre: z.string().nullable().optional(),
   registrado_por_oficina: z.string().nullable().optional(),
   tipo_nombre_guardado: z.string(),
   clasificacion: z.enum(['RECIBIDO', 'EMITIDO']),

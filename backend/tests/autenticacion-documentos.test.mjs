@@ -79,6 +79,33 @@ test('Documentos y PDF: una autenticación SQL por petición con JWT verificable
         await pedir(ruta, token(cuenta, cuenta.version_autenticacion + 1), 401, 1, null);
       }
     }
+    const recibido = '/' + documentos.delegado.id;
+    const receptor = token(cuentas.sinOficina);
+    const { datos } = await pedir(recibido, receptor, 200);
+    assert.equal(datos.documento.delegado_por_nombre, 'Fixture director');
+    assert.ok(Object.values(datos.documento.permisos).every(v => !v));
+    assert.deepEqual((await pedir(recibido + '/historial', receptor, 200)).datos, { historial: [] });
+    await pedir(recibido, token(cuentas.usuario), 404);
+    const revision = datos.documento.revision;
+    const motivo = 'Validación HTTP sintética';
+    for (const [method, ruta, body] of [
+      ['PUT', '', { revision, asunto: 'Cambio de prueba', motivo }],
+      ['POST', '/delegar', { revision, nombre: 'Prueba' }],
+      ['POST', '/ubicacion', { revision, unidad_id: '1' }],
+      ['POST', '/anular', { revision, motivo }],
+      ['POST', '/pdf/cargas', { revision: null, nombre: 'prueba.pdf', tamano: 100, mime: 'application/pdf' }],
+      ['POST', '/pdf/confirmar', { carga: '00000000-0000-4000-8000-000000000000' }],
+      ['POST', '/pdf/eliminar', { revision: '00000000-0000-4000-8000-000000000000', confirmar: true }],
+    ]) {
+      const respuesta = await fetch(base + recibido + ruta, {
+        method,
+        headers: { Authorization: 'Bearer ' + receptor, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      await respuesta.text();
+      assert.equal(respuesta.status, 403, method + ' ' + ruta);
+    }
+
     for (const ruta of ['', '/1/pdf', '/sin/ruta']) {
       await pedir(ruta, null, 401, 0, null);
       await pedir(ruta, 'jwt-invalido', 401, 0, null);

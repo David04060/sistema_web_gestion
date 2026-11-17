@@ -56,7 +56,7 @@ export function exigirAmbito(identidad: Actor) {
   return identidad.ambito_id;
 }
 // Parámetros: identidad autenticada, rol y ámbito. Administrador carece de lectura documental.
-export const lecturaSQL = `($1::bigint IS NOT NULL AND $2::smallint IS NOT NULL AND ($3::bigint IS NULL OR $3::bigint IS NOT NULL) AND documento_consultable($1::bigint,d.id))`;
+export const lecturaSQL = `($1::bigint IS NOT NULL AND $2::smallint IS NOT NULL AND ($3::bigint IS NULL OR $3::bigint IS NOT NULL) AND public.documento_consultable_con_delegacion($1::bigint,d.id))`;
 export interface Registro {
   id: string;
   ambito_id: string;
@@ -76,7 +76,11 @@ export async function documento(
   const d = (
     await cliente.query<Registro>(
       `SELECT d.*,d.id::text,d.ambito_id::text,d.tipo_id::text,d.registrado_por::text,
-  d.revision::text,(SELECT concat_ws(' ',u.nombre,u.apellido) FROM usuarios u WHERE u.id=d.registrado_por)
+  d.revision::text,public.documento_delegado_por($1,d.id) delegado_por_nombre,
+  public.documento_consultable($1,d.id) lectura_ordinaria,
+  EXISTS(SELECT 1 FROM delegaciones_documento e WHERE e.documento_id=d.id
+    AND e.usuario_indicado_id IS NOT NULL) delegacion_registrada,
+  (SELECT concat_ws(' ',u.nombre,u.apellido) FROM usuarios u WHERE u.id=d.registrado_por)
   registrado_por_nombre,documento_periodo_cerrado(d.id) historico_solo_lectura,
   (SELECT l.propietario_id::text FROM ubicaciones_documento u
    JOIN unidades_ubicacion l ON l.id=u.unidad_id WHERE u.documento_id=d.id AND u.vigente)
@@ -99,11 +103,12 @@ export function permisos(identidad: Actor, d: Registro) {
   const puedeCerrarUbicacion = d.titular_ubicacion == null || ubicacionPropia;
   return {
     relacionar:
-      d.situacion !== 'ANULADO' && !!identidad.ambito_id &&
+      d.lectura_ordinaria !== false && d.situacion !== 'ANULADO' && !!identidad.ambito_id &&
       ((identidad.rol_id === 5 && (identidad.ambito_id === d.ambito_id || d.historico_solo_lectura === true)) ||
        ([3,4].includes(identidad.rol_id) && identidad.oficina_id !== null)),
     corregir: vigente && propio && (identidad.rol_id !== 5 || d.situacion !== 'DELEGADO'),
-    anular: antes && (propio || direccionPendiente),
+    anular: (antes && (propio || direccionPendiente)) ||
+      (vigente && propio && d.situacion === 'DELEGADO' && d.delegacion_registrada === true),
     delegar:
       vigente && puedeCerrarUbicacion &&
       (direccionPendiente ||
