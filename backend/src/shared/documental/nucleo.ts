@@ -84,7 +84,7 @@ export async function documento(
   const d = (
     await cliente.query<Registro>(
       `SELECT d.*,d.id::text,d.ambito_id::text,d.tipo_id::text,d.registrado_por::text,
-  d.revision::text,public.documento_delegado_por($1,d.id) delegado_por_nombre,
+  d.revision::text,(${situacionCuentaSQL}) situacion_cuenta,public.documento_delegado_por($1,d.id) delegado_por_nombre,
   public.documento_consultable($1,d.id) lectura_ordinaria,
   EXISTS(SELECT 1 FROM delegaciones_documento e WHERE e.documento_id=d.id
     AND e.usuario_indicado_id IS NOT NULL) delegacion_registrada,

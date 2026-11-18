@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { lecturaSQL, type Actor } from '../../shared/documental/nucleo.js';
+import { lecturaSQL, situacionCuentaSQL, type Actor } from '../../shared/documental/nucleo.js';
 import { HttpError } from '../../shared/http/HttpError.js';
 
 export const MAX_FILAS_EXCEL = 10000;
@@ -35,7 +35,7 @@ const condicion = `${lecturaSQL} AND d.creado_en >= (make_date($4::int,$5::int,1
  AND (NOT $6::boolean OR public.documento_tiene_relacion_consultable($1,d.id))`;
 const seleccion = `SELECT d.codigo_visible codigo,d.tipo_nombre_guardado tipo,d.asunto,
   d.clasificacion,d.remitente,d.observaciones,
- concat_ws(' ',u.nombre,u.apellido) registrador,d.situacion,d.creado_en registro,
+ concat_ws(' ',u.nombre,u.apellido) registrador,(${situacionCuentaSQL}) situacion,d.creado_en registro,
   d.actualizado_en actualizacion,o.nombre oficina,
  l.oficina_nombre_guardado ubicacion_oficina,l.ruta_ubicacion_guardada ubicacion,
   l.registrado_en ubicacion_fecha,

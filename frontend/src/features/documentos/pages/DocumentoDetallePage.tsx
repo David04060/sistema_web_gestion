@@ -87,7 +87,7 @@ export function DocumentoDetallePage() {
               </div>
               <div>
                 <dt>Situación</dt>
-                <dd>{etiquetas[d.situacion]}</dd>
+                <dd>{etiquetas[d.situacion_cuenta ?? d.situacion]}</dd>
               </div>
               <div>
                 <dt>Fecha de registro</dt>

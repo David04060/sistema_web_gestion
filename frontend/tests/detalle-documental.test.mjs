@@ -107,6 +107,7 @@ test('El destinatario identifica la delegación y conserva la sección PDF sin a
   assert.match(listado, /<option value="DELEGADO_A_MI">Delegado a mí/);
   assert.match(listado, /<option value="DELEGADO_POR_MI">Delegado por mí/);
   assert.match(listado, /<option value="EN_MI_OFICINA">En mi oficina/);
+  assert.doesNotMatch(listado, /<option value="(?:PERSONAL|DELEGADO)">/);
   assert.match(detalle, /Delegado por<\/dt><dd>Directora local/);
   assert.match(detalle, /Fecha de delegación/);
   assert.match(detalle, /Archivo PDF/);

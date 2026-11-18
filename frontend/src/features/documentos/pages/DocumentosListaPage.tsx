@@ -14,8 +14,8 @@ export function DocumentosListaPage() {
     [url, setParams] = useSearchParams();
   const situaciones = situacionCuenta.options.filter((s) =>
     usuario.rol === 'Usuario'
-      ? ['PERSONAL', 'DELEGADO', 'EN_MI_OFICINA', 'DELEGADO_POR_MI', 'DELEGADO_A_MI'].includes(s)
-      : s !== 'ANULADO' || usuario.rol === 'Superadministrador',
+      ? ['EN_MI_OFICINA', 'DELEGADO_POR_MI', 'DELEGADO_A_MI'].includes(s)
+      : !['PERSONAL', 'DELEGADO'].includes(s) && (s !== 'ANULADO' || usuario.rol === 'Superadministrador'),
   );
   const situacionUrl = url.get('situacion');
   const incompatible = situacionUrl !== null && !situaciones.some((s) => s === situacionUrl);
