@@ -1,6 +1,8 @@
 import { etiquetasSituacion } from '../../shared/documental/presentacion.js';
 const etiquetas: Record<string, string> = {
   ...etiquetasSituacion,
+  PERSONAL: 'Personal',
+  DELEGADO: 'Delegado',
   RECIBIDO: 'Recibido',
   EMITIDO: 'Emitido',
 };

@@ -144,7 +144,8 @@ export async function listar(actor: string, f: z.infer<typeof filtros>) {
     ];
     const base = `FROM documentos d WHERE ${lecturaSQL} AND ($2::smallint<>1 OR $5::text IS NOT NULL OR d.situacion<>'ANULADO')
   AND concat_ws(' ',d.codigo_visible,d.asunto,d.remitente) ILIKE $4 ESCAPE E'\\\\' AND ($5::text
-  IS NULL OR d.situacion=$5 OR (${situacionCuentaSQL})=$5) AND ($6::bigint IS NULL OR d.tipo_id=$6) AND ($7::text IS NULL
+  IS NULL OR CASE WHEN $5 IN ('PERSONAL','DELEGADO') THEN d.situacion=$5
+    ELSE (${situacionCuentaSQL})=$5 END) AND ($6::bigint IS NULL OR d.tipo_id=$6) AND ($7::text IS NULL
   OR d.clasificacion=$7) AND ($10::date IS NULL OR (d.creado_en>=($10::date::timestamp AT TIME
   ZONE 'America/Lima') AND d.creado_en<(($10::date+$11::interval) AT TIME ZONE 'America/Lima')))
   AND (NOT $12::boolean OR public.documento_tiene_relacion_consultable($1,d.id))`;

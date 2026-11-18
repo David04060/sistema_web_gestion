@@ -69,9 +69,16 @@ export function OficinaDetallePage() {
                 {o.activa ? 'Activa' : 'Inactiva'}
               </span>
             </p>
+            {o.activa && (
+              <RelevoOficina token={token} oficina={id} alCambiar={consulta.recargar} />
+            )}
+            {institucional(o.nombre) && (
+              <p className={styles.aviso}>
+                Dirección y Mesa de Partes conservan su nombre y permanecen activas.
+              </p>
+            )}
             <div className={styles.acciones}>
-              {o.activa && <RelevoOficina token={token} oficina={id} alCambiar={consulta.recargar}/>}
-          {!institucional(o.nombre) && (
+              {!institucional(o.nombre) && (
                 <Link className={styles.boton} to={'/oficinas/' + id + '/editar'}>
                   Editar nombre
                 </Link>
@@ -80,11 +87,6 @@ export function OficinaDetallePage() {
                 Volver al listado
               </Link>
             </div>
-            {institucional(o.nombre) && (
-              <p className={styles.aviso}>
-                Dirección y Mesa de Partes conservan su nombre y permanecen activas.
-              </p>
-            )}
           </section>
           {!institucional(o.nombre) && (
             <section className={styles.tarjeta}>

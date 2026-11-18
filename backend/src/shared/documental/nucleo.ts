@@ -62,8 +62,14 @@ export const situacionCuentaSQL = `CASE
     SELECT CASE WHEN e.delegado_por=$1 THEN 'DELEGADO_POR_MI'
                 WHEN e.usuario_indicado_id=$1 THEN 'DELEGADO_A_MI' END
     FROM delegaciones_documento e WHERE e.documento_id=d.id
-  ), d.situacion)
+  ), 'CON_DELEGACION')
   WHEN d.registrado_por=$1 AND d.situacion IN ('PERSONAL','GUARDADO_DIRECCION','EN_MESA_DE_PARTES') THEN 'EN_MI_OFICINA'
+  WHEN d.situacion='PERSONAL' THEN CASE WHEN EXISTS (
+    SELECT 1 FROM public.documentos_oficina archivo
+    JOIN public.oficina_periodos periodo ON periodo.id=archivo.periodo_id
+    JOIN public.oficina_periodos vigente ON vigente.oficina_id=periodo.oficina_id
+    WHERE archivo.documento_id=d.id AND vigente.usuario_id=$1 AND vigente.fin IS NULL
+  ) THEN 'EN_MI_OFICINA' ELSE 'DE_OTRA_CUENTA' END
   ELSE d.situacion END`;
 export interface Registro {
   id: string;

@@ -41,6 +41,10 @@ test('Contrato conserva agregaciones y rechaza estadísticas documentales en res
  assert.equal(dashboardSchema.safeParse({...input,estadisticas:{...input.estadisticas,grupos_documentales:[grupo]}}).success,false);
  assert.equal(dashboardSchema.safeParse({...input,estadisticas:{...input.estadisticas,administracion:{...administracion,actividad_cuentas:[{etiqueta:'Activas',total:-1}]}}}).success,false);
 });
+test('El Inicio global admite las situaciones que enlazan con el filtro visible',()=>{
+ const documentos=[{situacion:'DE_OTRA_CUENTA',total:3},{situacion:'CON_DELEGACION',total:2},{situacion:'ANULADO',total:1}];
+ assert.deepEqual(dashboardSchema.parse({alcance:'global',usuarios:4,oficinas:2,documentos}).documentos,documentos);
+});
 test('Gráficos reales renderizan cantidades, denominadores, periodo y tablas accesibles',()=>{
  const html=render({...contexto,grupos_documentales:[grupo]});
  assert.ok(!html.includes('America/Lima'));assert.ok(html.includes('Tu ámbito personal'));assert.ok(html.includes('Informe'));

@@ -9,13 +9,15 @@ export const situacion = z.enum([
   'DELEGADO',
   'ANULADO',
 ]);
-export const situacionCuenta = z.enum([...situacion.options, 'EN_MI_OFICINA', 'DELEGADO_POR_MI', 'DELEGADO_A_MI']);
+export const situacionCuenta = z.enum([...situacion.options, 'EN_MI_OFICINA', 'DELEGADO_POR_MI', 'DELEGADO_A_MI', 'DE_OTRA_CUENTA', 'CON_DELEGACION']);
 export const etiquetas: Record<string, string> = {
   PENDIENTE_DIRECCION: 'Pendiente de Dirección',
   EN_MESA_DE_PARTES: 'En Mesa de Partes',
   GUARDADO_DIRECCION: 'Guardado en Dirección',
-  PERSONAL: 'Personal',
-  DELEGADO: 'Delegado',
+  PERSONAL: 'De otra cuenta',
+  DELEGADO: 'Con delegación',
+  DE_OTRA_CUENTA: 'De otra cuenta',
+  CON_DELEGACION: 'Con delegación',
   EN_MI_OFICINA: 'En mi oficina',
   DELEGADO_POR_MI: 'Delegado por mí',
   DELEGADO_A_MI: 'Delegado a mí',
@@ -225,7 +227,7 @@ export const dashboardSchema = z.discriminatedUnion('alcance', [
     alcance: z.literal('global'),
     usuarios: z.number(),
     oficinas: z.number(),
-    documentos: z.array(z.object({ situacion, total: z.number() })).optional(),
+    documentos: z.array(z.object({ situacion: situacionCuenta, total: z.number() })).optional(),
     estadisticas: estadisticasDocumentalesSchema.optional(),
   }),
   z.object({

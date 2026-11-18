@@ -125,7 +125,7 @@ async function grupoDocumental(
   );
   const situaciones = (
     await cliente.query<Conteo>(
-      `SELECT ${clave === 'global' ? 'd.situacion' : situacionCuentaSQL} etiqueta,count(*)::int total FROM documentos d WHERE ${condicion} GROUP BY 1
+      `SELECT ${situacionCuentaSQL} etiqueta,count(*)::int total FROM documentos d WHERE ${condicion} GROUP BY 1
   ORDER BY 1`,
       valores,
     )

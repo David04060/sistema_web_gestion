@@ -1,5 +1,6 @@
 import './helpers/exigir-aislamiento.mjs';
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import { test } from 'node:test';
 import { PDFDocument } from 'pdf-lib';
 import { leerFixtures, verificarEntornoPrueba } from './helpers/entorno-prueba.mjs';
@@ -194,6 +195,7 @@ test('Alta delegada, rollback y PDF de autor con PostgreSQL real y almacenamient
         assert.equal(lista.documentos[0].situacion, 'DELEGADO');
         assert.equal(lista.documentos[0].situacion_cuenta, etiqueta);
         assert.equal(lista.documentos[0].clasificacion, 'RECIBIDO');
+        assert.equal((await detalle(cuenta, doc.id)).documento.situacion_cuenta, etiqueta);
         assert.ok((await dashboardActual(cuenta)).estados.some(e => e.situacion === etiqueta && e.total > 0));
       }
       const { documentos } = await listar(receptor, filtros.parse({ q: doc.codigo_visible }));

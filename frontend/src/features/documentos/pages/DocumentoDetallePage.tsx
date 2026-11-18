@@ -64,9 +64,12 @@ export function DocumentoDetallePage() {
         <>
           <section className={styles.tarjeta}>
             <h2>{d.codigo_visible}</h2>
-            <p>{d.asunto}</p>
             {d.historico_solo_lectura && <p className={styles.aviso}>Archivo de un periodo anterior: consulta de solo lectura. Se conservan su registrador, ubicación e historial originales.</p>}
-            <dl className={styles.datos}>
+            <dl className={`${styles.datos} ${styles.datosDocumento}`}>
+              <div className={styles.datoCompleto}>
+                <dt>Asunto</dt>
+                <dd className={styles.asuntoDocumento}>{d.asunto}</dd>
+              </div>
               <div>
                 <dt>Registrado por</dt>
                 <dd>{d.registrado_por_nombre}</dd>
@@ -82,7 +85,7 @@ export function DocumentoDetallePage() {
                 </dd>
               </div>
               <div>
-                <dt>Tipo registrado</dt>
+                <dt>Tipo documental</dt>
                 <dd>{d.tipo_nombre_guardado}</dd>
               </div>
               <div>
@@ -93,22 +96,23 @@ export function DocumentoDetallePage() {
                 <dt>Fecha de registro</dt>
                 <dd>{fechaLocal(d.creado_en)}</dd>
               </div>
-              <div>
+              <div className={styles.datoCompleto}>
                 <dt>Remitente</dt>
                 <dd>{d.remitente || '—'}</dd>
               </div>
-              <div>
+              <div className={styles.datoCompleto}>
                 <dt>Observaciones</dt>
                 <dd>{d.observaciones || '—'}</dd>
               </div>
-              <div>
+              <div className={styles.datoCompleto}>
                 <dt>Ubicación registrada</dt>
                 <dd>
-                  {d.ubicacion
-                    ? d.ubicacion.oficina_nombre_guardado +
-                      ' / ' +
-                      d.ubicacion.ruta_ubicacion_guardada
-                    : 'Sin ubicación registrada'}
+                  {d.ubicacion ? (
+                    <>
+                      <span className={styles.lineaUbicacion}><strong>Oficina:</strong> {d.ubicacion.oficina_nombre_guardado}</span>
+                      <span className={styles.lineaUbicacion}><strong>Ruta:</strong> {d.ubicacion.ruta_ubicacion_guardada}</span>
+                    </>
+                  ) : 'Sin ubicación registrada'}
                 </dd>
               </div>
               {d.delegacion && (
@@ -126,7 +130,7 @@ export function DocumentoDetallePage() {
                     <dd>{fechaLocal(d.delegacion.delegado_en)}</dd>
                   </div>
                   {d.delegacion.observaciones && (
-                    <div>
+                    <div className={styles.datoCompleto}>
                       <dt>Observaciones de delegación</dt>
                       <dd>{d.delegacion.observaciones}</dd>
                     </div>
@@ -134,7 +138,7 @@ export function DocumentoDetallePage() {
                 </>
               )}
               {d.valores.map((v) => (
-                <div key={v.campo_id}>
+                <div key={v.campo_id} className={styles.datoCompleto}>
                   <dt>{v.nombre_guardado}</dt>
                   <dd>{v.valor || '—'}</dd>
                 </div>

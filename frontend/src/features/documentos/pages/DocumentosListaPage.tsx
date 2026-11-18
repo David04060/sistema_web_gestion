@@ -14,7 +14,7 @@ export function DocumentosListaPage() {
     [url, setParams] = useSearchParams();
   const situaciones = situacionCuenta.options.filter((s) =>
     usuario.rol === 'Usuario'
-      ? ['EN_MI_OFICINA', 'DELEGADO_POR_MI', 'DELEGADO_A_MI'].includes(s)
+      ? ['EN_MI_OFICINA', 'DELEGADO_POR_MI', 'DELEGADO_A_MI', 'DE_OTRA_CUENTA', 'CON_DELEGACION'].includes(s)
       : !['PERSONAL', 'DELEGADO'].includes(s) && (s !== 'ANULADO' || usuario.rol === 'Superadministrador'),
   );
   const situacionUrl = url.get('situacion');
