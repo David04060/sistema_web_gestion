@@ -63,6 +63,8 @@ export const situacionCuentaSQL = `CASE
                 WHEN e.usuario_indicado_id=$1 THEN 'DELEGADO_A_MI' END
     FROM delegaciones_documento e WHERE e.documento_id=d.id
   ), CASE WHEN d.registrado_por=$1 THEN 'EN_MI_OFICINA' ELSE 'PERSONAL' END)
+  WHEN $2::smallint IN (3,4) AND d.situacion IN
+    ('PENDIENTE_DIRECCION','GUARDADO_DIRECCION','EN_MESA_DE_PARTES') THEN d.situacion
   WHEN d.registrado_por=$1 AND d.situacion IN ('PERSONAL','GUARDADO_DIRECCION','EN_MESA_DE_PARTES') THEN 'EN_MI_OFICINA'
   WHEN d.situacion='PERSONAL' THEN CASE WHEN EXISTS (
     SELECT 1 FROM public.documentos_oficina archivo
@@ -94,6 +96,8 @@ export async function documento(
   public.documento_consultable($1,d.id) lectura_ordinaria,
   EXISTS(SELECT 1 FROM delegaciones_documento e WHERE e.documento_id=d.id
     AND e.usuario_indicado_id IS NOT NULL) delegacion_registrada,
+  EXISTS(SELECT 1 FROM delegaciones_documento e WHERE e.documento_id=d.id
+    AND e.delegado_por<>d.registrado_por) delegacion_por_otro_actor,
   (SELECT concat_ws(' ',u.nombre,u.apellido) FROM usuarios u WHERE u.id=d.registrado_por)
   registrado_por_nombre,documento_periodo_cerrado(d.id) historico_solo_lectura,
   (SELECT l.propietario_id::text FROM ubicaciones_documento u
@@ -114,6 +118,10 @@ export function permisos(identidad: Actor, d: Registro) {
     antes = vigente && d.situacion !== 'DELEGADO';
   const direccionPendiente =
     compartido && identidad.rol_id === 3 && d.situacion === 'PENDIENTE_DIRECCION';
+  // Para un alta propia de Secretaría, solo Dirección puede haber delegado por otro actor.
+  const secretariaConDecision = identidad.rol_id === 4 &&
+    (d.situacion === 'GUARDADO_DIRECCION' ||
+      (d.situacion === 'DELEGADO' && d.delegacion_por_otro_actor === true));
   const ubicacionPropia = d.titular_ubicacion === identidad.id;
   const puedeCerrarUbicacion = d.titular_ubicacion == null || ubicacionPropia;
   return {
@@ -122,8 +130,8 @@ export function permisos(identidad: Actor, d: Registro) {
       ((identidad.rol_id === 5 && (identidad.ambito_id === d.ambito_id || d.historico_solo_lectura === true)) ||
        ([3,4].includes(identidad.rol_id) && identidad.oficina_id !== null)),
     corregir: vigente && propio && (identidad.rol_id !== 5 || d.situacion !== 'DELEGADO'),
-    anular: (antes && (propio || direccionPendiente)) ||
-      (vigente && propio && d.situacion === 'DELEGADO' && d.delegacion_registrada === true),
+    anular: !secretariaConDecision && ((antes && (propio || direccionPendiente)) ||
+      (vigente && propio && d.situacion === 'DELEGADO' && d.delegacion_registrada === true)),
     delegar:
       vigente && puedeCerrarUbicacion &&
       (direccionPendiente ||
