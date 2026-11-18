@@ -26,6 +26,7 @@ import {
   exigirAmbito,
   exigirRevision,
   lecturaSQL,
+  situacionCuentaSQL,
   permisos,
   type Actor,
 } from '../../shared/documental/nucleo.js';
@@ -143,7 +144,7 @@ export async function listar(actor: string, f: z.infer<typeof filtros>) {
     ];
     const base = `FROM documentos d WHERE ${lecturaSQL} AND ($2::smallint<>1 OR $5::text IS NOT NULL OR d.situacion<>'ANULADO')
   AND concat_ws(' ',d.codigo_visible,d.asunto,d.remitente) ILIKE $4 ESCAPE E'\\\\' AND ($5::text
-  IS NULL OR d.situacion=$5) AND ($6::bigint IS NULL OR d.tipo_id=$6) AND ($7::text IS NULL
+  IS NULL OR d.situacion=$5 OR (${situacionCuentaSQL})=$5) AND ($6::bigint IS NULL OR d.tipo_id=$6) AND ($7::text IS NULL
   OR d.clasificacion=$7) AND ($10::date IS NULL OR (d.creado_en>=($10::date::timestamp AT TIME
   ZONE 'America/Lima') AND d.creado_en<(($10::date+$11::interval) AT TIME ZONE 'America/Lima')))
   AND (NOT $12::boolean OR public.documento_tiene_relacion_consultable($1,d.id))`;
@@ -152,7 +153,7 @@ export async function listar(actor: string, f: z.infer<typeof filtros>) {
   d.id::text,'ambito_id',d.ambito_id::text,'tipo_id',d.tipo_id::text,
   'registrado_por',d.registrado_por::text,'ubicacion_ruta',(SELECT l.ruta_ubicacion_guardada
   FROM ubicaciones_documento l WHERE l.documento_id=d.id AND l.vigente),
-  'revision',d.revision::text,'delegado_por_nombre',public.documento_delegado_por($1,d.id),
+  'revision',d.revision::text,'situacion_cuenta',(${situacionCuentaSQL}),'delegado_por_nombre',public.documento_delegado_por($1,d.id),
   'registrado_por_oficina',(SELECT o.nombre FROM documentos_oficina h
   JOIN oficina_periodos p ON p.id=h.periodo_id JOIN oficinas o ON o.id=p.oficina_id WHERE h.documento_id=d.id),
   'registrado_por_nombre',(SELECT concat_ws(' ',u.nombre,u.apellido) FROM usuarios u WHERE

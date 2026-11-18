@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { pool } from '../../config/database.js';
-import { actorActual, lecturaSQL, type Actor } from '../../shared/documental/nucleo.js';
+import { actorActual, lecturaSQL, situacionCuentaSQL, type Actor } from '../../shared/documental/nucleo.js';
 import { HttpError } from '../../shared/http/HttpError.js';
 
 type Conexion = Pick<PoolClient, 'query'>;
@@ -125,8 +125,8 @@ async function grupoDocumental(
   );
   const situaciones = (
     await cliente.query<Conteo>(
-      `SELECT d.situacion etiqueta,count(*)::int total FROM documentos d WHERE ${condicion} GROUP BY d.situacion
-  ORDER BY d.situacion`,
+      `SELECT ${clave === 'global' ? 'd.situacion' : situacionCuentaSQL} etiqueta,count(*)::int total FROM documentos d WHERE ${condicion} GROUP BY 1
+  ORDER BY 1`,
       valores,
     )
   ).rows;
@@ -196,20 +196,19 @@ export async function consultarDashboard(cliente: Conexion, identidad: Actor, re
   const valores = [identidad.id, identidad.rol_id, identidad.ambito_id];
   const estados = (
     await cliente.query(
-      `SELECT d.situacion,count(*)::int total FROM documentos d WHERE ${lecturaSQL} GROUP BY d.situacion ORDER
-  BY d.situacion`,
+      `SELECT ${situacionCuentaSQL} situacion,count(*)::int total FROM documentos d WHERE ${lecturaSQL} GROUP BY 1 ORDER BY 1`,
       valores,
     )
   ).rows;
   const recientes = (
     await cliente.query(
-      `SELECT d.id::text,d.codigo_visible,d.asunto,d.situacion,d.creado_en FROM documentos d WHERE
+      `SELECT d.id::text,d.codigo_visible,d.asunto,${situacionCuentaSQL} situacion,d.creado_en FROM documentos d WHERE
   ${lecturaSQL} ORDER BY d.creado_en DESC,d.id DESC LIMIT 8`,
       valores,
     )
   ).rows;
   const grupos: Grupo[] = [];
-  // Los grupos compartido y personal ajeno son disjuntos; Secretaría recibe únicamente el compartido.
+  // Los grupos compartido y personal ajeno son disjuntos; Secretaría separa las delegaciones recibidas fuera del ámbito compartido.
   if (identidad.rol_id === 5)
     grupos.push(
       await grupoDocumental(
@@ -217,7 +216,7 @@ export async function consultarDashboard(cliente: Conexion, identidad: Actor, re
         identidad,
         reloj,
         'personal',
-        'Documentos propios y archivo de tu oficina',
+        'Documentos consultables de tu cuenta',
         'true',
       ),
     );
@@ -243,6 +242,17 @@ export async function consultarDashboard(cliente: Conexion, identidad: Actor, re
           'd.ambito_id<>$3::bigint',
         ),
       );
+    else {
+      const recibidos = await grupoDocumental(
+        cliente,
+        identidad,
+        reloj,
+        'delegaciones_recibidas',
+        'Delegaciones recibidas fuera del ámbito compartido',
+        'd.ambito_id<>$3::bigint AND public.documento_delegado_por($1,d.id) IS NOT NULL',
+      );
+      if (recibidos.total > 0) grupos.push(recibidos);
+    }
   }
   return {
     alcance: identidad.rol_id === 5 ? ('personal' as const) : ('institucional' as const),

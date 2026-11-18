@@ -65,7 +65,6 @@ export function DocumentoDetallePage() {
           <section className={styles.tarjeta}>
             <h2>{d.codigo_visible}</h2>
             <p>{d.asunto}</p>
-            {d.delegado_por_nombre && <p>Delegado por {d.delegado_por_nombre}</p>}
             {d.historico_solo_lectura && <p className={styles.aviso}>Archivo de un periodo anterior: consulta de solo lectura. Se conservan su registrador, ubicación e historial originales.</p>}
             <dl className={styles.datos}>
               <div>
@@ -119,10 +118,12 @@ export function DocumentoDetallePage() {
                     <dd>{d.delegacion.nombre_persona_guardado}</dd>
                   </div>
                   <div>
-                    <dt>Indicado por</dt>
-                    <dd>
-                      {d.delegacion.actor} · {fechaLocal(d.delegacion.delegado_en)}
-                    </dd>
+                    <dt>Delegado por</dt>
+                    <dd>{d.delegacion.actor}</dd>
+                  </div>
+                  <div>
+                    <dt>Fecha de delegación</dt>
+                    <dd>{fechaLocal(d.delegacion.delegado_en)}</dd>
                   </div>
                   {d.delegacion.observaciones && (
                     <div>

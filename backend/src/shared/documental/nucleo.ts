@@ -57,6 +57,14 @@ export function exigirAmbito(identidad: Actor) {
 }
 // Parámetros: identidad autenticada, rol y ámbito. Administrador carece de lectura documental.
 export const lecturaSQL = `($1::bigint IS NOT NULL AND $2::smallint IS NOT NULL AND ($3::bigint IS NULL OR $3::bigint IS NOT NULL) AND public.documento_consultable_con_delegacion($1::bigint,d.id))`;
+export const situacionCuentaSQL = `CASE
+  WHEN d.situacion='DELEGADO' THEN COALESCE((
+    SELECT CASE WHEN e.delegado_por=$1 THEN 'DELEGADO_POR_MI'
+                WHEN e.usuario_indicado_id=$1 THEN 'DELEGADO_A_MI' END
+    FROM delegaciones_documento e WHERE e.documento_id=d.id
+  ), d.situacion)
+  WHEN d.registrado_por=$1 AND d.situacion IN ('PERSONAL','GUARDADO_DIRECCION','EN_MESA_DE_PARTES') THEN 'EN_MI_OFICINA'
+  ELSE d.situacion END`;
 export interface Registro {
   id: string;
   ambito_id: string;

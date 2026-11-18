@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { api, etiquetas, situacion } from '../../../api/documental';
+import { api, etiquetas, situacionCuenta } from '../../../api/documental';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { useConsulta } from '../../../hooks/useConsulta';
 import { EstadoCarga } from '../../../components/ui/EstadoCarga';
@@ -12,8 +12,9 @@ import { ExportarDocumentos } from '../components/ExportarDocumentos';
 export function DocumentosListaPage() {
   const { token, usuario } = useAuth().sesion!,
     [url, setParams] = useSearchParams();
-  const situaciones = situacion.options.filter((s) =>
-    usuario.rol === 'Usuario' ? s === 'PERSONAL' || s === 'DELEGADO'
+  const situaciones = situacionCuenta.options.filter((s) =>
+    usuario.rol === 'Usuario'
+      ? ['PERSONAL', 'DELEGADO', 'EN_MI_OFICINA', 'DELEGADO_POR_MI', 'DELEGADO_A_MI'].includes(s)
       : s !== 'ANULADO' || usuario.rol === 'Superadministrador',
   );
   const situacionUrl = url.get('situacion');
@@ -240,12 +241,11 @@ export function DocumentosListaPage() {
                     </td>
                     <td data-label="Registrado por">
                       {d.registrado_por_nombre}
-                      {d.delegado_por_nombre && <div>Delegado por {d.delegado_por_nombre}</div>}
                       {d.registrado_por_oficina && (
                         <span className={styles.oficinaRegistro}>{d.registrado_por_oficina}</span>
                       )}
                     </td>
-                    <td data-label="Situación">{etiquetas[d.situacion]}</td>
+                    <td data-label="Situación">{etiquetas[d.situacion_cuenta ?? d.situacion]}</td>
                     <td data-label="Registro">{fechaLocal(d.creado_en)}</td>
                     <td
                       data-label="Ubicación"

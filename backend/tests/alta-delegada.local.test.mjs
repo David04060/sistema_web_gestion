@@ -7,6 +7,7 @@ import { pool } from '../dist/config/database.js';
 import { alta, registrar, delegar, listar, filtros, buscarDestinatarios, detalle, historial, auditoria, anular, corregir, ubicar } from '../dist/modules/documentos/documentos.operaciones.js';
 import { crearUnidad } from '../dist/modules/usuarios/administracion.operaciones.js';
 import { pdfDocumental } from '../dist/modules/documentos-pdf/pdf.documental.js';
+import { dashboardActual } from '../dist/modules/dashboard/dashboard.documental.js';
 import { validarPdf } from '../dist/modules/documentos-pdf/pdf.storage.js';
 
 test('Alta delegada, rollback y PDF de autor con PostgreSQL real y almacenamiento simulado', async () => {
@@ -186,6 +187,15 @@ test('Alta delegada, rollback y PDF de autor con PostgreSQL real y almacenamient
       ({ documento: doc } = await detalle(emisor.id, doc.id));
       ({ documento: doc } = await delegar(emisor.id, doc.id, { revision: doc.revision, usuario_id: sinOficina.id }));
       const receptor = sinOficina.id;
+      for (const [cuenta, etiqueta] of [[emisor.id, 'DELEGADO_POR_MI'], [receptor, 'DELEGADO_A_MI']]) {
+        const filtro = filtros.parse({ q: doc.codigo_visible, situacion: etiqueta });
+        const lista = await listar(cuenta, filtro);
+        assert.equal(lista.total, 1);
+        assert.equal(lista.documentos[0].situacion, 'DELEGADO');
+        assert.equal(lista.documentos[0].situacion_cuenta, etiqueta);
+        assert.equal(lista.documentos[0].clasificacion, 'RECIBIDO');
+        assert.ok((await dashboardActual(cuenta)).estados.some(e => e.situacion === etiqueta && e.total > 0));
+      }
       const { documentos } = await listar(receptor, filtros.parse({ q: doc.codigo_visible }));
       assert.equal(documentos[0].delegado_por_nombre, doc.registrado_por_nombre);
       const { documento: recibido } = await detalle(receptor, doc.id);
@@ -225,6 +235,16 @@ test('Alta delegada, rollback y PDF de autor con PostgreSQL real y almacenamient
       await assert.rejects(detalle(receptor, doc.id), e => e.status === 404);
       await assert.rejects(servicio.abrir(receptor, doc.id, false), e => e.status === 404);
       assert.equal((await detalle(fixture.cuentas.superadmin.id, doc.id)).documento.situacion, 'ANULADO');
+    }
+    for (const receptor of [director, secretaria]) {
+      const { documento: doc } = await registrar(usuario.id, entrada(fixture.tipos.usuario, {
+        clasificacion: 'EMITIDO', destino: { usuario_id: receptor.id },
+      }));
+      const lista = await listar(receptor.id, filtros.parse({ q: doc.codigo_visible, situacion: 'DELEGADO_A_MI' }));
+      assert.equal(lista.total, 1);
+      assert.equal(lista.documentos[0].clasificacion, 'EMITIDO');
+      const panel = await dashboardActual(receptor.id);
+      assert.ok(panel.estadisticas.grupos_documentales.some(g => g.situaciones.some(e => e.etiqueta === 'DELEGADO_A_MI')));
     }
   } finally {
     await pool.end();

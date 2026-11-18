@@ -74,6 +74,9 @@ export const filtros = z
         'GUARDADO_DIRECCION',
         'PERSONAL',
         'DELEGADO',
+        'DELEGADO_A_MI',
+        'DELEGADO_POR_MI',
+        'EN_MI_OFICINA',
         'ANULADO',
       ])
       .optional(),

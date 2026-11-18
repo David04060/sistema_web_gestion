@@ -15,6 +15,9 @@ import panel from '../styles/Resumen.module.css';
 const acentos: Record<string, string> = {
   ANULADO: 'var(--error)',
   DELEGADO: 'var(--indicador-terracota)',
+  EN_MI_OFICINA: 'var(--indicador-verde)',
+  DELEGADO_POR_MI: 'var(--indicador-terracota)',
+  DELEGADO_A_MI: 'var(--indicador-neutro)',
   GUARDADO_DIRECCION: 'var(--indicador-verde)',
   PENDIENTE_DIRECCION: 'var(--indicador-oro)',
   PERSONAL: 'var(--indicador-azul)',
