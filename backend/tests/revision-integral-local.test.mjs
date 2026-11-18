@@ -64,7 +64,7 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
   });
   await t.test('Fechas SQL con límites en Perú, combinaciones, conteos y fechas inválidas',async()=>{
    const d=ids['doc'+ids.a];await c.query('UPDATE documentos SET creado_en=$2 WHERE id=$1',[d.id,'2024-03-01T04:59:59Z']);
-   for(const fecha of ['2024','2024-02','2024-02-29']){const r=await ok(ids.a,'/documentos?q='+marca+'&fecha='+fecha+'&clasificacion=RECIBIDO&situacion=PERSONAL');assert.equal(r.total,1);assert.equal(r.documentos[0].id,d.id);}
+   for(const fecha of ['2024','2024-02','2024-02-29']){const r=await ok(ids.a,'/documentos?q='+marca+'&fecha='+fecha+'&clasificacion=RECIBIDO&situacion=EN_MI_OFICINA');assert.equal(r.total,1);assert.equal(r.documentos[0].id,d.id);}
    assert.equal((await ok(ids.a,'/documentos?q='+marca+'&fecha=2024-03-01')).total,0);
    for(const fecha of ['2026-02-29','2026-13','0000','2026-11-31'])assert.equal((await pedir(dir,'/documentos?fecha='+fecha)).status,400);
    for(const fecha of ['0001','9999'])assert.equal((await ok(ids.a,'/documentos?fecha='+fecha)).total,0);

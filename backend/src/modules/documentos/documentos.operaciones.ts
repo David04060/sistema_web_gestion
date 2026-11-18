@@ -65,7 +65,8 @@ export async function buscarOrigenes(actor: string, q: string) {
     const limite = q ? 20 : 5;
     const filas = (await cliente.query(
       `SELECT d.id::text,d.codigo_visible,d.asunto FROM documentos d WHERE ${lecturaSQL}
-       AND public.documento_consultable($1,d.id) AND d.situacion<>'ANULADO' AND strpos(lower(concat_ws(' ',d.codigo_visible,d.asunto)),lower($4))>0
+       AND public.documento_consultable($1,d.id) AND public.documento_delegado_por($1,d.id) IS NULL
+       AND d.situacion<>'ANULADO' AND strpos(lower(concat_ws(' ',d.codigo_visible,d.asunto)),lower($4))>0
        ORDER BY d.creado_en DESC,d.id DESC LIMIT $5`,
       [identidad.id, identidad.rol_id, identidad.ambito_id, q, limite + 1],
     )).rows;
@@ -144,7 +145,7 @@ export async function listar(actor: string, f: z.infer<typeof filtros>) {
     ];
     const base = `FROM documentos d WHERE ${lecturaSQL} AND ($2::smallint<>1 OR $5::text IS NOT NULL OR d.situacion<>'ANULADO')
   AND concat_ws(' ',d.codigo_visible,d.asunto,d.remitente) ILIKE $4 ESCAPE E'\\\\' AND ($5::text
-  IS NULL OR CASE WHEN $5 IN ('PERSONAL','DELEGADO') THEN d.situacion=$5
+  IS NULL OR CASE WHEN $5='DELEGADO' THEN d.situacion=$5
     ELSE (${situacionCuentaSQL})=$5 END) AND ($6::bigint IS NULL OR d.tipo_id=$6) AND ($7::text IS NULL
   OR d.clasificacion=$7) AND ($10::date IS NULL OR (d.creado_en>=($10::date::timestamp AT TIME
   ZONE 'America/Lima') AND d.creado_en<(($10::date+$11::interval) AT TIME ZONE 'America/Lima')))
@@ -273,7 +274,7 @@ export async function registrar(actor: string, datos: z.infer<typeof alta>) {
     }
     if (datos.origen_id) {
       const origen = await documento(cliente, identidad, datos.origen_id, true);
-      if (origen.situacion === 'ANULADO' || origen.lectura_ordinaria === false)
+      if (origen.situacion === 'ANULADO' || origen.lectura_ordinaria === false || origen.delegado_por_nombre)
         throw new HttpError(403, 'Origen no autorizado');
     }
     const situacion =
@@ -359,7 +360,7 @@ $2,$3,$4,$5,$6)`,
   );
 }
 
-/** Guarda una persona registrada o manual; valida oficina compatible sin transferir ámbito ni conceder acceso. */
+/** Guarda un destino registrado o manual; solo el registrado obtiene consulta y no se transfiere el ámbito. */
 export async function delegar(
   actor: string,
   documentoId: string,

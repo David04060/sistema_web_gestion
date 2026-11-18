@@ -3,10 +3,9 @@ export const etiquetasSituacion: Record<string, string> = {
   EN_MI_OFICINA: 'En mi oficina',
   DELEGADO_POR_MI: 'Delegado por mí',
   DELEGADO_A_MI: 'Delegado a mí',
-  DE_OTRA_CUENTA: 'De otra cuenta',
+  PERSONAL: 'Personal',
   PENDIENTE_DIRECCION: 'Pendiente de Dirección',
   EN_MESA_DE_PARTES: 'En Mesa de Partes',
   GUARDADO_DIRECCION: 'Guardado en Dirección',
-  CON_DELEGACION: 'Con delegación',
   ANULADO: 'Anulado',
 };

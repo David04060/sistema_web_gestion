@@ -77,8 +77,6 @@ export const filtros = z
         'DELEGADO_A_MI',
         'DELEGADO_POR_MI',
         'EN_MI_OFICINA',
-        'DE_OTRA_CUENTA',
-        'CON_DELEGACION',
         'ANULADO',
       ])
       .optional(),

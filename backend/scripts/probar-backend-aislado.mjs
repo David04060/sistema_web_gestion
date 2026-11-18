@@ -70,6 +70,7 @@ try{
  await bin('psql',['-X','-v','ON_ERROR_STOP=1','-f',path.resolve(backend,'../database/changes/009-grupos-documentales.sql')]);
  await bin('psql',['-X','-v','ON_ERROR_STOP=1','-f',path.resolve(backend,'../database/changes/010-nombre-visible-roles.sql')]);
  await bin('psql',['-X','-v','ON_ERROR_STOP=1','-f',path.resolve(backend,'../database/changes/011-consulta-delegaciones.sql')]);
+ await bin('psql',['-X','-v','ON_ERROR_STOP=1','-f',path.resolve(backend,'../database/changes/012-lectura-personal-por-cuenta.sql')]);
  for(const key of Object.keys(process.env))if(/^(PG|R2_|NEON_|RENDER$)/.test(key))delete process.env[key];
  Object.assign(process.env,testEnv);
  const fixture=await crearFixtures();

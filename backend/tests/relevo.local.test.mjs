@@ -30,6 +30,12 @@ test('Relevo A-B-C y cinco roles: exclusividad, tipos, PDF, historia y solo lect
   assert.equal((await pool.query('SELECT activo FROM usuarios WHERE id=$1',[a.id])).rows[0].activo,false);
   assert.equal((await pedir(a,'/auth/me')).status,401);
   const heredado=(await docs.detalle(b.id,d.id)).documento;
+  if(key==='usuario'){
+   assert.equal(heredado.situacion_cuenta,'EN_MI_OFICINA');
+   assert.ok((await docs.historial(b.id,d.id)).historial.length);
+   await assert.rejects(docs.detalle(c.id,d.id),e=>e.status===404);
+   await assert.rejects(servicio.abrir(c.id,d.id,false),e=>e.status===404);
+  }
   assert.equal(heredado.historico_solo_lectura,true);assert.equal(heredado.registrado_por,a.id);assert.equal(heredado.ubicacion.unidad_id,unidad.id);
   for(const k of ['corregir','delegar','anular','ubicar','pdf'])assert.equal(heredado.permisos[k],false,key+' '+k);
   assert.equal((await admin.unidades(b.id)).unidades.length,0);

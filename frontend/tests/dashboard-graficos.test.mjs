@@ -42,7 +42,7 @@ test('Contrato conserva agregaciones y rechaza estadísticas documentales en res
  assert.equal(dashboardSchema.safeParse({...input,estadisticas:{...input.estadisticas,administracion:{...administracion,actividad_cuentas:[{etiqueta:'Activas',total:-1}]}}}).success,false);
 });
 test('El Inicio global admite las situaciones que enlazan con el filtro visible',()=>{
- const documentos=[{situacion:'DE_OTRA_CUENTA',total:3},{situacion:'CON_DELEGACION',total:2},{situacion:'ANULADO',total:1}];
+ const documentos=[{situacion:'PERSONAL',total:3},{situacion:'DELEGADO_A_MI',total:2},{situacion:'ANULADO',total:1}];
  assert.deepEqual(dashboardSchema.parse({alcance:'global',usuarios:4,oficinas:2,documentos}).documentos,documentos);
 });
 test('Gráficos reales renderizan cantidades, denominadores, periodo y tablas accesibles',()=>{

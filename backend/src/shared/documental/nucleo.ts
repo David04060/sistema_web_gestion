@@ -62,14 +62,14 @@ export const situacionCuentaSQL = `CASE
     SELECT CASE WHEN e.delegado_por=$1 THEN 'DELEGADO_POR_MI'
                 WHEN e.usuario_indicado_id=$1 THEN 'DELEGADO_A_MI' END
     FROM delegaciones_documento e WHERE e.documento_id=d.id
-  ), 'CON_DELEGACION')
+  ), CASE WHEN d.registrado_por=$1 THEN 'EN_MI_OFICINA' ELSE 'PERSONAL' END)
   WHEN d.registrado_por=$1 AND d.situacion IN ('PERSONAL','GUARDADO_DIRECCION','EN_MESA_DE_PARTES') THEN 'EN_MI_OFICINA'
   WHEN d.situacion='PERSONAL' THEN CASE WHEN EXISTS (
     SELECT 1 FROM public.documentos_oficina archivo
     JOIN public.oficina_periodos periodo ON periodo.id=archivo.periodo_id
     JOIN public.oficina_periodos vigente ON vigente.oficina_id=periodo.oficina_id
     WHERE archivo.documento_id=d.id AND vigente.usuario_id=$1 AND vigente.fin IS NULL
-  ) THEN 'EN_MI_OFICINA' ELSE 'DE_OTRA_CUENTA' END
+  ) THEN 'EN_MI_OFICINA' ELSE 'PERSONAL' END
   ELSE d.situacion END`;
 export interface Registro {
   id: string;
@@ -107,9 +107,10 @@ export async function documento(
 }
 /** Separa lectura de escritura: ver documentos de otro ámbito nunca concede corrección, delegación ni PDF. */
 export function permisos(identidad: Actor, d: Registro) {
-  const propio = d.registrado_por === identidad.id && !d.historico_solo_lectura,
+  const recibido = Boolean(d.delegado_por_nombre),
+    propio = d.registrado_por === identidad.id && !d.historico_solo_lectura,
     compartido = identidad.ambito_id === d.ambito_id && [3, 4].includes(identidad.rol_id),
-    vigente = d.situacion !== 'ANULADO' && !d.historico_solo_lectura && (identidad.rol_id === 5 || identidad.oficina_id !== null),
+    vigente = !recibido && d.situacion !== 'ANULADO' && !d.historico_solo_lectura && (identidad.rol_id === 5 || identidad.oficina_id !== null),
     antes = vigente && d.situacion !== 'DELEGADO';
   const direccionPendiente =
     compartido && identidad.rol_id === 3 && d.situacion === 'PENDIENTE_DIRECCION';
@@ -117,7 +118,7 @@ export function permisos(identidad: Actor, d: Registro) {
   const puedeCerrarUbicacion = d.titular_ubicacion == null || ubicacionPropia;
   return {
     relacionar:
-      d.lectura_ordinaria !== false && d.situacion !== 'ANULADO' && !!identidad.ambito_id &&
+      !recibido && d.lectura_ordinaria !== false && d.situacion !== 'ANULADO' && !!identidad.ambito_id &&
       ((identidad.rol_id === 5 && (identidad.ambito_id === d.ambito_id || d.historico_solo_lectura === true)) ||
        ([3,4].includes(identidad.rol_id) && identidad.oficina_id !== null)),
     corregir: vigente && propio && (identidad.rol_id !== 5 || d.situacion !== 'DELEGADO'),
