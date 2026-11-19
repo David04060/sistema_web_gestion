@@ -110,7 +110,14 @@ export function DocumentoDetallePage() {
                   {d.ubicacion ? (
                     <>
                       <span className={styles.lineaUbicacion}><strong>Oficina:</strong> {d.ubicacion.oficina_nombre_guardado}</span>
-                      <span className={styles.lineaUbicacion}><strong>Ruta:</strong> {d.ubicacion.ruta_ubicacion_guardada}</span>
+                      {d.ubicacion.ruta_catalogo && d.ubicacion.ruta_catalogo !== d.ubicacion.ruta_ubicacion_guardada && (
+                        <span className={styles.lineaUbicacion}><strong>Ruta registrada:</strong> {d.ubicacion.ruta_ubicacion_guardada} (el catálogo cambió después del registro)</span>
+                      )}
+                      {d.ubicacion.partes?.length ? d.ubicacion.partes.map((parte, indice) => (
+                        <span key={parte.id} className={styles.lineaUbicacion}>
+                          <strong>{indice === 0 ? (parte.clase === 'Estante' ? 'Estante' : parte.clase) : parte.clase === 'Archivador' ? 'Archivador del estante' : parte.clase}:</strong> {parte.nombre}
+                        </span>
+                      )) : <span className={styles.lineaUbicacion}><strong>Ruta:</strong> {d.ubicacion.ruta_ubicacion_guardada}</span>}
                     </>
                   ) : 'Sin ubicación registrada'}
                 </dd>

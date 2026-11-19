@@ -90,30 +90,32 @@ async function grupoDocumental(cliente: PoolClient, actor: Actor, id: string) {
 }
 
 /** Recorre ramas activas de la cuenta autenticada y limita los resultados en PostgreSQL. */
-export async function buscarUbicaciones(actor: string, q: string) {
+export async function buscarUbicaciones(actor: string, filtro: string | { q: string; nivel?: 'estantes'; estante_id?: string }) {
   return operacion(actor, 'Buscar ubicación', async (cliente, identidad) => {
     exigirAmbito(identidad);
+    const { q, nivel, estante_id } = typeof filtro === 'string' ? { q: filtro, nivel: undefined, estante_id: undefined } : filtro;
     const limite = q ? 20 : 5;
     const { rows } = await cliente.query<{ id: string; ruta: string }>(
       `WITH RECURSIVE lugares AS (
          SELECT u.id,
            CASE WHEN u.clase='Lugar' THEN u.nombre ELSE u.clase||': '||u.nombre END AS ruta,
-           u.clase, false AS contenido
+           u.clase, u.nombre, u.padre_id, u.id raiz_id, false AS contenido
          FROM unidades_ubicacion u JOIN oficinas o ON o.id=u.oficina_id AND o.activa
          WHERE ${unidadPropiaActiva} AND u.padre_id IS NULL
          UNION ALL
-         SELECT u.id, l.ruta||' › '||u.nombre, u.clase, true
+         SELECT u.id, l.ruta||' › '||u.nombre, u.clase, u.nombre, u.padre_id, l.raiz_id, true
          FROM lugares l JOIN unidades_ubicacion u ON u.padre_id=l.id
          WHERE ${unidadPropiaActiva}
        ), etiquetas AS (
-         SELECT id, CASE WHEN contenido THEN ruta||' · '||clase ELSE ruta END AS ruta
+         SELECT id, clase, nombre, padre_id, raiz_id, contenido, CASE WHEN contenido THEN ruta||' · '||clase ELSE ruta END AS ruta
          FROM lugares
        )
-       SELECT id::text, ruta FROM etiquetas
-       WHERE strpos(translate(lower(ruta), 'áéíóúü', 'aeiouu'),
+       SELECT id::text, ruta, clase, nombre, padre_id::text, raiz_id::text FROM etiquetas
+       WHERE ($5::text IS NULL OR NOT contenido)
+         AND ($6::bigint IS NULL OR (raiz_id=$6 AND contenido)) AND strpos(translate(lower(ruta), 'áéíóúü', 'aeiouu'),
                     translate(lower($3), 'áéíóúü', 'aeiouu')) > 0
        ORDER BY ruta, etiquetas.id LIMIT $4`,
-      [identidad.id, identidad.oficina_id, q, limite + 1],
+      [identidad.id, identidad.oficina_id, q, limite + 1, nivel ?? null, estante_id ?? null],
     );
     return { ubicaciones: rows.slice(0, limite), hay_mas: rows.length > limite };
   });
@@ -179,7 +181,17 @@ export async function detalle(actor: string, documentoId: string) {
       (
         await cliente.query(
           `SELECT unidad_id::text,oficina_nombre_guardado,ruta_ubicacion_guardada,
-  registrado_en FROM ubicaciones_documento WHERE documento_id=$1 AND vigente`,
+  registrado_en, (WITH RECURSIVE cadena AS (
+    SELECT u.id,u.padre_id,u.clase,u.nombre,0 profundidad FROM unidades_ubicacion u WHERE u.id=unidad_id
+    UNION ALL SELECT p.id,p.padre_id,p.clase,p.nombre,c.profundidad+1
+    FROM cadena c JOIN unidades_ubicacion p ON p.id=c.padre_id
+  ) SELECT jsonb_agg(jsonb_build_object('id',id::text,'clase',clase,'nombre',nombre) ORDER BY profundidad DESC) FROM cadena) partes,
+  (WITH RECURSIVE cadena AS (
+    SELECT u.id,u.padre_id,u.clase,u.nombre,0 profundidad FROM unidades_ubicacion u WHERE u.id=unidad_id
+    UNION ALL SELECT p.id,p.padre_id,p.clase,p.nombre,c.profundidad+1
+    FROM cadena c JOIN unidades_ubicacion p ON p.id=c.padre_id
+  ) SELECT string_agg(CASE WHEN padre_id IS NULL AND clase<>'Lugar' THEN clase||': '||nombre ELSE nombre END,' / ' ORDER BY profundidad DESC) FROM cadena) ruta_catalogo
+  FROM ubicaciones_documento WHERE documento_id=$1 AND vigente`,
           [documentoId],
         )
       ).rows[0] ?? null;

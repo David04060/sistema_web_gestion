@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   api,
@@ -35,6 +35,7 @@ export function FormularioDocumento({
   clasificacion: 'RECIBIDO' | 'EMITIDO';
 }) {
   const navegar = useNavigate();
+  const grupoAcciones = useId();
   const enviando = useRef(false);
   const [delegar, setDelegar] = useState(false);
   const [destino, setDestino] = useState(destinoVacio);
@@ -120,6 +121,7 @@ export function FormularioDocumento({
       </>
     );
   const conservarEnMesa = perfil.rol === 'Secretaria de Dirección' && (delegar || datos.conservar_en_mesa);
+  const mostrarUbicacion = !!perfil.oficina_id && (perfil.rol === 'Usuario' || conservarEnMesa || perfil.rol === 'Director(a)');
   const ubicable =
     !(delegar && perfil.rol === 'Director(a)') &&
     !!perfil.oficina_id &&
@@ -207,17 +209,20 @@ export function FormularioDocumento({
                 </select>
               </label>
             )}
-            {!id && ubicable && (
-              <SelectorUbicacion
-                token={token}
-                valor={ubicacion}
-                cambiar={setUbicacion}
-                opcional
-                deshabilitado={ocupado}
-              />
+            {!id && mostrarUbicacion && (
+              <details name={grupoAcciones} className={styles.campoCompleto}>
+                <summary>Guardar en una ubicación propia</summary>
+                <SelectorUbicacion
+                  token={token}
+                  valor={ubicacion}
+                  cambiar={setUbicacion}
+                  opcional
+                  deshabilitado={ocupado}
+                />
+              </details>
             )}
             {!id && (
-              <details className={styles.campoCompleto} onToggle={(e) => setDelegar(e.currentTarget.open)}>
+              <details name={grupoAcciones} className={styles.campoCompleto} onToggle={(e) => setDelegar(e.currentTarget.open)}>
                 <summary>Delegar</summary>
                 {delegar && (
                   <DestinoDocumental token={token} valor={destino} cambiar={setDestino} opciones={opciones} />

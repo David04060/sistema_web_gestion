@@ -7,7 +7,11 @@ export const id = idSchema;
 const texto = z.string().trim().max(20000).nullable().optional().default(null);
 const motivo = z.string().trim().min(1).max(1000);
 export const consultaDestinatarios = z.object({ q: z.string().trim().max(100).default(''), oficina_id: id.optional() }).strict();
-export const consultaUbicaciones = z.object({ q: z.string().trim().max(250).default('') }).strict();
+export const consultaUbicaciones = z.object({
+  q: z.string().trim().max(250).default(''),
+  nivel: z.literal('estantes').optional(),
+  estante_id: id.optional(),
+}).strict().refine(d => !(d.nivel && d.estante_id), 'Selecciona un nivel o un estante');
 export const consultaOrigenes = z.object({ q: z.string().trim().max(250).default('') }).strict();
 export const filtroRelacionados = z.union([z.boolean(),z.enum(['true','false']).transform(v=>v==='true')]).optional().default(false);
 

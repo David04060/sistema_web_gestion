@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, type DocumentoActual, type UbicacionElegible } from '../../../api/documental';
 import { ApiError } from '../../../api/client';
@@ -17,6 +17,7 @@ export function AccionesDocumento({
   documento: DocumentoActual;
   actualizar: (documento: DocumentoActual, mensaje: string) => void;
 }) {
+  const grupoAcciones = useId();
   const navegar = useNavigate(),
     [destino, setDestino] = useState(destinoVacio),
     [unidad, setUnidad] = useState<UbicacionElegible | null>(null),
@@ -111,7 +112,7 @@ export function AccionesDocumento({
       )}
       {necesitaOpciones && <EstadoCarga {...opciones} reintentar={opciones.recargar} />}
       {d.permisos.delegar && opciones.datos && (
-        <details>
+        <details name={grupoAcciones} onToggle={(e) => { if (!e.currentTarget.open) setConfirmacion(null); }}>
           <summary>Delegar documento</summary>
           <form
             onSubmit={(e) => {
@@ -129,7 +130,7 @@ export function AccionesDocumento({
         </details>
       )}
       {d.permisos.ubicar && (
-        <details>
+        <details name={grupoAcciones} onToggle={(e) => { if (!e.currentTarget.open) setConfirmacion(null); }}>
           <summary>{d.ubicacion ? 'Actualizar ubicación' : 'Guardar en una ubicación propia'}</summary>
           <form
             onSubmit={(e) => {
@@ -150,7 +151,7 @@ export function AccionesDocumento({
         </details>
       )}
       {d.permisos.anular && (
-        <details>
+        <details name={grupoAcciones} onToggle={(e) => { if (!e.currentTarget.open) setConfirmacion(null); }}>
           <summary>Anular registro</summary>
           <form
             onSubmit={(e) => {

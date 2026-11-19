@@ -13,7 +13,7 @@ documentosRouter.get('/destinatarios', async (req: RequestAutenticada, res) =>
   res.json(await operaciones.buscarDestinatarios(actor(req), validar(consultaDestinatarios, req.query))),
 );
 documentosRouter.get('/ubicaciones', async (req: RequestAutenticada, res) =>
-  res.json(await operaciones.buscarUbicaciones(actor(req), validar(consultaUbicaciones, req.query).q)),
+  res.json(await operaciones.buscarUbicaciones(actor(req), validar(consultaUbicaciones, req.query))),
 );
 documentosRouter.get('/exportar-excel', descargarExcel);
 documentosRouter.get('/origenes', async (req: RequestAutenticada, res) =>

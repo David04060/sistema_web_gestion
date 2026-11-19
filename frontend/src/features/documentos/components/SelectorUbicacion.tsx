@@ -2,18 +2,26 @@ import { useEffect, useId, useState } from 'react';
 import { api, type UbicacionElegible } from '../../../api/documental';
 import styles from '../../../components/ui/Admin.module.css';
 
-export function SelectorUbicacion({
+function BuscadorUbicacion({
   token,
   valor,
   cambiar,
   opcional = false,
   deshabilitado = false,
+  etiqueta,
+  vacio,
+  nivel,
+  estanteId,
 }: {
   token: string;
   valor: UbicacionElegible | null;
   cambiar: (ubicacion: UbicacionElegible | null) => void;
   opcional?: boolean;
   deshabilitado?: boolean;
+  etiqueta: string;
+  vacio: string;
+  nivel?: 'estantes';
+  estanteId?: string;
 }) {
   const id = useId();
   const listaId = id + '-lista';
@@ -23,7 +31,7 @@ export function SelectorUbicacion({
   const [apertura, setApertura] = useState(0);
   const q = texto.trim();
   const activo = abierto && !deshabilitado;
-  const clave = JSON.stringify([token, q, apertura]);
+  const clave = JSON.stringify([token, q, apertura, nivel, estanteId]);
   const [respuesta, setRespuesta] = useState<{
     clave: string;
     datos?: Awaited<ReturnType<typeof api.buscarUbicaciones>>;
@@ -33,18 +41,18 @@ export function SelectorUbicacion({
     if (!activo) return;
     const control = new AbortController();
     const espera = setTimeout(() => {
-      void api.buscarUbicaciones(token, q, control.signal).then(
+      void api.buscarUbicaciones(token, q, control.signal, estanteId ? { estante_id: estanteId } : nivel ? { nivel } : undefined).then(
         (datos) => { if (!control.signal.aborted) setRespuesta({ clave, datos }); },
         () => { if (!control.signal.aborted) setRespuesta({ clave }); },
       );
     }, q ? 200 : 0);
     return () => { clearTimeout(espera); control.abort(); };
-  }, [activo, clave, token, q]);
+  }, [activo, clave, token, q, nivel, estanteId]);
 
   const actual = activo && respuesta?.clave === clave ? respuesta : undefined;
   const ubicaciones = actual?.datos?.ubicaciones ?? [];
   const opciones = !q && (opcional || valor)
-    ? [{ id: '', ruta: opcional ? 'Sin ubicación' : 'Limpiar selección' }, ...ubicaciones]
+    ? [{ id: '', ruta: vacio }, ...ubicaciones]
     : ubicaciones;
   const opcionActiva = activo && opciones[indice] ? listaId + '-' + indice : undefined;
   useEffect(() => {
@@ -66,7 +74,7 @@ export function SelectorUbicacion({
   return (
     <div className={styles.selectorPersona}>
       <label className={styles.campo}>
-        {opcional ? 'Ubicación opcional' : 'Ubicación física'}
+        {etiqueta}
         <input
           id={id}
           role="combobox"
@@ -77,9 +85,9 @@ export function SelectorUbicacion({
           aria-required={!opcional}
           autoComplete="off"
           maxLength={250}
-          placeholder="Buscar estante o archivador"
+          placeholder={estanteId ? 'Buscar archivador' : 'Buscar estante'}
           title={!activo ? valor?.ruta : undefined}
-          value={activo ? texto : valor?.ruta ?? (opcional ? 'Sin ubicación' : '')}
+          value={activo ? texto : valor?.ruta ?? (opcional ? vacio : '')}
           disabled={deshabilitado}
           onFocus={abrir}
           onClick={() => {
@@ -113,7 +121,7 @@ export function SelectorUbicacion({
       </label>
       {activo && (
         <div className={styles.coincidenciasPersona}>
-          <div id={listaId} role="listbox" aria-label="Ubicaciones disponibles">
+          <div id={listaId} role="listbox" aria-label={etiqueta + ' disponibles'}>
             {opciones.map((opcion, i) => (
               <div
                 key={opcion.id}
@@ -140,6 +148,33 @@ export function SelectorUbicacion({
             <p role="status">Hay más ubicaciones. Escribe para acotar la búsqueda.</p>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Selecciona únicamente opciones existentes; cambiar raíz elimina el contenido anterior. */
+export function SelectorUbicacion({ token, valor, cambiar, opcional = false, deshabilitado = false }: {
+  token: string;
+  valor: UbicacionElegible | null;
+  cambiar: (ubicacion: UbicacionElegible | null) => void;
+  opcional?: boolean;
+  deshabilitado?: boolean;
+}) {
+  const [seleccion, setSeleccion] = useState<{ token: string; estante: UbicacionElegible | null }>({ token, estante: null });
+  const estante = valor && seleccion.token === token ? seleccion.estante : null;
+  return (
+    <div>
+      <BuscadorUbicacion token={token} valor={estante} opcional={opcional} deshabilitado={deshabilitado}
+        etiqueta={opcional ? 'Estante o lugar (opcional)' : 'Estante o lugar'} vacio="Sin ubicación" nivel="estantes"
+        cambiar={nuevo => { setSeleccion({ token, estante: nuevo }); cambiar(nuevo); }} />
+      {estante && (
+        <>
+          <BuscadorUbicacion key={estante.id} token={token} valor={valor?.id === estante.id ? null : valor}
+            cambiar={contenido => cambiar(contenido ?? estante)} opcional deshabilitado={deshabilitado}
+            etiqueta="Archivador o contenido (opcional)" vacio="Solo estante" estanteId={estante.id} />
+          <p>Puedes guardar solo en el estante. La búsqueda filtra ubicaciones existentes de tu cuenta.</p>
+        </>
       )}
     </div>
   );

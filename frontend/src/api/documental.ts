@@ -65,6 +65,8 @@ export const detalleSchema = z.object({
         unidad_id: id,
         oficina_nombre_guardado: z.string(),
         ruta_ubicacion_guardada: z.string(),
+        partes: z.array(z.object({ id, clase: z.string(), nombre: z.string() })).optional(),
+        ruta_catalogo: z.string().nullable().optional(),
         registrado_en: z.string(),
       })
       .nullable(),
@@ -266,7 +268,11 @@ const destinatariosSchema = z.object({
   })),
   hay_mas: z.boolean(),
 });
-const ubicacionElegibleSchema = z.object({ id, ruta: z.string() });
+const ubicacionElegibleSchema = z.object({
+  id, ruta: z.string(), clase: z.string().optional(), nombre: z.string().optional(),
+  padre_id: id.nullable().optional(), raiz_id: id.optional(),
+});
+export type FiltroUbicaciones = { nivel?: 'estantes'; estante_id?: string };
 export type UbicacionElegible = z.infer<typeof ubicacionElegibleSchema>;
 const ubicacionesElegiblesSchema = z.object({
   ubicaciones: z.array(ubicacionElegibleSchema),
@@ -274,9 +280,9 @@ const ubicacionesElegiblesSchema = z.object({
 });
 export const api = {
   origenes:(token:string,q:string,signal:AbortSignal)=>apiRequest('/api/documentos/origenes?'+new URLSearchParams({q}),z.object({documentos:z.array(z.object({id,codigo_visible:z.string(),asunto:z.string()})),hay_mas:z.boolean()}),{signal},token),
-  buscarUbicaciones: (token: string, q: string, signal: AbortSignal) =>
+  buscarUbicaciones: (token: string, q: string, signal: AbortSignal, filtro?: FiltroUbicaciones) =>
     apiRequest(
-      '/api/documentos/ubicaciones?' + new URLSearchParams({ q }),
+      '/api/documentos/ubicaciones?' + new URLSearchParams({ q, ...filtro }),
       ubicacionesElegiblesSchema,
       { signal },
       token,
