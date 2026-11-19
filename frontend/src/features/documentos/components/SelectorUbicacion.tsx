@@ -51,6 +51,7 @@ function BuscadorUbicacion({
 
   const actual = activo && respuesta?.clave === clave ? respuesta : undefined;
   const ubicaciones = actual?.datos?.ubicaciones ?? [];
+  const etiquetaUbicacion = (u: UbicacionElegible) => estanteId && u.id ? u.nombre ?? '' : u.ruta;
   const opciones = !q && (opcional || valor)
     ? [{ id: '', ruta: vacio }, ...ubicaciones]
     : ubicaciones;
@@ -86,8 +87,8 @@ function BuscadorUbicacion({
           autoComplete="off"
           maxLength={250}
           placeholder={estanteId ? 'Buscar archivador' : 'Buscar estante'}
-          title={!activo ? valor?.ruta : undefined}
-          value={activo ? texto : valor?.ruta ?? (opcional ? vacio : '')}
+          title={!activo && valor ? etiquetaUbicacion(valor) : undefined}
+          value={activo ? texto : valor ? etiquetaUbicacion(valor) : (opcional ? vacio : '')}
           disabled={deshabilitado}
           onFocus={abrir}
           onClick={() => {
@@ -131,7 +132,7 @@ function BuscadorUbicacion({
                 onPointerDown={(e) => e.preventDefault()}
                 onClick={() => elegir(opcion)}
               >
-                {opcion.ruta}
+                {etiquetaUbicacion(opcion)}
               </div>
             ))}
           </div>
