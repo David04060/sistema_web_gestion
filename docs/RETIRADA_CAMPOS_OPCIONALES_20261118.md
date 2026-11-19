@@ -90,6 +90,8 @@ La ejecución local comprobó ausencia de las tablas y funciones con to_regclass
 
 Se eliminó ix_documentos_relaciones_origen, conservando documentos_relaciones_origen. 014 compara tabla, unicidad, claves, columnas incluidas, clases de operador, collation, opciones, predicado, expresiones, método de acceso y estados válido/listo; además rechaza índices ligados a restricciones. El ensayo local y el catálogo de ambas bases confirman la equivalencia B-tree por origen_id.
 
+Se retiró también backend/scripts/adaptar-base-documental.mjs tras comprobar que no tiene consumidores en package.json, workflows, imports, pruebas ni documentación vigente. Era el generador de una sola ejecución de 001: obtenía registrar_cambio_nombre_campo del catálogo, volvía a añadir revision_esperada ya existente y sobrescribía la migración publicada 001. No sirve como instalador actual ni como migrador incremental; su resultado histórico queda conservado en 001 y en Git. Se quitó además la visita a /campos-opcionales del script visual de dashboard, manteniendo las demás comprobaciones de esa utilidad.
+
 Se retiró de /documentos/opciones el catálogo general destinatarios: el esquema del cliente vigente no lo consume y DestinoDocumental usa la ruta activa /documentos/destinatarios. Esa ruta específica sigue vigente. También se retiró campos:[], valores:[] en alta/corrección y sus comentarios de compatibilidad.
 
 Se conservaron documentos_ordinarios, documentos_anulados y documento_tiene_relacion_visible(): no hay consumidor vigente en el repositorio, pero existen permisos SQL concedidos y no se pueden descartar consultas externas. No se considera que ausencia en pg_depend descarte llamadas dentro de cuerpos SQL.
@@ -112,7 +114,7 @@ Se retiraron consultas, interfaz de detalle, esquemas, tipo RegistroExcel, fragm
 
 El instalador completo y database/schema se exportaron del catálogo local depurado. Son 23 tablas, 35 funciones y 41 triggers; incluyen los incrementales vigentes y semillas de catálogos, sin usuarios/documentos productivos. El runner aislado ahora usa esa instantánea completa sin reejecutar 007–012, que recrearían referencias retiradas. Los archivos 001–013 permanecen sin cambios. La herramienta de exportación del esquema ya no depende de un archivo Downloads ni de una base anterior ajena a esta tarea. No se ejecutó una instalación nueva porque el usuario prohibió crear otra base/clúster.
 
-**Pruebas locales SQL/API:** 6/6 de tests/limpieza-campos.local.test.mjs. Comprueban objetos ausentes, protecciones UPDATE/DELETE/TRUNCATE de tres auditorías, cinco roles, listado contra alcance SQL, detalle/auditoría/historial/metadatos PDF, 12 XLSX (mes, relacionados y vacío), 23 columnas, códigos/asuntos/autofiltro, corrección, contrato rechazado, registro y delegación, relevo y plazo de retención. Todo dentro de una transacción revertida, con comparación final de las huellas de todas las tablas. El alta documental requirió una fila temporal; se reutilizaron tipo y cuentas existentes. Las secuencias pueden avanzar por los ensayos revertidos, sin pérdida de registros.
+**Pruebas locales SQL/API:** 6/6 de tests/limpieza-campos.local.test.mjs. Comprueban objetos ausentes, protecciones UPDATE/DELETE/TRUNCATE de tres auditorías, cinco roles, listado contra alcance SQL, detalle/auditoría/historial/metadatos PDF, 12 XLSX (mes, relacionados y vacío), 23 columnas, códigos/asuntos/autofiltro, corrección, contrato rechazado, registro, delegación y anulación, relevo y plazo de retención. Todo dentro de una transacción revertida, con comparación final de las huellas de todas las tablas. El alta documental requirió una fila temporal; se reutilizaron tipo y cuentas existentes. Las secuencias pueden avanzar por los ensayos revertidos, sin pérdida de registros.
 
 **Pruebas automatizadas:** frontend npm test 78/78; backend 73/73 en suites sin clúster. Typecheck, lint y build de ambos componentes pasaron. El build publicable configura VITE_API_URL con la URL existente de Render. Prueba XLSX red/green: anterior 25 columnas frente a 23 esperadas, posterior 23; se mantienen tipos, fechas Perú, texto seguro y hoja vacía.
 
@@ -122,8 +124,70 @@ Al ampliar la revisión se ejecutó además tests/pdf.test.mjs, fuera de las sui
 
 No existen _headers ni _redirects en el árbol local, incluido dist y los directorios privados inspeccionados. Las rutas públicas /_headers y /_redirects devuelven index.html por fallback SPA, no el contenido de controles. Se verificaron HTTP 200 de / y /documentos, nosniff, strict-origin-when-cross-origin y caché pública con revalidación; /api/health en Pages devuelve HTML y la aplicación usa Render directamente. No se afirma identidad de archivos de control publicados. El panel mostró 52 recursos antes de la publicación.
 
-Computer Use permitió confirmar los despliegues iniciales pero se detuvo al no poder determinar con suficiente confianza la URL activa de Chrome. No se continuó operando UI por otra tecnología. Las comprobaciones visuales de aplicación y PDF productivo quedan pendientes de recuperar el navegador/sesión.
+Computer Use se detuvo durante la inspección inicial. Se reinició la conexión mediante su herramienta oficial y se recuperó la sesión productiva de Dirección ya abierta por el usuario. No se extrajeron credenciales del navegador ni se crearon sesiones o usuarios productivos. La comprobación final sí incluyó listado, detalle y apertura del PDF real de CER2026001 (dos páginas). El panel de Pages de la publicación nueva mostró texto de ayuda y ejemplos de _headers/_redirects; no se confunden esos ejemplos con reglas cargadas ni se afirma igualdad de archivos originales inaccesibles.
 
-## Publicación y cierre
+## Publicación y cierre verificados
 
-Pendiente de completar y actualizar tras publicación: SHA final de GitHub, Render Live del nuevo commit, Pages, respaldo/migración 014 en Neon y verificaciones autenticadas publicadas. No aplicar 014 en Neon mientras Render siga ejecutando la consulta anterior a valores_documento.
+| Componente | Estado final |
+|---|---|
+| Commit funcional | 55d916b95c833c2fa961805d46b5f7c3debe7dd8, publicado en GitHub main |
+| Render | 55d916b Live, dep-dbv62856e07s73as322g; confirmado por usuario y posteriormente por el panel, con enlace a Last successfully deployed commit |
+| Pages | 21e12ede-3d21-45ba-9a37-523793d19441, success, atribuido a 55d916b; los 52 archivos del dominio coinciden por SHA-256 con el build |
+| Local | 014 aplicada; dos funciones de permisos alineadas con producción; 23 tablas, 35 funciones, 185 columnas, 245 restricciones, 57 índices, 41 triggers |
+| Neon | Únicamente 014 aplicada, tras verificar otra vez identidad/TLS/rama y el respaldo cifrado; mismos objetos funcionales que local |
+
+Los catálogos finales de ambas bases coinciden exactamente en las definiciones de las 35 funciones, 185 columnas, 245 restricciones, 57 índices y 41 triggers. Se conservaron las dos vistas. En Neon desaparecieron solamente la definición opcional id 43 y el evento de configuración id 442, junto a los objetos exclusivos retirados. Las funciones productivas documento_consultable y validar_pdf_permiso son idénticas antes y después de 014. No se trasladó ni recreó la base ni sus cuentas.
+
+Respaldo local y Neon: AES-256-GCM, hash SHA-256, autenticación GCM y lectura integral por pg_restore verificados; no se restauró ni se creó otra base. Los manifiestos están en .private/limpieza-opcionales/local-respaldo.json y neon-respaldo.json; los archivos cifrados se conservan en el mismo directorio. Las huellas de las 23 tablas ajenas coincidieron durante la migración y volvieron a coincidir en la comprobación SQL productiva final tras el navegador.
+
+**Producción — navegador:** sesión existente de Dirección; listado con tres documentos, detalle sin campos opcionales, historial y capacidades acordes al documento institucional y al personal ajeno. Se descargó documentos-2026-11.xlsx desde la interfaz publicada con tres registros. Se abrió el PDF real de CER2026001 y el visor mostró Página 1 de 2. No se realizaron escrituras documentales productivas. No se efectuó un relevo productivo ni pruebas de mutación productivas.
+
+**Producción — API/HTTP:** salud 200; listado y Excel sin Bearer 401; ruta de campos opcionales 404. La sesión del navegador completó las peticiones autenticadas de listado, detalle, historial, metadatos/apertura PDF y XLSX contra Render. No se reemplaza esto por una afirmación de login programático o de comprobación visual de los cinco roles: los cinco roles se ensayaron por API local, y la matriz productiva se verificó por SQL.
+
+**Producción — XLSX:** se inspeccionó el archivo descargado del navegador, C:/Users/David/Downloads/documentos-2026-11 (5).xlsx: 23 columnas, tres registros, autofiltro A1:W4 y ninguna cabecera de campos opcionales. Las demás 23 cabeceras se conservan. No se descargaron PDFs productivos al repositorio para esta verificación.
+
+**Producción — SQL:** 60 pares cuenta/documento, cero fallos en lectura global del Superadministrador, denegación de Administrador y exclusión de cuentas inactivas/anulados para los demás. No existen documentos de periodo cerrado en producción; el caso histórico se comprobó en la transacción local revertida. Se confirmó ausencia de los tres objetos de tabla, las tres funciones exclusivas y el evento opcional; DROP sin CASCADE y los catálogos finales acreditan que no quedan dependencias del conjunto. Las huellas de las 23 tablas ajenas se conservaron.
+
+**Local disponible:** frontend http://127.0.0.1:5173/login y API http://127.0.0.1:3000. Se verificó la pantalla de acceso en Chrome y la identidad de PostgreSQL antes de escuchar. Se dejó un lanzador privado de comprobación que monta la aplicación real y verifica la base, sin iniciar el mantenimiento R2 periódico; el código de mantenimiento productivo no se modificó.
+
+La actualización final de este informe, la ampliación de la prueba local de anulación y la retirada de los últimos residuos en utilidades se guardan en un segundo commit de verificación. No requieren otro despliegue de aplicación: backend/src y frontend no cambian respecto a 55d916b. El documento modificado y los ocho archivos sin seguimiento iniciales permanecen fuera de ambos commits.
+
+## Archivos incluidos en el cambio
+
+- `backend/package.json`
+- `backend/scripts/documentar-base-documental.mjs`
+- `backend/scripts/probar-backend-aislado.mjs`
+- `backend/scripts/verificar-exportacion-excel.local.mjs`
+- `backend/src/modules/documentos/auditoria.documental.ts`
+- `backend/src/modules/documentos/documental.schema.ts`
+- `backend/src/modules/documentos/documentos.operaciones.ts`
+- `backend/src/modules/documentos/exportacion.excel.ts`
+- `backend/src/modules/documentos/exportacion.repository.ts`
+- `backend/tests/exportacion-excel.local.test.mjs`
+- `backend/tests/exportacion-excel.test.mjs`
+- `backend/tests/exportacion-limite.test.mjs`
+- `backend/tests/limpieza-campos.local.test.mjs`
+- `backend/tests/mejoras-local.test.mjs`
+- `backend/tests/revision-integral-local.test.mjs`
+- `database/README.md`
+- `database/changes/014-retirar-campos-opcionales.sql`
+- `database/schema/INVENTARIO.md`
+- `database/schema/auditoria.schema.sql`
+- `database/schema/configuracion.schema.sql`
+- `database/schema/documentos.schema.sql`
+- `database/schema/identidad.schema.sql`
+- `database/schema/integridad.schema.sql`
+- `database/schema/pdf.schema.sql`
+- `database/sistema_documental_instalacion.sql`
+- `docs/RETIRADA_CAMPOS_OPCIONALES_20261118.md`
+- `docs/superpowers/plans/2026-11-18-retirada-campos-opcionales.md`
+- `frontend/src/api/documental.ts`
+- `frontend/src/features/documentos/pages/DocumentoDetallePage.tsx`
+- `frontend/src/lib/historialDocumental.ts`
+- `frontend/tests/detalle-documental.test.mjs`
+- `frontend/tests/documental.test.mjs`
+
+Archivos adicionales del cierre:
+
+- `backend/scripts/adaptar-base-documental.mjs` (eliminado).
+- `backend/scripts/verificar-dashboard-visual.local.mjs` (visita de campos retirada).

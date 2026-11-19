@@ -16,17 +16,17 @@
 ## Ejecución
 
 - [x] Comparar Git, inspeccionar cambios previos, recuperar informe y consultar catálogos/filas en ambas bases.
-- [ ] Confirmar Pages y controles locales/publicados; completar grafo de consumidores.
-- [ ] Modificar primero pruebas XLSX para exigir ausencia de la columna en exportaciones con filas y vacías; comprobar fallo.
-- [ ] Retirar campos, valores y opcionales de consultas, contratos, interfaz y pruebas antiguas específicas.
-- [ ] Verificar índice duplicado por catálogo; retirar solo el redundante sin dependencias.
-- [ ] Comparar reglas documentales/PDF usando registros existentes, y ensayar permisos/guardas en transacciones revertidas.
-- [ ] Respaldar local, aplicar 014 y alinear exclusivamente local con definiciones productivas verificadas.
-- [ ] Actualizar instalador/documentación del esquema sin alterar migraciones históricas.
-- [ ] Ejecutar suites pertinentes sin runner de clúster, typecheck, lint, build y API/SQL local.
-- [ ] Revisar diff, publicar commit en main y desplegar Render/Pages.
-- [ ] Revalidar Neon, respaldo cifrado e integridad; aplicar exclusivamente limpieza 014 y verificar conservación.
-- [ ] Comprobar SQL, API autenticada, XLSX y navegador publicados; documentar resultados y límites.
+- [x] Confirmar Pages y controles locales/publicados; completar grafo de consumidores.
+- [x] Modificar primero pruebas XLSX para exigir ausencia de la columna en exportaciones con filas y vacías; comprobar fallo.
+- [x] Retirar campos, valores y opcionales de consultas, contratos, interfaz y pruebas antiguas específicas.
+- [x] Verificar índice duplicado por catálogo; retirar solo el redundante sin dependencias.
+- [x] Comparar reglas documentales/PDF usando registros existentes, y ensayar permisos/guardas en transacciones revertidas.
+- [x] Respaldar local, aplicar 014 y alinear exclusivamente local con definiciones productivas verificadas.
+- [x] Actualizar instalador/documentación del esquema sin alterar migraciones históricas.
+- [x] Ejecutar suites pertinentes sin runner de clúster, typecheck, lint, build y API/SQL local.
+- [x] Revisar diff, publicar commit en main y desplegar Render/Pages.
+- [x] Revalidar Neon, respaldo cifrado e integridad; aplicar exclusivamente limpieza 014 y verificar conservación.
+- [x] Comprobar SQL, API autenticada, XLSX y navegador publicados; documentar resultados y límites.
 
 ## Focos de revisión
 
@@ -35,3 +35,5 @@
 - La auditoría general rechaza UPDATE/DELETE/TRUNCATE durante y después de la limpieza.
 - Autor, tercero, destinatario, roles administrativos y titular vigente de oficina conservan reglas productivas.
 - Scripts de instalación y pruebas no recrean accidentalmente objetos retirados después de 014.
+
+Comprobación final: los candidatos con consumidores posibles se conservaron y explicaron en el informe. Render y Pages ejecutan 55d916b; SQL final coincide entre local y Neon. No se probó instalación nueva ni borrado real de retención, de acuerdo con los límites documentados.

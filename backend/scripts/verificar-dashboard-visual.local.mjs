@@ -58,7 +58,7 @@ try {
   await page.getByRole('button',{name:'Actualizar panel'}).click();await page.getByRole('alert').waitFor();assert.ok(!(await page.getByRole('alert').innerText()).includes('SQL privado'));
   await page.unroute('**/api/dashboard');await page.getByRole('button',{name:'Reintentar'}).click();await page.getByRole('alert').waitFor({state:'detached'});
   informe.estados.push({rol:actor.rol_id,carga:true,error500:true,reintento:true});
-  const rutas=process.env.QA_RAPIDA?[]:actor.rol_id<=2?['/usuarios','/usuarios/nuevo','/oficinas','/oficinas/nuevo','/roles','/campos-opcionales','/ubicaciones']:['/documentos','/documentos/nuevo','/tipos-documentales','/ubicaciones'];
+  const rutas=process.env.QA_RAPIDA?[]:actor.rol_id<=2?['/usuarios','/usuarios/nuevo','/oficinas','/oficinas/nuevo','/roles','/ubicaciones']:['/documentos','/documentos/nuevo','/tipos-documentales','/ubicaciones'];
   for(const ruta of rutas)for(const tema of ['claro','oscuro'])for(const width of [1440,768,375]){
    await page.setViewportSize({width,height:1000});await page.goto('http://127.0.0.1:5179'+ruta);await page.locator('main h1').waitFor();await page.getByRole('button',{name:tema==='claro'?'Claro':'Oscuro',exact:true}).click();
    await page.locator('[aria-busy="true"]').waitFor({state:'detached'});

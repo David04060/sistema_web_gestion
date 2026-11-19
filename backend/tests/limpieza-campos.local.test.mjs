@@ -62,7 +62,7 @@ test('Limpieza: SQL, API, Excel y operaciones existentes conservadas mediante ro
    }
   });
   const autor=actores.find(a=>a.rol_id===5),admin=actores.find(a=>a.rol_id===2);
-  await t.test('API: opciones vigentes, corrección reversible, delegación y registro',async()=>{
+  await t.test('API: opciones vigentes, corrección, delegación, registro y anulación reversibles',async()=>{
    const op=await json(autor,'/documentos/opciones');assert.ok(!('campos' in op));assert.ok(!('destinatarios' in op));assert.ok(op.tipos.length);
    const listado=await json(autor,'/documentos');
    const editable=listado.documentos.find(d=>d.situacion==='PERSONAL'&&d.registrado_por===autor.id);assert.ok(editable);
@@ -71,6 +71,8 @@ test('Limpieza: SQL, API, Excel y operaciones existentes conservadas mediante ro
    // Registrar requiere una fila nueva; se usa un tipo existente y la transacción exterior la revierte.
    const nuevo=(await json(autor,'/documentos','POST',{tipo_id:op.tipos[0].id,clasificacion:'RECIBIDO',asunto:'Comprobación transaccional de registro'},201)).documento;assert.ok(!('valores' in nuevo));
    const delegado=(await json(autor,'/documentos/'+nuevo.id+'/delegar','POST',{revision:nuevo.revision,usuario_id:actores.find(a=>a.rol_id===3).id})).documento;assert.equal(delegado.situacion,'DELEGADO');assert.ok(!('valores' in delegado));
+   assert.deepEqual(await json(autor,'/documentos/'+editable.id+'/anular','POST',{revision:corregido.revision,motivo:'Comprobación transaccional de anulación'}),{anulado:true});
+   assert.equal((await c.query('SELECT situacion FROM documentos WHERE id=$1',[editable.id])).rows[0].situacion,'ANULADO');
   });
   await t.test('SQL: relevo histórico, tercero denegado y bloqueo de escritura',async()=>{
    const original=(await c.query("SELECT d.id::text FROM documentos d WHERE registrado_por=$1 AND situacion<>'ANULADO' AND NOT documento_periodo_cerrado(d.id) ORDER BY id LIMIT 1",[autor.id])).rows[0];assert.ok(original);
