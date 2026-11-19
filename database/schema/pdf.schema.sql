@@ -8,6 +8,9 @@ CREATE FUNCTION public.auditar_pdf() RETURNS trigger
     AS $$
 DECLARE actor bigint; accion text; doc bigint;
 BEGIN
+  IF TG_OP='DELETE' THEN
+    IF public.es_finalizacion_retencion(OLD.documento_id,OLD.revision,OLD.clave_r2) THEN RETURN NULL; END IF;
+  END IF;
   actor:=nullif(current_setting('app.actor_id',true),'')::bigint;
   doc:=CASE WHEN TG_OP='DELETE' THEN OLD.documento_id ELSE NEW.documento_id END;
   accion:=CASE TG_OP WHEN 'INSERT' THEN 'CARGA' WHEN 'UPDATE' THEN 'REEMPLAZO' ELSE 'ELIMINACION' END;
@@ -34,6 +37,9 @@ CREATE FUNCTION public.validar_pdf_permiso() RETURNS trigger
     AS $$
 DECLARE doc bigint; actor bigint; rol smallint; d documentos%ROWTYPE; amb text;
 BEGIN
+  IF TG_OP='DELETE' THEN
+    IF public.es_finalizacion_retencion(OLD.documento_id,OLD.revision,OLD.clave_r2) THEN RETURN OLD; END IF;
+  END IF;
   doc:=CASE WHEN TG_OP='DELETE' THEN OLD.documento_id ELSE NEW.documento_id END;
   actor:=nullif(current_setting('app.actor_id',true),'')::bigint;
   SELECT rol_id INTO rol FROM usuarios WHERE id=actor AND activo;
@@ -107,7 +113,7 @@ CREATE TABLE public.pdf_eventos (
     accion text NOT NULL,
     revision uuid,
     fecha timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
-    CONSTRAINT pdf_eventos_accion_check CHECK ((accion = ANY (ARRAY['CARGA'::text, 'REEMPLAZO'::text, 'ELIMINACION'::text, 'LIMPIEZA_PENDIENTE'::text, 'LIMPIEZA_COMPLETADA'::text])))
+    CONSTRAINT pdf_eventos_accion_check CHECK ((accion = ANY (ARRAY['CARGA'::text, 'REEMPLAZO'::text, 'ELIMINACION'::text, 'LIMPIEZA_PENDIENTE'::text, 'LIMPIEZA_COMPLETADA'::text, 'RETENCION_14_DIAS_PENDIENTE'::text, 'RETENCION_14_DIAS_ELIMINADA'::text])))
 );
 
 
@@ -204,6 +210,20 @@ ALTER TABLE ONLY public.pdf_objetos_pendientes
 
 
 --
+-- Name: documentos_pdf a_proteger_historico; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER a_proteger_historico BEFORE INSERT OR DELETE OR UPDATE ON public.documentos_pdf FOR EACH ROW EXECUTE FUNCTION public.proteger_documento_historico();
+
+
+--
+-- Name: pdf_cargas a_proteger_historico; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER a_proteger_historico BEFORE INSERT OR DELETE OR UPDATE ON public.pdf_cargas FOR EACH ROW EXECUTE FUNCTION public.proteger_documento_historico();
+
+
+--
 -- Name: documentos_pdf auditar_pdf; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -285,5 +305,3 @@ ALTER TABLE ONLY public.pdf_eventos
 
 ALTER TABLE ONLY public.pdf_objetos_pendientes
     ADD CONSTRAINT pdf_objetos_pendientes_documento_id_fkey FOREIGN KEY (documento_id) REFERENCES public.documentos(id);
-
-

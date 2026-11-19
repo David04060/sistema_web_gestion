@@ -16,7 +16,6 @@ export const eventosDocumentales: Record<string, string> = {
   ANULACION: 'Anulación',
   DELEGACION: 'Delegación indicada',
   UBICACION: 'Ubicación',
-  CAMPO_REGISTRADO: 'Campo registrado',
   PDF_CARGA: 'PDF adjuntado',
   PDF_REEMPLAZO: 'PDF actualizado',
   PDF_ELIMINACION: 'PDF eliminado',
@@ -35,11 +34,5 @@ export function cambioLegible(antes: unknown, despues: unknown) {
   const cambios = Object.keys(campos)
     .filter((k) => a[k] !== b[k] && (a[k] !== undefined || b[k] !== undefined))
     .map((k) => ({ campo: campos[k], antes: texto(a[k]), despues: texto(b[k]) }));
-  if (a.valor !== b.valor && (a.valor !== undefined || b.valor !== undefined))
-    cambios.push({
-      campo: String(b.nombre_guardado ?? a.nombre_guardado ?? 'Valor de campo opcional'),
-      antes: texto(a.valor),
-      despues: texto(b.valor),
-    });
   return cambios.filter((c) => c.antes !== c.despues);
 }

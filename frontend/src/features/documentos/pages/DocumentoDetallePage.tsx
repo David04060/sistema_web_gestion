@@ -137,12 +137,6 @@ export function DocumentoDetallePage() {
                   )}
                 </>
               )}
-              {d.valores.map((v) => (
-                <div key={v.campo_id} className={styles.datoCompleto}>
-                  <dt>{v.nombre_guardado}</dt>
-                  <dd>{v.valor || '—'}</dd>
-                </div>
-              ))}
             </dl>
             <div className={styles.acciones}>
               {d.permisos.corregir && (

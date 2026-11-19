@@ -1,34 +1,5 @@
 -- DOCUMENTACIÓN del catálogo instalado: NO es una migración ni debe ejecutarse.
 --
--- Name: registrar_cambio_nombre_campo(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.registrar_cambio_nombre_campo() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE actor bigint; rol smallint; motivo text;
-BEGIN
-  IF (NEW.id,NEW.usuario_id,NEW.creado_por,NEW.creado_en) IS DISTINCT FROM
-     (OLD.id,OLD.usuario_id,OLD.creado_por,OLD.creado_en) THEN
-    RAISE EXCEPTION 'Identidad del campo inmutable';
-  END IF;
-  IF NEW.nombre_actual IS NOT DISTINCT FROM OLD.nombre_actual THEN RETURN NEW; END IF;
-  actor:=nullif(current_setting('app.actor_id',true),'')::bigint;
-  motivo:=current_setting('app.motivo',true);
-  SELECT rol_id INTO rol FROM usuarios WHERE id=actor AND activo;
-  IF coalesce(rol NOT IN (1,2),true) OR length(btrim(coalesce(motivo,'')))=0 THEN
-    RAISE EXCEPTION 'Cambio de campo requiere administrador y motivo';
-  END IF;
-  INSERT INTO cambios_nombre_campo(campo_id,nombre_anterior,nombre_nuevo,actor_id,motivo)
-    VALUES (OLD.id,OLD.nombre_actual,NEW.nombre_actual,actor,motivo);
-  INSERT INTO auditoria_configuracion(actor_id,entidad,entidad_id,accion,motivo,anterior,posterior)
-    VALUES (actor,'CAMPO_OPCIONAL',OLD.id,'RENOMBRAR',motivo,
-      jsonb_build_object('nombre',OLD.nombre_actual),jsonb_build_object('nombre',NEW.nombre_actual));
-  RETURN NEW;
-END $$;
-
-
---
 -- Name: validar_tipo_documental(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -76,64 +47,6 @@ BEGIN
   END IF;
   RETURN NEW;
 END $$;
-
-
---
--- Name: cambios_nombre_campo; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.cambios_nombre_campo (
-    id bigint NOT NULL,
-    campo_id bigint NOT NULL,
-    nombre_anterior text NOT NULL,
-    nombre_nuevo text NOT NULL,
-    actor_id bigint NOT NULL,
-    motivo text NOT NULL,
-    fecha timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
-    CONSTRAINT cambios_nombre_campo_motivo_check CHECK ((length(btrim(motivo)) > 0))
-);
-
-
---
--- Name: cambios_nombre_campo_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-ALTER TABLE public.cambios_nombre_campo ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME public.cambios_nombre_campo_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
-
---
--- Name: campos_opcionales; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.campos_opcionales (
-    id bigint NOT NULL,
-    usuario_id bigint NOT NULL,
-    nombre_actual text NOT NULL,
-    creado_por bigint NOT NULL,
-    creado_en timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
-    CONSTRAINT campos_opcionales_nombre_actual_check CHECK ((length(btrim(nombre_actual)) > 0))
-);
-
-
---
--- Name: campos_opcionales_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-ALTER TABLE public.campos_opcionales ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME public.campos_opcionales_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
 
 
 --
@@ -201,38 +114,6 @@ ALTER TABLE public.unidades_ubicacion ALTER COLUMN id ADD GENERATED ALWAYS AS ID
 
 
 --
--- Name: cambios_nombre_campo cambios_nombre_campo_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.cambios_nombre_campo
-    ADD CONSTRAINT cambios_nombre_campo_pkey PRIMARY KEY (id);
-
-
---
--- Name: campos_opcionales campos_opcionales_id_usuario_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.campos_opcionales
-    ADD CONSTRAINT campos_opcionales_id_usuario_id_key UNIQUE (id, usuario_id);
-
-
---
--- Name: campos_opcionales campos_opcionales_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.campos_opcionales
-    ADD CONSTRAINT campos_opcionales_pkey PRIMARY KEY (id);
-
-
---
--- Name: campos_opcionales campos_opcionales_usuario_id_nombre_actual_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.campos_opcionales
-    ADD CONSTRAINT campos_opcionales_usuario_id_nombre_actual_key UNIQUE (usuario_id, nombre_actual);
-
-
---
 -- Name: tipos_documentales tipos_documentales_ambito_id_nombre_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -281,27 +162,6 @@ ALTER TABLE ONLY public.unidades_ubicacion
 
 
 --
--- Name: campos_opcionales no_borrar_campo; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER no_borrar_campo BEFORE DELETE ON public.campos_opcionales FOR EACH ROW EXECUTE FUNCTION public.impedir_cambio_historico();
-
-
---
--- Name: cambios_nombre_campo proteger_cambios_campo; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER proteger_cambios_campo BEFORE DELETE OR UPDATE ON public.cambios_nombre_campo FOR EACH ROW EXECUTE FUNCTION public.impedir_cambio_historico();
-
-
---
--- Name: campos_opcionales registrar_cambio_nombre_campo; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER registrar_cambio_nombre_campo BEFORE UPDATE ON public.campos_opcionales FOR EACH ROW EXECUTE FUNCTION public.registrar_cambio_nombre_campo();
-
-
---
 -- Name: tipos_documentales validar_tipo_documental; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -316,35 +176,10 @@ CREATE TRIGGER validar_unidad_ubicacion BEFORE INSERT OR UPDATE ON public.unidad
 
 
 --
--- Name: cambios_nombre_campo cambios_nombre_campo_actor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: tipos_documentales z_registrar_oficina_tipo; Type: TRIGGER; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.cambios_nombre_campo
-    ADD CONSTRAINT cambios_nombre_campo_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.usuarios(id);
-
-
---
--- Name: cambios_nombre_campo cambios_nombre_campo_campo_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.cambios_nombre_campo
-    ADD CONSTRAINT cambios_nombre_campo_campo_id_fkey FOREIGN KEY (campo_id) REFERENCES public.campos_opcionales(id);
-
-
---
--- Name: campos_opcionales campos_opcionales_creado_por_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.campos_opcionales
-    ADD CONSTRAINT campos_opcionales_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES public.usuarios(id);
-
-
---
--- Name: campos_opcionales campos_opcionales_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.campos_opcionales
-    ADD CONSTRAINT campos_opcionales_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id);
+CREATE TRIGGER z_registrar_oficina_tipo AFTER INSERT ON public.tipos_documentales FOR EACH ROW EXECUTE FUNCTION public.registrar_oficina_tipo();
 
 
 --
@@ -377,5 +212,3 @@ ALTER TABLE ONLY public.unidades_ubicacion
 
 ALTER TABLE ONLY public.unidades_ubicacion
     ADD CONSTRAINT unidades_ubicacion_propietario_id_oficina_id_fkey FOREIGN KEY (propietario_id, oficina_id) REFERENCES public.usuarios(id, oficina_id);
-
-

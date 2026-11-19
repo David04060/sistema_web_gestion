@@ -127,5 +127,3 @@ ALTER TABLE ONLY public.auditoria_documental
 
 ALTER TABLE ONLY public.auditoria_documental
     ADD CONSTRAINT auditoria_documental_documento_id_fkey FOREIGN KEY (documento_id) REFERENCES public.documentos(id);
-
-

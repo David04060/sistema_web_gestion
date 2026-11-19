@@ -13,24 +13,26 @@
 - `ambitos_registro`
 - `auditoria_configuracion`
 - `auditoria_documental`
-- `cambios_nombre_campo`
-- `campos_opcionales`
 - `correlativos_documentales`
 - `delegaciones_documento`
 - `documentos`
+- `documentos_oficina`
 - `documentos_pdf`
 - `documentos_relaciones`
 - `miembros_ambito`
+- `oficina_periodos`
 - `oficinas`
 - `pdf_cargas`
 - `pdf_eventos`
 - `pdf_objetos_pendientes`
+- `pdf_retenciones_anulacion`
 - `roles`
 - `tipos_documentales`
+- `tipos_oficina`
+- `tipos_relevo`
 - `ubicaciones_documento`
 - `unidades_ubicacion`
 - `usuarios`
-- `valores_documento`
 
 ## Funciones
 
@@ -39,14 +41,29 @@
 - `asignar_codigo_documental`
 - `auditar_documento`
 - `auditar_pdf`
-- `auditar_valor_documento`
+- `documento_consultable`
+- `documento_consultable_con_delegacion`
+- `documento_delegado_por`
+- `documento_periodo_cerrado`
+- `documento_tiene_relacion_consultable`
+- `documento_tiene_relacion_visible`
+- `documentos_grupo`
+- `es_finalizacion_retencion`
+- `exigir_oficina_autor`
+- `finalizar_retencion_pdf`
 - `impedir_borrado_documento`
 - `impedir_cambio_historico`
 - `impedir_truncado`
-- `registrar_cambio_nombre_campo`
+- `programar_retencion_pdf_anulado`
+- `proteger_anulacion_decidida_por_direccion`
+- `proteger_documento_historico`
+- `registrar_oficina_documento`
+- `registrar_oficina_tipo`
+- `sincronizar_periodo_oficina`
 - `validar_delegacion`
 - `validar_documento_actualizacion`
 - `validar_estado_final`
+- `validar_mapeo_tipo_relevo`
 - `validar_miembro_ambito`
 - `validar_pdf_permiso`
 - `validar_relacion`
@@ -54,21 +71,23 @@
 - `validar_ubicacion`
 - `validar_unidad_ubicacion`
 - `validar_usuario_oficina`
-- `validar_valor_documento`
 
 ## Triggers
 
+- `documentos.a_exigir_oficina_autor`: `CREATE TRIGGER a_exigir_oficina_autor BEFORE INSERT ON public.documentos FOR EACH ROW EXECUTE FUNCTION exigir_oficina_autor()`
+- `documentos.a_proteger_historico`: `CREATE TRIGGER a_proteger_historico BEFORE UPDATE ON public.documentos FOR EACH ROW EXECUTE FUNCTION proteger_documento_historico()`
+- `pdf_cargas.a_proteger_historico`: `CREATE TRIGGER a_proteger_historico BEFORE INSERT OR DELETE OR UPDATE ON public.pdf_cargas FOR EACH ROW EXECUTE FUNCTION proteger_documento_historico()`
+- `documentos_pdf.a_proteger_historico`: `CREATE TRIGGER a_proteger_historico BEFORE INSERT OR DELETE OR UPDATE ON public.documentos_pdf FOR EACH ROW EXECUTE FUNCTION proteger_documento_historico()`
+- `delegaciones_documento.a_proteger_historico`: `CREATE TRIGGER a_proteger_historico BEFORE INSERT OR DELETE OR UPDATE ON public.delegaciones_documento FOR EACH ROW EXECUTE FUNCTION proteger_documento_historico()`
+- `ubicaciones_documento.a_proteger_historico`: `CREATE TRIGGER a_proteger_historico BEFORE INSERT OR DELETE OR UPDATE ON public.ubicaciones_documento FOR EACH ROW EXECUTE FUNCTION proteger_documento_historico()`
 - `delegaciones_documento.aplicar_delegacion`: `CREATE TRIGGER aplicar_delegacion AFTER INSERT ON public.delegaciones_documento FOR EACH ROW EXECUTE FUNCTION aplicar_delegacion()`
 - `ubicaciones_documento.aplicar_ubicacion`: `CREATE TRIGGER aplicar_ubicacion AFTER INSERT ON public.ubicaciones_documento FOR EACH ROW EXECUTE FUNCTION aplicar_ubicacion()`
 - `documentos.asignar_codigo_documental`: `CREATE TRIGGER asignar_codigo_documental BEFORE INSERT ON public.documentos FOR EACH ROW EXECUTE FUNCTION asignar_codigo_documental()`
 - `documentos.auditar_documento`: `CREATE TRIGGER auditar_documento AFTER INSERT OR UPDATE ON public.documentos FOR EACH ROW EXECUTE FUNCTION auditar_documento()`
 - `documentos_pdf.auditar_pdf`: `CREATE TRIGGER auditar_pdf AFTER INSERT OR DELETE OR UPDATE ON public.documentos_pdf FOR EACH ROW EXECUTE FUNCTION auditar_pdf()`
-- `valores_documento.auditar_valor_documento`: `CREATE TRIGGER auditar_valor_documento AFTER INSERT OR UPDATE ON public.valores_documento FOR EACH ROW EXECUTE FUNCTION auditar_valor_documento()`
 - `documentos.documento_estado_con_hecho`: `CREATE CONSTRAINT TRIGGER documento_estado_con_hecho AFTER INSERT OR UPDATE ON public.documentos DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION validar_estado_final()`
-- `campos_opcionales.no_borrar_campo`: `CREATE TRIGGER no_borrar_campo BEFORE DELETE ON public.campos_opcionales FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
 - `documentos.no_borrar_documento`: `CREATE TRIGGER no_borrar_documento BEFORE DELETE ON public.documentos FOR EACH ROW EXECUTE FUNCTION impedir_borrado_documento()`
 - `ubicaciones_documento.no_borrar_ubicacion`: `CREATE TRIGGER no_borrar_ubicacion BEFORE DELETE ON public.ubicaciones_documento FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
-- `valores_documento.no_borrar_valor`: `CREATE TRIGGER no_borrar_valor BEFORE DELETE ON public.valores_documento FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
 - `auditoria_documental.no_truncar_auditoria`: `CREATE TRIGGER no_truncar_auditoria BEFORE TRUNCATE ON public.auditoria_documental FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
 - `auditoria_configuracion.no_truncar_configuracion`: `CREATE TRIGGER no_truncar_configuracion BEFORE TRUNCATE ON public.auditoria_configuracion FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
 - `delegaciones_documento.no_truncar_delegaciones`: `CREATE TRIGGER no_truncar_delegaciones BEFORE TRUNCATE ON public.delegaciones_documento FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
@@ -76,16 +95,16 @@
 - `pdf_eventos.no_truncar_pdf_eventos`: `CREATE TRIGGER no_truncar_pdf_eventos BEFORE TRUNCATE ON public.pdf_eventos FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
 - `documentos_relaciones.no_truncar_relaciones`: `CREATE TRIGGER no_truncar_relaciones BEFORE TRUNCATE ON public.documentos_relaciones FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
 - `ubicaciones_documento.no_truncar_ubicaciones`: `CREATE TRIGGER no_truncar_ubicaciones BEFORE TRUNCATE ON public.ubicaciones_documento FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
-- `valores_documento.no_truncar_valores`: `CREATE TRIGGER no_truncar_valores BEFORE TRUNCATE ON public.valores_documento FOR EACH STATEMENT EXECUTE FUNCTION impedir_truncado()`
+- `documentos.proteger_anulacion_decidida_por_direccion`: `CREATE TRIGGER proteger_anulacion_decidida_por_direccion BEFORE UPDATE OF situacion ON public.documentos FOR EACH ROW WHEN (((old.situacion IS DISTINCT FROM new.situacion) AND (new.situacion = 'ANULADO'::text))) EXECUTE FUNCTION proteger_anulacion_decidida_por_direccion()`
 - `auditoria_configuracion.proteger_auditoria_configuracion`: `CREATE TRIGGER proteger_auditoria_configuracion BEFORE DELETE OR UPDATE ON public.auditoria_configuracion FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
 - `auditoria_documental.proteger_auditoria_documental`: `CREATE TRIGGER proteger_auditoria_documental BEFORE DELETE OR UPDATE ON public.auditoria_documental FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
-- `cambios_nombre_campo.proteger_cambios_campo`: `CREATE TRIGGER proteger_cambios_campo BEFORE DELETE OR UPDATE ON public.cambios_nombre_campo FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
 - `delegaciones_documento.proteger_delegaciones`: `CREATE TRIGGER proteger_delegaciones BEFORE DELETE OR UPDATE ON public.delegaciones_documento FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
 - `pdf_eventos.proteger_pdf_eventos`: `CREATE TRIGGER proteger_pdf_eventos BEFORE DELETE OR UPDATE ON public.pdf_eventos FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
 - `documentos_relaciones.proteger_relaciones`: `CREATE TRIGGER proteger_relaciones BEFORE DELETE OR UPDATE ON public.documentos_relaciones FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico()`
-- `campos_opcionales.registrar_cambio_nombre_campo`: `CREATE TRIGGER registrar_cambio_nombre_campo BEFORE UPDATE ON public.campos_opcionales FOR EACH ROW EXECUTE FUNCTION registrar_cambio_nombre_campo()`
+- `usuarios.sincronizar_periodo_oficina`: `CREATE TRIGGER sincronizar_periodo_oficina AFTER INSERT OR UPDATE OF activo, oficina_id ON public.usuarios FOR EACH ROW EXECUTE FUNCTION sincronizar_periodo_oficina()`
 - `delegaciones_documento.validar_delegacion`: `CREATE TRIGGER validar_delegacion BEFORE INSERT ON public.delegaciones_documento FOR EACH ROW EXECUTE FUNCTION validar_delegacion()`
 - `documentos.validar_documento_actualizacion`: `CREATE TRIGGER validar_documento_actualizacion BEFORE UPDATE ON public.documentos FOR EACH ROW EXECUTE FUNCTION validar_documento_actualizacion()`
+- `tipos_relevo.validar_mapeo_tipo_relevo`: `CREATE TRIGGER validar_mapeo_tipo_relevo BEFORE INSERT ON public.tipos_relevo FOR EACH ROW EXECUTE FUNCTION validar_mapeo_tipo_relevo()`
 - `miembros_ambito.validar_miembro_ambito`: `CREATE TRIGGER validar_miembro_ambito BEFORE INSERT OR UPDATE ON public.miembros_ambito FOR EACH ROW EXECUTE FUNCTION validar_miembro_ambito()`
 - `documentos_pdf.validar_pdf_permiso`: `CREATE TRIGGER validar_pdf_permiso BEFORE INSERT OR DELETE OR UPDATE ON public.documentos_pdf FOR EACH ROW EXECUTE FUNCTION validar_pdf_permiso()`
 - `documentos_relaciones.validar_relacion`: `CREATE TRIGGER validar_relacion BEFORE INSERT ON public.documentos_relaciones FOR EACH ROW EXECUTE FUNCTION validar_relacion()`
@@ -93,7 +112,9 @@
 - `ubicaciones_documento.validar_ubicacion`: `CREATE TRIGGER validar_ubicacion BEFORE INSERT ON public.ubicaciones_documento FOR EACH ROW EXECUTE FUNCTION validar_ubicacion()`
 - `unidades_ubicacion.validar_unidad_ubicacion`: `CREATE TRIGGER validar_unidad_ubicacion BEFORE INSERT OR UPDATE ON public.unidades_ubicacion FOR EACH ROW EXECUTE FUNCTION validar_unidad_ubicacion()`
 - `usuarios.validar_usuario_oficina`: `CREATE TRIGGER validar_usuario_oficina BEFORE INSERT OR UPDATE ON public.usuarios FOR EACH ROW EXECUTE FUNCTION validar_usuario_oficina()`
-- `valores_documento.validar_valor_documento`: `CREATE TRIGGER validar_valor_documento BEFORE INSERT ON public.valores_documento FOR EACH ROW EXECUTE FUNCTION validar_valor_documento()`
+- `documentos.z_programar_retencion_pdf`: `CREATE TRIGGER z_programar_retencion_pdf AFTER UPDATE OF situacion ON public.documentos FOR EACH ROW EXECUTE FUNCTION programar_retencion_pdf_anulado()`
+- `documentos.z_registrar_oficina_documento`: `CREATE TRIGGER z_registrar_oficina_documento AFTER INSERT ON public.documentos FOR EACH ROW EXECUTE FUNCTION registrar_oficina_documento()`
+- `tipos_documentales.z_registrar_oficina_tipo`: `CREATE TRIGGER z_registrar_oficina_tipo AFTER INSERT ON public.tipos_documentales FOR EACH ROW EXECUTE FUNCTION registrar_oficina_tipo()`
 
 ## Restricciones
 
@@ -123,28 +144,6 @@
 - `auditoria_documental.auditoria_documental_fecha_not_null`: `NOT NULL fecha`
 - `auditoria_documental.auditoria_documental_id_not_null`: `NOT NULL id`
 - `auditoria_documental.auditoria_documental_pkey`: `PRIMARY KEY (id)`
-- `cambios_nombre_campo.cambios_nombre_campo_actor_id_fkey`: `FOREIGN KEY (actor_id) REFERENCES usuarios(id)`
-- `cambios_nombre_campo.cambios_nombre_campo_actor_id_not_null`: `NOT NULL actor_id`
-- `cambios_nombre_campo.cambios_nombre_campo_campo_id_fkey`: `FOREIGN KEY (campo_id) REFERENCES campos_opcionales(id)`
-- `cambios_nombre_campo.cambios_nombre_campo_campo_id_not_null`: `NOT NULL campo_id`
-- `cambios_nombre_campo.cambios_nombre_campo_fecha_not_null`: `NOT NULL fecha`
-- `cambios_nombre_campo.cambios_nombre_campo_id_not_null`: `NOT NULL id`
-- `cambios_nombre_campo.cambios_nombre_campo_motivo_check`: `CHECK ((length(btrim(motivo)) > 0))`
-- `cambios_nombre_campo.cambios_nombre_campo_motivo_not_null`: `NOT NULL motivo`
-- `cambios_nombre_campo.cambios_nombre_campo_nombre_anterior_not_null`: `NOT NULL nombre_anterior`
-- `cambios_nombre_campo.cambios_nombre_campo_nombre_nuevo_not_null`: `NOT NULL nombre_nuevo`
-- `cambios_nombre_campo.cambios_nombre_campo_pkey`: `PRIMARY KEY (id)`
-- `campos_opcionales.campos_opcionales_creado_en_not_null`: `NOT NULL creado_en`
-- `campos_opcionales.campos_opcionales_creado_por_fkey`: `FOREIGN KEY (creado_por) REFERENCES usuarios(id)`
-- `campos_opcionales.campos_opcionales_creado_por_not_null`: `NOT NULL creado_por`
-- `campos_opcionales.campos_opcionales_id_not_null`: `NOT NULL id`
-- `campos_opcionales.campos_opcionales_id_usuario_id_key`: `UNIQUE (id, usuario_id)`
-- `campos_opcionales.campos_opcionales_nombre_actual_check`: `CHECK ((length(btrim(nombre_actual)) > 0))`
-- `campos_opcionales.campos_opcionales_nombre_actual_not_null`: `NOT NULL nombre_actual`
-- `campos_opcionales.campos_opcionales_pkey`: `PRIMARY KEY (id)`
-- `campos_opcionales.campos_opcionales_usuario_id_fkey`: `FOREIGN KEY (usuario_id) REFERENCES usuarios(id)`
-- `campos_opcionales.campos_opcionales_usuario_id_nombre_actual_key`: `UNIQUE (usuario_id, nombre_actual)`
-- `campos_opcionales.campos_opcionales_usuario_id_not_null`: `NOT NULL usuario_id`
 - `correlativos_documentales.correlativos_documentales_ambito_id_not_null`: `NOT NULL ambito_id`
 - `correlativos_documentales.correlativos_documentales_anio_check`: `CHECK (((anio >= 2000) AND (anio <= 9999)))`
 - `correlativos_documentales.correlativos_documentales_anio_not_null`: `NOT NULL anio`
@@ -182,6 +181,11 @@
 - `documentos.documentos_correlativo_not_null`: `NOT NULL correlativo`
 - `documentos.documentos_creado_en_not_null`: `NOT NULL creado_en`
 - `documentos.documentos_id_not_null`: `NOT NULL id`
+- `documentos_oficina.documentos_oficina_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
+- `documentos_oficina.documentos_oficina_documento_id_not_null`: `NOT NULL documento_id`
+- `documentos_oficina.documentos_oficina_periodo_id_fkey`: `FOREIGN KEY (periodo_id) REFERENCES oficina_periodos(id)`
+- `documentos_oficina.documentos_oficina_periodo_id_not_null`: `NOT NULL periodo_id`
+- `documentos_oficina.documentos_oficina_pkey`: `PRIMARY KEY (documento_id)`
 - `documentos_pdf.documentos_pdf_actualizado_en_not_null`: `NOT NULL actualizado_en`
 - `documentos_pdf.documentos_pdf_actualizado_por_fkey`: `FOREIGN KEY (actualizado_por) REFERENCES usuarios(id)`
 - `documentos_pdf.documentos_pdf_actualizado_por_not_null`: `NOT NULL actualizado_por`
@@ -223,6 +227,14 @@
 - `miembros_ambito.miembros_ambito_pkey`: `PRIMARY KEY (usuario_id)`
 - `miembros_ambito.miembros_ambito_usuario_id_fkey`: `FOREIGN KEY (usuario_id) REFERENCES usuarios(id)`
 - `miembros_ambito.miembros_ambito_usuario_id_not_null`: `NOT NULL usuario_id`
+- `oficina_periodos.oficina_periodos_check`: `CHECK (((fin IS NULL) OR (fin >= inicio)))`
+- `oficina_periodos.oficina_periodos_id_not_null`: `NOT NULL id`
+- `oficina_periodos.oficina_periodos_inicio_not_null`: `NOT NULL inicio`
+- `oficina_periodos.oficina_periodos_oficina_id_fkey`: `FOREIGN KEY (oficina_id) REFERENCES oficinas(id)`
+- `oficina_periodos.oficina_periodos_oficina_id_not_null`: `NOT NULL oficina_id`
+- `oficina_periodos.oficina_periodos_pkey`: `PRIMARY KEY (id)`
+- `oficina_periodos.oficina_periodos_usuario_id_fkey`: `FOREIGN KEY (usuario_id) REFERENCES usuarios(id)`
+- `oficina_periodos.oficina_periodos_usuario_id_not_null`: `NOT NULL usuario_id`
 - `oficinas.oficinas_activa_not_null`: `NOT NULL activa`
 - `oficinas.oficinas_creada_en_not_null`: `NOT NULL creada_en`
 - `oficinas.oficinas_id_not_null`: `NOT NULL id`
@@ -245,7 +257,7 @@
 - `pdf_cargas.pdf_cargas_tamano_bytes_check`: `CHECK (((tamano_bytes >= 1) AND (tamano_bytes <= 15728640)))`
 - `pdf_cargas.pdf_cargas_tamano_bytes_not_null`: `NOT NULL tamano_bytes`
 - `pdf_cargas.pdf_cargas_vence_en_not_null`: `NOT NULL vence_en`
-- `pdf_eventos.pdf_eventos_accion_check`: `CHECK ((accion = ANY (ARRAY['CARGA'::text, 'REEMPLAZO'::text, 'ELIMINACION'::text, 'LIMPIEZA_PENDIENTE'::text, 'LIMPIEZA_COMPLETADA'::text])))`
+- `pdf_eventos.pdf_eventos_accion_check`: `CHECK ((accion = ANY (ARRAY['CARGA'::text, 'REEMPLAZO'::text, 'ELIMINACION'::text, 'LIMPIEZA_PENDIENTE'::text, 'LIMPIEZA_COMPLETADA'::text, 'RETENCION_14_DIAS_PENDIENTE'::text, 'RETENCION_14_DIAS_ELIMINADA'::text])))`
 - `pdf_eventos.pdf_eventos_accion_not_null`: `NOT NULL accion`
 - `pdf_eventos.pdf_eventos_actor_id_fkey`: `FOREIGN KEY (actor_id) REFERENCES usuarios(id)`
 - `pdf_eventos.pdf_eventos_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
@@ -260,10 +272,22 @@
 - `pdf_objetos_pendientes.pdf_objetos_pendientes_intentos_not_null`: `NOT NULL intentos`
 - `pdf_objetos_pendientes.pdf_objetos_pendientes_limpiar_desde_not_null`: `NOT NULL limpiar_desde`
 - `pdf_objetos_pendientes.pdf_objetos_pendientes_pkey`: `PRIMARY KEY (clave_r2)`
+- `pdf_retenciones_anulacion.pdf_retenciones_anulacion_anulado_en_not_null`: `NOT NULL anulado_en`
+- `pdf_retenciones_anulacion.pdf_retenciones_anulacion_check`: `CHECK (((eliminado_en IS NULL) OR (eliminado_en >= vence_en)))`
+- `pdf_retenciones_anulacion.pdf_retenciones_anulacion_clave_r2_key`: `UNIQUE (clave_r2)`
+- `pdf_retenciones_anulacion.pdf_retenciones_anulacion_clave_r2_not_null`: `NOT NULL clave_r2`
+- `pdf_retenciones_anulacion.pdf_retenciones_anulacion_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
+- `pdf_retenciones_anulacion.pdf_retenciones_anulacion_documento_id_not_null`: `NOT NULL documento_id`
+- `pdf_retenciones_anulacion.pdf_retenciones_anulacion_intentos_check`: `CHECK ((intentos >= 0))`
+- `pdf_retenciones_anulacion.pdf_retenciones_anulacion_intentos_not_null`: `NOT NULL intentos`
+- `pdf_retenciones_anulacion.pdf_retenciones_anulacion_pkey`: `PRIMARY KEY (documento_id)`
+- `pdf_retenciones_anulacion.pdf_retenciones_anulacion_reintentar_desde_not_null`: `NOT NULL reintentar_desde`
+- `pdf_retenciones_anulacion.pdf_retenciones_anulacion_revision_not_null`: `NOT NULL revision`
 - `roles.roles_codigo_check`: `CHECK ((codigo = ANY (ARRAY['SUPERADMINISTRADOR'::text, 'ADMINISTRADOR'::text, 'DIRECTOR'::text, 'SECRETARIA_DIRECCION'::text, 'USUARIO'::text])))`
 - `roles.roles_codigo_key`: `UNIQUE (codigo)`
 - `roles.roles_codigo_not_null`: `NOT NULL codigo`
 - `roles.roles_id_not_null`: `NOT NULL id`
+- `roles.roles_nombre_visible_check`: `CHECK (((nombre_visible IS NULL) OR ((char_length(btrim(nombre_visible)) >= 1) AND (char_length(btrim(nombre_visible)) <= 250))))`
 - `roles.roles_pkey`: `PRIMARY KEY (id)`
 - `tipos_documentales.tipos_documentales_activo_not_null`: `NOT NULL activo`
 - `tipos_documentales.tipos_documentales_ambito_id_fkey`: `FOREIGN KEY (ambito_id) REFERENCES ambitos_registro(id)`
@@ -280,6 +304,18 @@
 - `tipos_documentales.tipos_documentales_pkey`: `PRIMARY KEY (id)`
 - `tipos_documentales.tipos_documentales_prefijo_check`: `CHECK ((prefijo ~ '^[A-Z]{2,8}$'::text))`
 - `tipos_documentales.tipos_documentales_prefijo_not_null`: `NOT NULL prefijo`
+- `tipos_oficina.tipos_oficina_oficina_id_fkey`: `FOREIGN KEY (oficina_id) REFERENCES oficinas(id)`
+- `tipos_oficina.tipos_oficina_oficina_id_not_null`: `NOT NULL oficina_id`
+- `tipos_oficina.tipos_oficina_pkey`: `PRIMARY KEY (tipo_id)`
+- `tipos_oficina.tipos_oficina_tipo_id_fkey`: `FOREIGN KEY (tipo_id) REFERENCES tipos_documentales(id) ON DELETE CASCADE`
+- `tipos_oficina.tipos_oficina_tipo_id_not_null`: `NOT NULL tipo_id`
+- `tipos_relevo.tipos_relevo_destino_ambito_id_fkey`: `FOREIGN KEY (destino_ambito_id) REFERENCES ambitos_registro(id)`
+- `tipos_relevo.tipos_relevo_destino_ambito_id_not_null`: `NOT NULL destino_ambito_id`
+- `tipos_relevo.tipos_relevo_origen_id_fkey`: `FOREIGN KEY (origen_id) REFERENCES tipos_documentales(id)`
+- `tipos_relevo.tipos_relevo_origen_id_not_null`: `NOT NULL origen_id`
+- `tipos_relevo.tipos_relevo_pkey`: `PRIMARY KEY (origen_id, destino_ambito_id)`
+- `tipos_relevo.tipos_relevo_tipo_id_fkey`: `FOREIGN KEY (tipo_id) REFERENCES tipos_documentales(id)`
+- `tipos_relevo.tipos_relevo_tipo_id_not_null`: `NOT NULL tipo_id`
 - `ubicaciones_documento.ubicaciones_documento_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
 - `ubicaciones_documento.ubicaciones_documento_documento_id_not_null`: `NOT NULL documento_id`
 - `ubicaciones_documento.ubicaciones_documento_id_not_null`: `NOT NULL id`
@@ -327,10 +363,3 @@
 - `usuarios.usuarios_rol_id_not_null`: `NOT NULL rol_id`
 - `usuarios.usuarios_version_autenticacion_check`: `CHECK ((version_autenticacion >= 0))`
 - `usuarios.usuarios_version_autenticacion_not_null`: `NOT NULL version_autenticacion`
-- `valores_documento.valores_documento_campo_id_fkey`: `FOREIGN KEY (campo_id) REFERENCES campos_opcionales(id)`
-- `valores_documento.valores_documento_campo_id_not_null`: `NOT NULL campo_id`
-- `valores_documento.valores_documento_documento_id_fkey`: `FOREIGN KEY (documento_id) REFERENCES documentos(id)`
-- `valores_documento.valores_documento_documento_id_not_null`: `NOT NULL documento_id`
-- `valores_documento.valores_documento_nombre_guardado_not_null`: `NOT NULL nombre_guardado`
-- `valores_documento.valores_documento_pkey`: `PRIMARY KEY (documento_id, campo_id)`
-- `valores_documento.valores_documento_valor_not_null`: `NOT NULL valor`

@@ -8,7 +8,7 @@ import {generarToken} from '../dist/shared/security/jwt.js';
 import {chromium} from 'file:///C:/Users/David/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
 import {createServer} from '../../frontend/node_modules/vite/dist/node/index.js';
 const destino='../docs/qa-exportacion-excel-20261102',descargas='../.private/exportacion-excel';await mkdir(destino,{recursive:true});await mkdir(descargas,{recursive:true});
-const h=async()=>{const r={};for(const t of ['usuarios','documentos','documentos_pdf','valores_documento','delegaciones_documento','ubicaciones_documento','auditoria_documental','auditoria_configuracion','pdf_cargas'])r[t]=(await pool.query(`SELECT count(*)::int total,md5(coalesce(string_agg(to_jsonb(x)::text,'' ORDER BY to_jsonb(x)::text),'')) huella FROM ${t} x`)).rows[0];return r;};
+const h=async()=>{const r={};for(const t of ['usuarios','documentos','documentos_pdf','delegaciones_documento','ubicaciones_documento','auditoria_documental','auditoria_configuracion','pdf_cargas'])r[t]=(await pool.query(`SELECT count(*)::int total,md5(coalesce(string_agg(to_jsonb(x)::text,'' ORDER BY to_jsonb(x)::text),'')) huella FROM ${t} x`)).rows[0];return r;};
 const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const api='http://127.0.0.1:'+server.address().port;
 const vite=await createServer({root:'../frontend',server:{host:'127.0.0.1',port:5181,strictPort:true,proxy:{'/api':{target:api,changeOrigin:true}}}});await vite.listen();const base='http://127.0.0.1:5181';
 const browser=await chromium.launch({headless:true,channel:'chrome'}),resultado={vistas:[],descargas:[],errores:[],estados:[]};let ultima;

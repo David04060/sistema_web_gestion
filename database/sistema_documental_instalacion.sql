@@ -4,7 +4,7 @@ BEGIN;
 -- PostgreSQL database dump
 --
 
-\restrict zmMsG8IhrmJ7p8UA5S0qavQRSSBeH5xCUkldp9U7OhYAnPtWZ44qEmHQbx5aRHl
+\restrict uWGQH7LHLDj48aLvvpEHnjXD4hZjcIzdCkj2LO0Jtuqt6dx3AOQMEHZ3RMw69SL
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -28,19 +28,33 @@ SET row_security = off;
 CREATE FUNCTION public.aplicar_delegacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
+
 DECLARE situacion_anterior text; ruta_anterior text; oficina_anterior text;
+
 BEGIN
+
   SELECT situacion INTO situacion_anterior FROM documentos WHERE id=NEW.documento_id;
+
   UPDATE ubicaciones_documento SET vigente=false
+
     WHERE documento_id=NEW.documento_id AND vigente
+
     RETURNING ruta_ubicacion_guardada,oficina_nombre_guardado INTO ruta_anterior,oficina_anterior;
+
   UPDATE documentos SET situacion='DELEGADO' WHERE id=NEW.documento_id;
+
   INSERT INTO auditoria_documental(documento_id,actor_id,accion,anterior,posterior)
+
     VALUES (NEW.documento_id,NEW.delegado_por,'DELEGACION',
+
       jsonb_build_object('situacion',situacion_anterior,'ruta',ruta_anterior,'oficina',oficina_anterior),
+
       jsonb_build_object('situacion','DELEGADO','ruta',NULL,'persona',NEW.nombre_persona_guardado,
+
         'oficina_id',NEW.oficina_indicada_id,'observaciones',NEW.observaciones));
+
   RETURN NULL;
+
 END $$;
 
 
@@ -136,6 +150,9 @@ CREATE FUNCTION public.auditar_pdf() RETURNS trigger
     AS $$
 DECLARE actor bigint; accion text; doc bigint;
 BEGIN
+  IF TG_OP='DELETE' THEN
+    IF public.es_finalizacion_retencion(OLD.documento_id,OLD.revision,OLD.clave_r2) THEN RETURN NULL; END IF;
+  END IF;
   actor:=nullif(current_setting('app.actor_id',true),'')::bigint;
   doc:=CASE WHEN TG_OP='DELETE' THEN OLD.documento_id ELSE NEW.documento_id END;
   accion:=CASE TG_OP WHEN 'INSERT' THEN 'CARGA' WHEN 'UPDATE' THEN 'REEMPLAZO' ELSE 'ELIMINACION' END;
@@ -154,34 +171,174 @@ END $$;
 
 
 --
--- Name: auditar_valor_documento(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: documento_consultable(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.auditar_valor_documento() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE FUNCTION public.documento_consultable(actor bigint, doc bigint) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
     AS $$
-DECLARE actor bigint; motivo text;
+ SELECT EXISTS(SELECT 1 FROM public.documentos d JOIN public.usuarios u ON u.id=actor AND u.activo
+ LEFT JOIN public.miembros_ambito m ON m.usuario_id=u.id
+ WHERE d.id=doc AND (u.rol_id=1 OR (d.situacion<>'ANULADO' AND ((u.rol_id IN (3,4) AND u.oficina_id IS NOT NULL) OR (u.rol_id=5 AND
+ (d.ambito_id=m.ambito_id OR EXISTS(SELECT 1 FROM public.documentos_oficina o JOIN public.oficina_periodos p ON p.id=o.periodo_id
+ JOIN public.oficina_periodos actual ON actual.usuario_id=u.id AND actual.oficina_id=p.oficina_id AND actual.fin IS NULL
+ WHERE o.documento_id=d.id AND p.fin IS NOT NULL)))))))
+$$;
+
+
+--
+-- Name: documento_consultable_con_delegacion(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.documento_consultable_con_delegacion(actor bigint, doc bigint) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+
+ SELECT public.documento_consultable(actor,doc)
+
+ OR public.documento_delegado_por(actor,doc) IS NOT NULL
+
+$$;
+
+
+--
+-- Name: documento_delegado_por(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.documento_delegado_por(actor bigint, doc bigint) RETURNS text
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+
+ SELECT concat_ws(' ', emisor.nombre, emisor.apellido)
+
+ FROM public.delegaciones_documento e
+
+ JOIN public.documentos d ON d.id=e.documento_id AND d.situacion='DELEGADO'
+
+ JOIN public.usuarios u ON u.id=e.usuario_indicado_id AND u.activo
+
+ JOIN public.usuarios emisor ON emisor.id=e.delegado_por
+
+ WHERE e.documento_id=doc AND u.id=actor AND u.id<>d.registrado_por
+
+ AND (u.rol_id=5 OR (u.rol_id IN (3,4) AND u.oficina_id IS NOT NULL))
+
+$$;
+
+
+--
+-- Name: documento_periodo_cerrado(bigint); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.documento_periodo_cerrado(doc bigint) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+ SELECT EXISTS(SELECT 1 FROM public.documentos_oficina o JOIN public.oficina_periodos p ON p.id=o.periodo_id WHERE o.documento_id=doc AND p.fin IS NOT NULL)
+$$;
+
+
+--
+-- Name: documento_tiene_relacion_consultable(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.documento_tiene_relacion_consultable(actor bigint, doc bigint) RETURNS boolean
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+
+ SELECT EXISTS(SELECT 1 FROM public.documentos_grupo(doc) g WHERE g.id<>doc
+
+  AND public.documento_consultable_con_delegacion(actor,g.id))
+
+$$;
+
+
+--
+-- Name: documento_tiene_relacion_visible(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.documento_tiene_relacion_visible(actor bigint, doc bigint) RETURNS boolean
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+ SELECT EXISTS(SELECT 1 FROM public.documentos_grupo(doc) g WHERE g.id<>doc
+  AND public.documento_consultable(actor,g.id))
+$$;
+
+
+--
+-- Name: documentos_grupo(bigint); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.documentos_grupo(doc bigint) RETURNS TABLE(id bigint)
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+ WITH RECURSIVE grupo(id) AS (
+  SELECT doc
+  UNION
+  SELECT CASE WHEN r.documento_id=g.id THEN r.origen_id ELSE r.documento_id END
+  FROM grupo g JOIN public.documentos_relaciones r ON r.documento_id=g.id OR r.origen_id=g.id
+ ) SELECT id FROM grupo
+$$;
+
+
+--
+-- Name: es_finalizacion_retencion(bigint, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.es_finalizacion_retencion(doc bigint, rev uuid, clave text) RETURNS boolean
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+ SELECT current_setting('app.finalizar_retencion',true)='on'
+ AND current_user=pg_get_userbyid((SELECT relowner FROM pg_class WHERE oid='public.pdf_retenciones_anulacion'::regclass))
+ AND EXISTS(SELECT 1 FROM public.pdf_retenciones_anulacion r JOIN public.documentos d ON d.id=r.documento_id
+ WHERE r.documento_id=doc AND r.revision=rev AND r.clave_r2=clave AND d.situacion='ANULADO'
+ AND r.vence_en<=clock_timestamp() AND r.eliminado_en IS NULL)
+$$;
+
+
+--
+-- Name: exigir_oficina_autor(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.exigir_oficina_autor() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
 BEGIN
-  IF TG_OP='INSERT' THEN
-    INSERT INTO auditoria_documental(documento_id,actor_id,accion,posterior)
-      SELECT NEW.documento_id,registrado_por,'CAMPO_REGISTRADO',to_jsonb(NEW)
-      FROM documentos WHERE id=NEW.documento_id;
-  ELSE
-    actor:=nullif(current_setting('app.actor_id',true),'')::bigint;
-    motivo:=current_setting('app.motivo',true);
-    IF actor IS NULL OR length(btrim(coalesce(motivo,'')))=0 OR
-       NOT EXISTS (SELECT 1 FROM documentos WHERE id=NEW.documento_id
-                   AND registrado_por=actor AND situacion NOT IN ('ANULADO','DELEGADO')) THEN
-      RAISE EXCEPTION 'Modificación de campo no autorizada';
-    END IF;
-    IF (NEW.documento_id,NEW.campo_id,NEW.nombre_guardado) IS DISTINCT FROM
-       (OLD.documento_id,OLD.campo_id,OLD.nombre_guardado) THEN
-      RAISE EXCEPTION 'Identidad y etiqueta histórica inmutables';
-    END IF;
-    INSERT INTO auditoria_documental(documento_id,actor_id,accion,motivo,anterior,posterior)
-      VALUES (NEW.documento_id,actor,'CORRECCION',motivo,to_jsonb(OLD),to_jsonb(NEW));
-  END IF;
-  RETURN NULL;
+ IF EXISTS(SELECT 1 FROM public.usuarios WHERE id=NEW.registrado_por AND rol_id IN(3,4) AND oficina_id IS NULL) THEN RAISE EXCEPTION 'Debe asignarse oficina antes de registrar'; END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: finalizar_retencion_pdf(bigint, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.finalizar_retencion_pdf(doc bigint, rev uuid) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+DECLARE r public.pdf_retenciones_anulacion%ROWTYPE;
+BEGIN
+ PERFORM 1 FROM public.documentos WHERE id=doc AND situacion='ANULADO' FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Documento no anulado'; END IF;
+ SELECT * INTO STRICT r FROM public.pdf_retenciones_anulacion WHERE documento_id=doc FOR UPDATE;
+ IF r.revision<>rev OR r.vence_en>clock_timestamp() THEN RAISE EXCEPTION 'Retención no vencida o revisión incompatible'; END IF;
+ IF r.eliminado_en IS NOT NULL THEN RETURN; END IF;
+ PERFORM set_config('app.finalizar_retencion','on',true);
+ DELETE FROM public.documentos_pdf WHERE documento_id=doc AND revision=rev AND clave_r2=r.clave_r2;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Vínculo PDF incompatible'; END IF;
+ PERFORM set_config('app.finalizar_retencion','off',true);
+ UPDATE public.pdf_retenciones_anulacion SET eliminado_en=clock_timestamp(),intentos=intentos+1 WHERE documento_id=doc;
+ UPDATE public.pdf_objetos_pendientes SET eliminado_en=clock_timestamp() WHERE clave_r2=r.clave_r2;
+ INSERT INTO public.pdf_eventos(documento_id,accion,revision) VALUES(doc,'RETENCION_14_DIAS_ELIMINADA',rev);
 END $$;
 
 
@@ -216,31 +373,132 @@ BEGIN RAISE EXCEPTION 'TRUNCATE de hechos prohibido'; END $$;
 
 
 --
--- Name: registrar_cambio_nombre_campo(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: programar_retencion_pdf_anulado(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.registrar_cambio_nombre_campo() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE FUNCTION public.programar_retencion_pdf_anulado() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
     AS $$
-DECLARE actor bigint; rol smallint; motivo text;
+DECLARE fecha_anulacion timestamptz;
 BEGIN
-  IF (NEW.id,NEW.usuario_id,NEW.creado_por,NEW.creado_en) IS DISTINCT FROM
-     (OLD.id,OLD.usuario_id,OLD.creado_por,OLD.creado_en) THEN
-    RAISE EXCEPTION 'Identidad del campo inmutable';
+ IF NEW.situacion='ANULADO' AND OLD.situacion<>'ANULADO' THEN
+  SELECT fecha INTO STRICT fecha_anulacion FROM public.auditoria_documental
+   WHERE documento_id=NEW.id AND accion='ANULACION' ORDER BY id DESC LIMIT 1;
+  INSERT INTO public.pdf_retenciones_anulacion(documento_id,revision,clave_r2,anulado_en)
+   SELECT documento_id,revision,clave_r2,fecha_anulacion FROM public.documentos_pdf WHERE documento_id=NEW.id;
+ END IF;
+ RETURN NULL;
+END $$;
+
+
+--
+-- Name: proteger_anulacion_decidida_por_direccion(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.proteger_anulacion_decidida_por_direccion() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+  -- La regla se suma a los controles de autoría y de periodo histórico existentes.
+  -- En un alta de Secretaría, una delegación por otro actor solo se permite a Dirección.
+  IF EXISTS (
+    SELECT 1 FROM public.usuarios
+    WHERE id=nullif(current_setting('app.actor_id',true),'')::bigint AND activo AND rol_id=4
+  ) AND (
+    OLD.situacion='GUARDADO_DIRECCION'
+    OR (OLD.situacion='DELEGADO' AND EXISTS (
+      SELECT 1 FROM public.delegaciones_documento
+      WHERE documento_id=OLD.id AND delegado_por<>OLD.registrado_por
+    ))
+  ) THEN
+    RAISE EXCEPTION 'Secretaría no puede anular después de la decisión de Dirección'
+      USING ERRCODE='42501';
   END IF;
-  IF NEW.nombre_actual IS NOT DISTINCT FROM OLD.nombre_actual THEN RETURN NEW; END IF;
-  actor:=nullif(current_setting('app.actor_id',true),'')::bigint;
-  motivo:=current_setting('app.motivo',true);
-  SELECT rol_id INTO rol FROM usuarios WHERE id=actor AND activo;
-  IF coalesce(rol NOT IN (1,2),true) OR length(btrim(coalesce(motivo,'')))=0 THEN
-    RAISE EXCEPTION 'Cambio de campo requiere administrador y motivo';
-  END IF;
-  INSERT INTO cambios_nombre_campo(campo_id,nombre_anterior,nombre_nuevo,actor_id,motivo)
-    VALUES (OLD.id,OLD.nombre_actual,NEW.nombre_actual,actor,motivo);
-  INSERT INTO auditoria_configuracion(actor_id,entidad,entidad_id,accion,motivo,anterior,posterior)
-    VALUES (actor,'CAMPO_OPCIONAL',OLD.id,'RENOMBRAR',motivo,
-      jsonb_build_object('nombre',OLD.nombre_actual),jsonb_build_object('nombre',NEW.nombre_actual));
   RETURN NEW;
+END $$;
+
+
+--
+-- Name: proteger_documento_historico(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.proteger_documento_historico() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+DECLARE doc bigint;
+BEGIN
+ IF TG_TABLE_NAME='documentos' THEN doc:=OLD.id;
+ ELSIF TG_OP='DELETE' THEN doc:=OLD.documento_id; ELSE
+  IF TG_OP='UPDATE' THEN
+   IF public.documento_periodo_cerrado(OLD.documento_id) THEN RAISE EXCEPTION 'Documento histórico: solo lectura' USING ERRCODE='42501'; END IF;
+  END IF;
+  doc:=NEW.documento_id;
+ END IF;
+ IF EXISTS(SELECT 1 FROM public.usuarios WHERE id=nullif(current_setting('app.actor_id',true),'')::bigint AND rol_id IN(3,4) AND oficina_id IS NULL) THEN
+  RAISE EXCEPTION 'Cuenta institucional sin asignación' USING ERRCODE='42501';
+ END IF;
+ IF public.documento_periodo_cerrado(doc) THEN
+  IF TG_TABLE_NAME='documentos_pdf' AND TG_OP='DELETE' THEN
+   IF public.es_finalizacion_retencion(OLD.documento_id,OLD.revision,OLD.clave_r2) THEN RETURN OLD; END IF;
+  END IF;
+  RAISE EXCEPTION 'Documento de un periodo anterior: solo lectura' USING ERRCODE='42501';
+ END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF; RETURN NEW;
+END $$;
+
+
+--
+-- Name: registrar_oficina_documento(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.registrar_oficina_documento() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+ INSERT INTO public.documentos_oficina(documento_id,periodo_id) SELECT NEW.id,p.id FROM public.oficina_periodos p
+ JOIN public.usuarios u ON u.id=p.usuario_id AND u.activo AND u.oficina_id=p.oficina_id WHERE p.usuario_id=NEW.registrado_por AND p.fin IS NULL;
+ RETURN NULL;
+END $$;
+
+
+--
+-- Name: registrar_oficina_tipo(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.registrar_oficina_tipo() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+ INSERT INTO public.tipos_oficina SELECT NEW.id,u.oficina_id FROM public.usuarios u WHERE u.id=NEW.creado_por AND u.oficina_id IS NOT NULL;
+ RETURN NULL;
+END $$;
+
+
+--
+-- Name: sincronizar_periodo_oficina(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sincronizar_periodo_oficina() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+ IF TG_OP='UPDATE' THEN
+  IF (NEW.activo,NEW.oficina_id) IS NOT DISTINCT FROM (OLD.activo,OLD.oficina_id) THEN RETURN NULL; END IF;
+  UPDATE public.oficina_periodos SET fin=clock_timestamp() WHERE usuario_id=NEW.id AND fin IS NULL;
+ END IF;
+ IF NEW.activo AND NEW.oficina_id IS NOT NULL THEN
+  INSERT INTO public.oficina_periodos(oficina_id,usuario_id) VALUES(NEW.oficina_id,NEW.id);
+  INSERT INTO public.tipos_oficina(tipo_id,oficina_id)
+   SELECT id,NEW.oficina_id FROM public.tipos_documentales WHERE creado_por=NEW.id
+   ON CONFLICT (tipo_id) DO NOTHING;
+ END IF;
+ RETURN NULL;
 END $$;
 
 
@@ -248,43 +506,73 @@ END $$;
 -- Name: validar_delegacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE OR REPLACE FUNCTION public.validar_delegacion()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-DECLARE d documentos%ROWTYPE; rol smallint; oficina bigint; nombre_persona text; titular bigint;
-BEGIN
- SELECT * INTO d FROM documentos WHERE id=NEW.documento_id FOR UPDATE;
- IF d.id IS NULL OR d.situacion NOT IN ('PENDIENTE_DIRECCION','EN_MESA_DE_PARTES','PERSONAL','GUARDADO_DIRECCION') THEN
-   RAISE EXCEPTION 'Documento no delegable';
- END IF;
- SELECT rol_id INTO rol FROM usuarios WHERE id=NEW.delegado_por AND activo;
- SELECT l.propietario_id INTO titular FROM ubicaciones_documento u
- JOIN unidades_ubicacion l ON l.id=u.unidad_id
- WHERE u.documento_id=d.id AND u.vigente FOR UPDATE OF u FOR SHARE OF l;
- IF titular IS NOT NULL AND titular<>NEW.delegado_por THEN
-   RAISE EXCEPTION 'Ubicación vigente ajena';
- END IF;
- IF ((d.situacion IN ('PENDIENTE_DIRECCION','GUARDADO_DIRECCION') AND rol=3
-      AND (d.situacion<>'GUARDADO_DIRECCION' OR titular=NEW.delegado_por)
-      AND EXISTS (SELECT 1 FROM miembros_ambito m
-        WHERE m.usuario_id=NEW.delegado_por AND m.ambito_id=d.ambito_id)) OR
-     (d.situacion='EN_MESA_DE_PARTES' AND rol=4 AND d.registrado_por=NEW.delegado_por) OR
-     (d.situacion='PERSONAL' AND rol=5 AND d.registrado_por=NEW.delegado_por)) IS DISTINCT FROM TRUE THEN
-   RAISE EXCEPTION 'Actor sin permiso para delegar';
- END IF;
- IF NEW.usuario_indicado_id IS NOT NULL THEN
-   SELECT u.oficina_id,u.nombre||' '||u.apellido INTO oficina,nombre_persona
-     FROM usuarios u WHERE u.id=NEW.usuario_indicado_id AND u.activo;
-   IF nombre_persona IS NULL OR
-      (NEW.oficina_indicada_id IS NOT NULL AND oficina IS DISTINCT FROM NEW.oficina_indicada_id) OR
-      NEW.nombre_persona_guardado IS DISTINCT FROM nombre_persona THEN
-     RAISE EXCEPTION 'Persona u oficina indicada incompatible';
-   END IF;
- END IF;
- RETURN NEW;
-END $function$;
+CREATE FUNCTION public.validar_delegacion() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
 
+DECLARE d documentos%ROWTYPE; rol smallint; oficina bigint; nombre_persona text; titular bigint;
+
+BEGIN
+
+ SELECT * INTO d FROM documentos WHERE id=NEW.documento_id FOR UPDATE;
+
+ IF d.id IS NULL OR d.situacion NOT IN ('PENDIENTE_DIRECCION','EN_MESA_DE_PARTES','PERSONAL','GUARDADO_DIRECCION') THEN
+
+   RAISE EXCEPTION 'Documento no delegable';
+
+ END IF;
+
+ SELECT rol_id INTO rol FROM usuarios WHERE id=NEW.delegado_por AND activo;
+
+ SELECT l.propietario_id INTO titular FROM ubicaciones_documento u
+
+ JOIN unidades_ubicacion l ON l.id=u.unidad_id
+
+ WHERE u.documento_id=d.id AND u.vigente FOR UPDATE OF u FOR SHARE OF l;
+
+ IF titular IS NOT NULL AND titular<>NEW.delegado_por THEN
+
+   RAISE EXCEPTION 'Ubicación vigente ajena';
+
+ END IF;
+
+ IF ((d.situacion IN ('PENDIENTE_DIRECCION','GUARDADO_DIRECCION') AND rol=3
+
+      AND (d.situacion<>'GUARDADO_DIRECCION' OR titular=NEW.delegado_por)
+
+      AND EXISTS (SELECT 1 FROM miembros_ambito m
+
+        WHERE m.usuario_id=NEW.delegado_por AND m.ambito_id=d.ambito_id)) OR
+
+     (d.situacion='EN_MESA_DE_PARTES' AND rol=4 AND d.registrado_por=NEW.delegado_por) OR
+
+     (d.situacion='PERSONAL' AND rol=5 AND d.registrado_por=NEW.delegado_por)) IS DISTINCT FROM TRUE THEN
+
+   RAISE EXCEPTION 'Actor sin permiso para delegar';
+
+ END IF;
+
+ IF NEW.usuario_indicado_id IS NOT NULL THEN
+
+   SELECT u.oficina_id,u.nombre||' '||u.apellido INTO oficina,nombre_persona
+
+     FROM usuarios u WHERE u.id=NEW.usuario_indicado_id AND u.activo;
+
+   IF nombre_persona IS NULL OR
+
+      (NEW.oficina_indicada_id IS NOT NULL AND oficina IS DISTINCT FROM NEW.oficina_indicada_id) OR
+
+      NEW.nombre_persona_guardado IS DISTINCT FROM nombre_persona THEN
+
+     RAISE EXCEPTION 'Persona u oficina indicada incompatible';
+
+   END IF;
+
+ END IF;
+
+ RETURN NEW;
+
+END $$;
 
 
 --
@@ -294,53 +582,105 @@ END $function$;
 CREATE FUNCTION public.validar_documento_actualizacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
+
 DECLARE actor bigint; rol smallint; motivo text; cambio_contenido boolean;
+
 BEGIN
+
   IF (NEW.id,NEW.ambito_id,NEW.tipo_id,NEW.registrado_por,NEW.anio,
+
       NEW.correlativo,NEW.codigo_visible,NEW.prefijo_guardado,NEW.tipo_nombre_guardado,NEW.clasificacion)
+
      IS DISTINCT FROM
+
      (OLD.id,OLD.ambito_id,OLD.tipo_id,OLD.registrado_por,OLD.anio,
+
       OLD.correlativo,OLD.codigo_visible,OLD.prefijo_guardado,OLD.tipo_nombre_guardado,OLD.clasificacion) THEN
+
     RAISE EXCEPTION 'Identidad, autoría, clasificación y código inmutables';
+
   END IF;
+
   IF NEW.situacion IS DISTINCT FROM OLD.situacion AND NOT (
+
       (OLD.situacion='PENDIENTE_DIRECCION' AND NEW.situacion IN ('GUARDADO_DIRECCION','DELEGADO','ANULADO')) OR
+
       (OLD.situacion='EN_MESA_DE_PARTES' AND NEW.situacion IN ('DELEGADO','ANULADO')) OR
+
+      (OLD.situacion='DELEGADO' AND NEW.situacion='ANULADO' AND EXISTS (
+
+        SELECT 1 FROM delegaciones_documento e WHERE e.documento_id=OLD.id AND e.usuario_indicado_id IS NOT NULL)) OR
+
       (OLD.situacion='PERSONAL' AND NEW.situacion IN ('DELEGADO','ANULADO')) OR (OLD.situacion='GUARDADO_DIRECCION' AND
+
       (NEW.situacion='ANULADO' OR (NEW.situacion='DELEGADO' AND EXISTS (
+
         SELECT 1 FROM delegaciones_documento e WHERE e.documento_id=NEW.id))))) THEN
+
     RAISE EXCEPTION 'Transición documental inválida';
+
   END IF;
+
   IF OLD.situacion='ANULADO' THEN RAISE EXCEPTION 'Registro anulado inmutable'; END IF;
+
   cambio_contenido := (NEW.asunto,NEW.remitente,NEW.observaciones) IS DISTINCT FROM
+
                       (OLD.asunto,OLD.remitente,OLD.observaciones);
+
   IF cambio_contenido OR NEW.situacion='ANULADO' THEN
+
     actor := nullif(current_setting('app.actor_id',true),'')::bigint;
+
     motivo := current_setting('app.motivo',true);
+
     SELECT rol_id INTO rol FROM usuarios WHERE id=actor AND activo;
+
     IF actor IS NULL OR length(btrim(coalesce(motivo,'')))=0 THEN
+
       RAISE EXCEPTION 'Actor y motivo obligatorios';
+
     END IF;
+
     IF cambio_contenido AND
+
        (actor<>OLD.registrado_por OR (rol=5 AND OLD.situacion='DELEGADO')) THEN
+
       RAISE EXCEPTION 'Corrección no autorizada';
+
     END IF;
+
     IF NEW.situacion='ANULADO' AND NOT
+
        (actor=OLD.registrado_por OR
+
         (OLD.situacion='PENDIENTE_DIRECCION' AND rol=3 AND
+
          (SELECT clase FROM ambitos_registro WHERE id=OLD.ambito_id)='COMPARTIDO_DIRECCION')) THEN
+
       RAISE EXCEPTION 'Anulación no autorizada';
+
     END IF;
+
   END IF;
+
   IF NEW.situacion='ANULADO' THEN
+
     IF NEW.situacion_antes_anulacion IS DISTINCT FROM OLD.situacion THEN
+
       RAISE EXCEPTION 'Debe conservarse situación anterior'; END IF;
+
   ELSIF NEW.situacion_antes_anulacion IS NOT NULL THEN
+
     RAISE EXCEPTION 'Situación anterior solo corresponde a anulación';
+
   END IF;
+
   NEW.revision:=OLD.revision+1;
+
   NEW.actualizado_en:=clock_timestamp();
+
   RETURN NEW;
+
 END $$;
 
 
@@ -365,6 +705,26 @@ BEGIN
     IF n<>1 THEN RAISE EXCEPTION 'Guardado en Dirección sin ubicación'; END IF;
   END IF;
   RETURN NULL;
+END $$;
+
+
+--
+-- Name: validar_mapeo_tipo_relevo(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.validar_mapeo_tipo_relevo() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM public.usuarios WHERE id=nullif(current_setting('app.actor_id',true),'')::bigint AND activo AND rol_id IN(1,2)) THEN RAISE EXCEPTION 'Mapeo de tipos requiere administración' USING ERRCODE='42501'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.tipos_documentales origen JOIN public.tipos_oficina o ON o.tipo_id=origen.id
+ JOIN public.usuarios u ON u.oficina_id=o.oficina_id AND u.activo AND u.rol_id=5
+ JOIN public.miembros_ambito m ON m.usuario_id=u.id AND m.ambito_id=NEW.destino_ambito_id
+ JOIN public.tipos_documentales destino ON destino.id=NEW.tipo_id AND destino.ambito_id=m.ambito_id
+ WHERE origen.id=NEW.origen_id AND origen.activo AND destino.activo AND origen.nombre=destino.nombre AND origen.prefijo=destino.prefijo)
+ THEN RAISE EXCEPTION 'Mapeo de tipos incompatible con oficina o catálogo'; END IF;
+ RETURN NEW;
 END $$;
 
 
@@ -394,28 +754,54 @@ END $$;
 CREATE FUNCTION public.validar_pdf_permiso() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
+
 DECLARE doc bigint; actor bigint; rol smallint; d documentos%ROWTYPE; amb text;
+
 BEGIN
+  IF TG_OP='DELETE' THEN
+    IF public.es_finalizacion_retencion(OLD.documento_id,OLD.revision,OLD.clave_r2) THEN RETURN OLD; END IF;
+  END IF;
+
   doc:=CASE WHEN TG_OP='DELETE' THEN OLD.documento_id ELSE NEW.documento_id END;
+
   actor:=nullif(current_setting('app.actor_id',true),'')::bigint;
+
   SELECT rol_id INTO rol FROM usuarios WHERE id=actor AND activo;
+
   SELECT * INTO d FROM documentos WHERE id=doc FOR UPDATE;
+
   SELECT clase INTO amb FROM ambitos_registro WHERE id=d.ambito_id;
+
   IF d.id IS NULL OR d.situacion='ANULADO' OR
+
      ((amb='COMPARTIDO_DIRECCION' AND rol IN (3,4)) OR
+
       (actor=d.registrado_por AND rol IN (3,4,5) AND TG_OP<>'DELETE') OR
+
       (amb='PERSONAL' AND rol=5 AND actor=d.registrado_por AND d.situacion<>'DELEGADO'))
+
        IS DISTINCT FROM TRUE THEN
+
     RAISE EXCEPTION 'Operación PDF no autorizada';
+
   END IF;
+
   IF TG_OP<>'DELETE' AND NEW.actualizado_por IS DISTINCT FROM actor THEN
+
     RAISE EXCEPTION 'Actor PDF incompatible';
+
   END IF;
+
   IF TG_OP='UPDATE' AND NEW.documento_id<>OLD.documento_id THEN
+
     RAISE EXCEPTION 'Documento PDF inmutable';
+
   END IF;
+
   IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+
   RETURN NEW;
+
 END $$;
 
 
@@ -425,21 +811,25 @@ END $$;
 
 CREATE FUNCTION public.validar_relacion() RETURNS trigger
     LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
     AS $$
-DECLARE hijo documentos%ROWTYPE; origen documentos%ROWTYPE;
+DECLARE hijo public.documentos%ROWTYPE; actor bigint;
 BEGIN
-  SELECT * INTO hijo FROM documentos WHERE id=NEW.documento_id FOR SHARE;
-  SELECT * INTO origen FROM documentos WHERE id=NEW.origen_id FOR SHARE;
-  IF hijo.ambito_id IS DISTINCT FROM origen.ambito_id OR hijo.registrado_por<>NEW.creado_por THEN
-    RAISE EXCEPTION 'Relación fuera de ámbito o actor incompatible';
-  END IF;
-  IF EXISTS (WITH RECURSIVE cadena(id) AS (
-    SELECT NEW.origen_id UNION ALL
-    SELECT r.origen_id FROM documentos_relaciones r JOIN cadena c ON r.documento_id=c.id
-  ) SELECT 1 FROM cadena WHERE id=NEW.documento_id) THEN
-    RAISE EXCEPTION 'Ciclo documental';
-  END IF;
-  RETURN NEW;
+ actor:=nullif(current_setting('app.actor_id',true),'')::bigint;
+ SELECT * INTO hijo FROM public.documentos WHERE id=NEW.documento_id FOR SHARE;
+ PERFORM 1 FROM public.documentos WHERE id=NEW.origen_id FOR SHARE;
+ IF hijo.id IS NULL OR actor IS DISTINCT FROM NEW.creado_por OR hijo.registrado_por IS DISTINCT FROM actor
+  OR hijo.situacion='ANULADO' OR public.documento_periodo_cerrado(hijo.id)
+  OR NOT public.documento_consultable(actor,NEW.origen_id)
+  OR EXISTS(SELECT 1 FROM public.documentos WHERE id=NEW.origen_id AND situacion='ANULADO') THEN
+  RAISE EXCEPTION 'Origen no consultable o autor incompatible';
+ END IF;
+ IF NEW.documento_id=NEW.origen_id OR EXISTS(
+  WITH RECURSIVE cadena(id) AS (
+   SELECT NEW.origen_id UNION SELECT r.origen_id FROM public.documentos_relaciones r JOIN cadena c ON r.documento_id=c.id
+  ) SELECT 1 FROM cadena WHERE id=NEW.documento_id
+ ) THEN RAISE EXCEPTION 'Ciclo documental'; END IF;
+ RETURN NEW;
 END $$;
 
 
@@ -463,10 +853,9 @@ END $$;
 -- Name: validar_ubicacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE OR REPLACE FUNCTION public.validar_ubicacion()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
+CREATE FUNCTION public.validar_ubicacion() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
 DECLARE d documentos%ROWTYPE; propietario bigint; rol smallint;
         onombre text; ruta text;
 BEGIN
@@ -495,8 +884,7 @@ BEGIN
       INTO ruta FROM cadena;
   NEW.ruta_ubicacion_guardada:=ruta;
   RETURN NEW;
-END $function$;
-
+END $$;
 
 
 --
@@ -537,10 +925,9 @@ END $$;
 -- Name: validar_usuario_oficina(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE OR REPLACE FUNCTION public.validar_usuario_oficina()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
+CREATE FUNCTION public.validar_usuario_oficina() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
 DECLARE o text;
 BEGIN
   IF NEW.oficina_id IS NOT NULL AND
@@ -548,10 +935,10 @@ BEGIN
      NOT EXISTS(SELECT 1 FROM public.oficinas WHERE id=NEW.oficina_id AND activa) THEN
     RAISE EXCEPTION 'Una oficina inactiva no admite nuevas asignaciones';
   END IF;
-  IF NEW.rol_id=3 THEN
+  IF NEW.rol_id=3 AND NEW.oficina_id IS NOT NULL THEN
     SELECT nombre INTO o FROM oficinas WHERE id=NEW.oficina_id;
     IF o IS DISTINCT FROM 'Dirección' THEN RAISE EXCEPTION 'Dirección requiere su oficina'; END IF;
-  ELSIF NEW.rol_id=4 THEN
+  ELSIF NEW.rol_id=4 AND NEW.oficina_id IS NOT NULL THEN
     SELECT nombre INTO o FROM oficinas WHERE id=NEW.oficina_id;
     IF o IS DISTINCT FROM 'Mesa de Partes' THEN RAISE EXCEPTION 'Secretaría requiere Mesa de Partes'; END IF;
   ELSIF NEW.rol_id IN (1,2) AND NEW.oficina_id IS NOT NULL THEN
@@ -559,25 +946,6 @@ BEGIN
   END IF;
   IF NEW.rol_id=5 AND EXISTS(SELECT 1 FROM oficinas WHERE id=NEW.oficina_id AND nombre IN('Dirección','Mesa de Partes')) THEN RAISE EXCEPTION 'Usuario no puede asignarse a Dirección ni Mesa de Partes'; END IF;
   NEW.actualizada_en:=clock_timestamp();
-  RETURN NEW;
-END $function$;
-
-
-
---
--- Name: validar_valor_documento(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.validar_valor_documento() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE propietario bigint; autor bigint; etiqueta text;
-BEGIN
-  SELECT usuario_id,nombre_actual INTO propietario,etiqueta FROM campos_opcionales WHERE id=NEW.campo_id;
-  SELECT registrado_por INTO autor FROM documentos WHERE id=NEW.documento_id;
-  IF propietario IS DISTINCT FROM autor OR NEW.nombre_guardado IS DISTINCT FROM etiqueta THEN
-    RAISE EXCEPTION 'Campo ajeno o etiqueta histórica incorrecta';
-  END IF;
   RETURN NEW;
 END $$;
 
@@ -668,64 +1036,6 @@ CREATE TABLE public.auditoria_documental (
 
 ALTER TABLE public.auditoria_documental ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME public.auditoria_documental_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
-
---
--- Name: cambios_nombre_campo; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.cambios_nombre_campo (
-    id bigint NOT NULL,
-    campo_id bigint NOT NULL,
-    nombre_anterior text NOT NULL,
-    nombre_nuevo text NOT NULL,
-    actor_id bigint NOT NULL,
-    motivo text NOT NULL,
-    fecha timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
-    CONSTRAINT cambios_nombre_campo_motivo_check CHECK ((length(btrim(motivo)) > 0))
-);
-
-
---
--- Name: cambios_nombre_campo_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-ALTER TABLE public.cambios_nombre_campo ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME public.cambios_nombre_campo_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
-
---
--- Name: campos_opcionales; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.campos_opcionales (
-    id bigint NOT NULL,
-    usuario_id bigint NOT NULL,
-    nombre_actual text NOT NULL,
-    creado_por bigint NOT NULL,
-    creado_en timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
-    CONSTRAINT campos_opcionales_nombre_actual_check CHECK ((length(btrim(nombre_actual)) > 0))
-);
-
-
---
--- Name: campos_opcionales_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-ALTER TABLE public.campos_opcionales ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME public.campos_opcionales_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -839,6 +1149,16 @@ ALTER TABLE public.documentos ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
+-- Name: documentos_oficina; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.documentos_oficina (
+    documento_id bigint NOT NULL,
+    periodo_id bigint NOT NULL
+);
+
+
+--
 -- Name: documentos_ordinarios; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -908,6 +1228,34 @@ CREATE TABLE public.miembros_ambito (
 
 
 --
+-- Name: oficina_periodos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.oficina_periodos (
+    id bigint NOT NULL,
+    oficina_id bigint NOT NULL,
+    usuario_id bigint NOT NULL,
+    inicio timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    fin timestamp with time zone,
+    CONSTRAINT oficina_periodos_check CHECK (((fin IS NULL) OR (fin >= inicio)))
+);
+
+
+--
+-- Name: oficina_periodos_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.oficina_periodos ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.oficina_periodos_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: oficinas; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -965,7 +1313,7 @@ CREATE TABLE public.pdf_eventos (
     accion text NOT NULL,
     revision uuid,
     fecha timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
-    CONSTRAINT pdf_eventos_accion_check CHECK ((accion = ANY (ARRAY['CARGA'::text, 'REEMPLAZO'::text, 'ELIMINACION'::text, 'LIMPIEZA_PENDIENTE'::text, 'LIMPIEZA_COMPLETADA'::text])))
+    CONSTRAINT pdf_eventos_accion_check CHECK ((accion = ANY (ARRAY['CARGA'::text, 'REEMPLAZO'::text, 'ELIMINACION'::text, 'LIMPIEZA_PENDIENTE'::text, 'LIMPIEZA_COMPLETADA'::text, 'RETENCION_14_DIAS_PENDIENTE'::text, 'RETENCION_14_DIAS_ELIMINADA'::text])))
 );
 
 
@@ -998,13 +1346,33 @@ CREATE TABLE public.pdf_objetos_pendientes (
 
 
 --
+-- Name: pdf_retenciones_anulacion; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.pdf_retenciones_anulacion (
+    documento_id bigint NOT NULL,
+    revision uuid NOT NULL,
+    clave_r2 text NOT NULL,
+    anulado_en timestamp with time zone NOT NULL,
+    vence_en timestamp with time zone GENERATED ALWAYS AS ((((anulado_en AT TIME ZONE 'UTC'::text) + '14 days'::interval) AT TIME ZONE 'UTC'::text)) STORED,
+    reintentar_desde timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    intentos integer DEFAULT 0 NOT NULL,
+    eliminado_en timestamp with time zone,
+    CONSTRAINT pdf_retenciones_anulacion_check CHECK (((eliminado_en IS NULL) OR (eliminado_en >= vence_en))),
+    CONSTRAINT pdf_retenciones_anulacion_intentos_check CHECK ((intentos >= 0))
+);
+
+
+--
 -- Name: roles; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.roles (
     id smallint NOT NULL,
     codigo text NOT NULL,
-    CONSTRAINT roles_codigo_check CHECK ((codigo = ANY (ARRAY['SUPERADMINISTRADOR'::text, 'ADMINISTRADOR'::text, 'DIRECTOR'::text, 'SECRETARIA_DIRECCION'::text, 'USUARIO'::text])))
+    nombre_visible text,
+    CONSTRAINT roles_codigo_check CHECK ((codigo = ANY (ARRAY['SUPERADMINISTRADOR'::text, 'ADMINISTRADOR'::text, 'DIRECTOR'::text, 'SECRETARIA_DIRECCION'::text, 'USUARIO'::text]))),
+    CONSTRAINT roles_nombre_visible_check CHECK (((nombre_visible IS NULL) OR ((char_length(btrim(nombre_visible)) >= 1) AND (char_length(btrim(nombre_visible)) <= 250))))
 );
 
 
@@ -1036,6 +1404,27 @@ ALTER TABLE public.tipos_documentales ALTER COLUMN id ADD GENERATED ALWAYS AS ID
     NO MINVALUE
     NO MAXVALUE
     CACHE 1
+);
+
+
+--
+-- Name: tipos_oficina; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tipos_oficina (
+    tipo_id bigint NOT NULL,
+    oficina_id bigint NOT NULL
+);
+
+
+--
+-- Name: tipos_relevo; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tipos_relevo (
+    origen_id bigint NOT NULL,
+    destino_ambito_id bigint NOT NULL,
+    tipo_id bigint NOT NULL
 );
 
 
@@ -1143,18 +1532,6 @@ ALTER TABLE public.usuarios ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: valores_documento; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.valores_documento (
-    documento_id bigint NOT NULL,
-    campo_id bigint NOT NULL,
-    nombre_guardado text NOT NULL,
-    valor text NOT NULL
-);
-
-
---
 -- Name: ambitos_registro ambitos_registro_id_clase_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1195,38 +1572,6 @@ ALTER TABLE ONLY public.auditoria_documental
 
 
 --
--- Name: cambios_nombre_campo cambios_nombre_campo_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.cambios_nombre_campo
-    ADD CONSTRAINT cambios_nombre_campo_pkey PRIMARY KEY (id);
-
-
---
--- Name: campos_opcionales campos_opcionales_id_usuario_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.campos_opcionales
-    ADD CONSTRAINT campos_opcionales_id_usuario_id_key UNIQUE (id, usuario_id);
-
-
---
--- Name: campos_opcionales campos_opcionales_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.campos_opcionales
-    ADD CONSTRAINT campos_opcionales_pkey PRIMARY KEY (id);
-
-
---
--- Name: campos_opcionales campos_opcionales_usuario_id_nombre_actual_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.campos_opcionales
-    ADD CONSTRAINT campos_opcionales_usuario_id_nombre_actual_key UNIQUE (usuario_id, nombre_actual);
-
-
---
 -- Name: correlativos_documentales correlativos_documentales_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1256,6 +1601,14 @@ ALTER TABLE ONLY public.documentos
 
 ALTER TABLE ONLY public.documentos
     ADD CONSTRAINT documentos_ambito_id_tipo_id_anio_correlativo_key UNIQUE (ambito_id, tipo_id, anio, correlativo);
+
+
+--
+-- Name: documentos_oficina documentos_oficina_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.documentos_oficina
+    ADD CONSTRAINT documentos_oficina_pkey PRIMARY KEY (documento_id);
 
 
 --
@@ -1315,6 +1668,14 @@ ALTER TABLE ONLY public.miembros_ambito
 
 
 --
+-- Name: oficina_periodos oficina_periodos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oficina_periodos
+    ADD CONSTRAINT oficina_periodos_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: oficinas oficinas_nombre_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1371,6 +1732,22 @@ ALTER TABLE ONLY public.pdf_objetos_pendientes
 
 
 --
+-- Name: pdf_retenciones_anulacion pdf_retenciones_anulacion_clave_r2_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pdf_retenciones_anulacion
+    ADD CONSTRAINT pdf_retenciones_anulacion_clave_r2_key UNIQUE (clave_r2);
+
+
+--
+-- Name: pdf_retenciones_anulacion pdf_retenciones_anulacion_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pdf_retenciones_anulacion
+    ADD CONSTRAINT pdf_retenciones_anulacion_pkey PRIMARY KEY (documento_id);
+
+
+--
 -- Name: roles roles_codigo_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1416,6 +1793,22 @@ ALTER TABLE ONLY public.tipos_documentales
 
 ALTER TABLE ONLY public.tipos_documentales
     ADD CONSTRAINT tipos_documentales_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tipos_oficina tipos_oficina_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tipos_oficina
+    ADD CONSTRAINT tipos_oficina_pkey PRIMARY KEY (tipo_id);
+
+
+--
+-- Name: tipos_relevo tipos_relevo_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tipos_relevo
+    ADD CONSTRAINT tipos_relevo_pkey PRIMARY KEY (origen_id, destino_ambito_id);
 
 
 --
@@ -1475,11 +1868,17 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- Name: valores_documento valores_documento_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: documentos_oficina_periodo; Type: INDEX; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.valores_documento
-    ADD CONSTRAINT valores_documento_pkey PRIMARY KEY (documento_id, campo_id);
+CREATE INDEX documentos_oficina_periodo ON public.documentos_oficina USING btree (periodo_id);
+
+
+--
+-- Name: documentos_relaciones_origen; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX documentos_relaciones_origen ON public.documentos_relaciones USING btree (origen_id);
 
 
 --
@@ -1504,10 +1903,38 @@ CREATE INDEX ix_documentos_autor_fecha ON public.documentos USING btree (registr
 
 
 --
--- Name: ix_documentos_relaciones_origen; Type: INDEX; Schema: public; Owner: -
+-- Name: oficina_periodo_abierto; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_documentos_relaciones_origen ON public.documentos_relaciones USING btree (origen_id);
+CREATE UNIQUE INDEX oficina_periodo_abierto ON public.oficina_periodos USING btree (oficina_id) WHERE (fin IS NULL);
+
+
+--
+-- Name: oficina_periodos_usuario; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX oficina_periodos_usuario ON public.oficina_periodos USING btree (usuario_id, oficina_id);
+
+
+--
+-- Name: pdf_retenciones_pendientes; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pdf_retenciones_pendientes ON public.pdf_retenciones_anulacion USING btree (vence_en, reintentar_desde) WHERE (eliminado_en IS NULL);
+
+
+--
+-- Name: usuario_periodo_abierto; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX usuario_periodo_abierto ON public.oficina_periodos USING btree (usuario_id) WHERE (fin IS NULL);
+
+
+--
+-- Name: usuarios_oficina_activa_unica; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX usuarios_oficina_activa_unica ON public.usuarios USING btree (oficina_id) WHERE (activo AND (oficina_id IS NOT NULL));
 
 
 --
@@ -1546,6 +1973,48 @@ CREATE UNIQUE INDEX ux_ubicacion_vigente ON public.ubicaciones_documento USING b
 
 
 --
+-- Name: documentos a_exigir_oficina_autor; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER a_exigir_oficina_autor BEFORE INSERT ON public.documentos FOR EACH ROW EXECUTE FUNCTION public.exigir_oficina_autor();
+
+
+--
+-- Name: delegaciones_documento a_proteger_historico; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER a_proteger_historico BEFORE INSERT OR DELETE OR UPDATE ON public.delegaciones_documento FOR EACH ROW EXECUTE FUNCTION public.proteger_documento_historico();
+
+
+--
+-- Name: documentos a_proteger_historico; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER a_proteger_historico BEFORE UPDATE ON public.documentos FOR EACH ROW EXECUTE FUNCTION public.proteger_documento_historico();
+
+
+--
+-- Name: documentos_pdf a_proteger_historico; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER a_proteger_historico BEFORE INSERT OR DELETE OR UPDATE ON public.documentos_pdf FOR EACH ROW EXECUTE FUNCTION public.proteger_documento_historico();
+
+
+--
+-- Name: pdf_cargas a_proteger_historico; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER a_proteger_historico BEFORE INSERT OR DELETE OR UPDATE ON public.pdf_cargas FOR EACH ROW EXECUTE FUNCTION public.proteger_documento_historico();
+
+
+--
+-- Name: ubicaciones_documento a_proteger_historico; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER a_proteger_historico BEFORE INSERT OR DELETE OR UPDATE ON public.ubicaciones_documento FOR EACH ROW EXECUTE FUNCTION public.proteger_documento_historico();
+
+
+--
 -- Name: delegaciones_documento aplicar_delegacion; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -1581,24 +2050,10 @@ CREATE TRIGGER auditar_pdf AFTER INSERT OR DELETE OR UPDATE ON public.documentos
 
 
 --
--- Name: valores_documento auditar_valor_documento; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER auditar_valor_documento AFTER INSERT OR UPDATE ON public.valores_documento FOR EACH ROW EXECUTE FUNCTION public.auditar_valor_documento();
-
-
---
 -- Name: documentos documento_estado_con_hecho; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE CONSTRAINT TRIGGER documento_estado_con_hecho AFTER INSERT OR UPDATE ON public.documentos DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.validar_estado_final();
-
-
---
--- Name: campos_opcionales no_borrar_campo; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER no_borrar_campo BEFORE DELETE ON public.campos_opcionales FOR EACH ROW EXECUTE FUNCTION public.impedir_cambio_historico();
 
 
 --
@@ -1613,13 +2068,6 @@ CREATE TRIGGER no_borrar_documento BEFORE DELETE ON public.documentos FOR EACH R
 --
 
 CREATE TRIGGER no_borrar_ubicacion BEFORE DELETE ON public.ubicaciones_documento FOR EACH ROW EXECUTE FUNCTION public.impedir_cambio_historico();
-
-
---
--- Name: valores_documento no_borrar_valor; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER no_borrar_valor BEFORE DELETE ON public.valores_documento FOR EACH ROW EXECUTE FUNCTION public.impedir_cambio_historico();
 
 
 --
@@ -1672,10 +2120,10 @@ CREATE TRIGGER no_truncar_ubicaciones BEFORE TRUNCATE ON public.ubicaciones_docu
 
 
 --
--- Name: valores_documento no_truncar_valores; Type: TRIGGER; Schema: public; Owner: -
+-- Name: documentos proteger_anulacion_decidida_por_direccion; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER no_truncar_valores BEFORE TRUNCATE ON public.valores_documento FOR EACH STATEMENT EXECUTE FUNCTION public.impedir_truncado();
+CREATE TRIGGER proteger_anulacion_decidida_por_direccion BEFORE UPDATE OF situacion ON public.documentos FOR EACH ROW WHEN (((old.situacion IS DISTINCT FROM new.situacion) AND (new.situacion = 'ANULADO'::text))) EXECUTE FUNCTION public.proteger_anulacion_decidida_por_direccion();
 
 
 --
@@ -1690,13 +2138,6 @@ CREATE TRIGGER proteger_auditoria_configuracion BEFORE DELETE OR UPDATE ON publi
 --
 
 CREATE TRIGGER proteger_auditoria_documental BEFORE DELETE OR UPDATE ON public.auditoria_documental FOR EACH ROW EXECUTE FUNCTION public.impedir_cambio_historico();
-
-
---
--- Name: cambios_nombre_campo proteger_cambios_campo; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER proteger_cambios_campo BEFORE DELETE OR UPDATE ON public.cambios_nombre_campo FOR EACH ROW EXECUTE FUNCTION public.impedir_cambio_historico();
 
 
 --
@@ -1721,10 +2162,10 @@ CREATE TRIGGER proteger_relaciones BEFORE DELETE OR UPDATE ON public.documentos_
 
 
 --
--- Name: campos_opcionales registrar_cambio_nombre_campo; Type: TRIGGER; Schema: public; Owner: -
+-- Name: usuarios sincronizar_periodo_oficina; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER registrar_cambio_nombre_campo BEFORE UPDATE ON public.campos_opcionales FOR EACH ROW EXECUTE FUNCTION public.registrar_cambio_nombre_campo();
+CREATE TRIGGER sincronizar_periodo_oficina AFTER INSERT OR UPDATE OF activo, oficina_id ON public.usuarios FOR EACH ROW EXECUTE FUNCTION public.sincronizar_periodo_oficina();
 
 
 --
@@ -1739,6 +2180,13 @@ CREATE TRIGGER validar_delegacion BEFORE INSERT ON public.delegaciones_documento
 --
 
 CREATE TRIGGER validar_documento_actualizacion BEFORE UPDATE ON public.documentos FOR EACH ROW EXECUTE FUNCTION public.validar_documento_actualizacion();
+
+
+--
+-- Name: tipos_relevo validar_mapeo_tipo_relevo; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER validar_mapeo_tipo_relevo BEFORE INSERT ON public.tipos_relevo FOR EACH ROW EXECUTE FUNCTION public.validar_mapeo_tipo_relevo();
 
 
 --
@@ -1791,10 +2239,24 @@ CREATE TRIGGER validar_usuario_oficina BEFORE INSERT OR UPDATE ON public.usuario
 
 
 --
--- Name: valores_documento validar_valor_documento; Type: TRIGGER; Schema: public; Owner: -
+-- Name: documentos z_programar_retencion_pdf; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER validar_valor_documento BEFORE INSERT ON public.valores_documento FOR EACH ROW EXECUTE FUNCTION public.validar_valor_documento();
+CREATE TRIGGER z_programar_retencion_pdf AFTER UPDATE OF situacion ON public.documentos FOR EACH ROW EXECUTE FUNCTION public.programar_retencion_pdf_anulado();
+
+
+--
+-- Name: documentos z_registrar_oficina_documento; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER z_registrar_oficina_documento AFTER INSERT ON public.documentos FOR EACH ROW EXECUTE FUNCTION public.registrar_oficina_documento();
+
+
+--
+-- Name: tipos_documentales z_registrar_oficina_tipo; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER z_registrar_oficina_tipo AFTER INSERT ON public.tipos_documentales FOR EACH ROW EXECUTE FUNCTION public.registrar_oficina_tipo();
 
 
 --
@@ -1827,38 +2289,6 @@ ALTER TABLE ONLY public.auditoria_documental
 
 ALTER TABLE ONLY public.auditoria_documental
     ADD CONSTRAINT auditoria_documental_documento_id_fkey FOREIGN KEY (documento_id) REFERENCES public.documentos(id);
-
-
---
--- Name: cambios_nombre_campo cambios_nombre_campo_actor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.cambios_nombre_campo
-    ADD CONSTRAINT cambios_nombre_campo_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.usuarios(id);
-
-
---
--- Name: cambios_nombre_campo cambios_nombre_campo_campo_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.cambios_nombre_campo
-    ADD CONSTRAINT cambios_nombre_campo_campo_id_fkey FOREIGN KEY (campo_id) REFERENCES public.campos_opcionales(id);
-
-
---
--- Name: campos_opcionales campos_opcionales_creado_por_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.campos_opcionales
-    ADD CONSTRAINT campos_opcionales_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES public.usuarios(id);
-
-
---
--- Name: campos_opcionales campos_opcionales_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.campos_opcionales
-    ADD CONSTRAINT campos_opcionales_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id);
 
 
 --
@@ -1915,6 +2345,22 @@ ALTER TABLE ONLY public.delegaciones_documento
 
 ALTER TABLE ONLY public.documentos
     ADD CONSTRAINT documentos_ambito_id_registrado_por_fkey FOREIGN KEY (ambito_id, registrado_por) REFERENCES public.miembros_ambito(ambito_id, usuario_id);
+
+
+--
+-- Name: documentos_oficina documentos_oficina_documento_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.documentos_oficina
+    ADD CONSTRAINT documentos_oficina_documento_id_fkey FOREIGN KEY (documento_id) REFERENCES public.documentos(id);
+
+
+--
+-- Name: documentos_oficina documentos_oficina_periodo_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.documentos_oficina
+    ADD CONSTRAINT documentos_oficina_periodo_id_fkey FOREIGN KEY (periodo_id) REFERENCES public.oficina_periodos(id);
 
 
 --
@@ -1982,6 +2428,22 @@ ALTER TABLE ONLY public.miembros_ambito
 
 
 --
+-- Name: oficina_periodos oficina_periodos_oficina_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oficina_periodos
+    ADD CONSTRAINT oficina_periodos_oficina_id_fkey FOREIGN KEY (oficina_id) REFERENCES public.oficinas(id);
+
+
+--
+-- Name: oficina_periodos oficina_periodos_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oficina_periodos
+    ADD CONSTRAINT oficina_periodos_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id);
+
+
+--
 -- Name: pdf_cargas pdf_cargas_actor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2022,6 +2484,14 @@ ALTER TABLE ONLY public.pdf_objetos_pendientes
 
 
 --
+-- Name: pdf_retenciones_anulacion pdf_retenciones_anulacion_documento_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pdf_retenciones_anulacion
+    ADD CONSTRAINT pdf_retenciones_anulacion_documento_id_fkey FOREIGN KEY (documento_id) REFERENCES public.documentos(id);
+
+
+--
 -- Name: tipos_documentales tipos_documentales_ambito_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2035,6 +2505,46 @@ ALTER TABLE ONLY public.tipos_documentales
 
 ALTER TABLE ONLY public.tipos_documentales
     ADD CONSTRAINT tipos_documentales_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES public.usuarios(id);
+
+
+--
+-- Name: tipos_oficina tipos_oficina_oficina_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tipos_oficina
+    ADD CONSTRAINT tipos_oficina_oficina_id_fkey FOREIGN KEY (oficina_id) REFERENCES public.oficinas(id);
+
+
+--
+-- Name: tipos_oficina tipos_oficina_tipo_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tipos_oficina
+    ADD CONSTRAINT tipos_oficina_tipo_id_fkey FOREIGN KEY (tipo_id) REFERENCES public.tipos_documentales(id) ON DELETE CASCADE;
+
+
+--
+-- Name: tipos_relevo tipos_relevo_destino_ambito_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tipos_relevo
+    ADD CONSTRAINT tipos_relevo_destino_ambito_id_fkey FOREIGN KEY (destino_ambito_id) REFERENCES public.ambitos_registro(id);
+
+
+--
+-- Name: tipos_relevo tipos_relevo_origen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tipos_relevo
+    ADD CONSTRAINT tipos_relevo_origen_id_fkey FOREIGN KEY (origen_id) REFERENCES public.tipos_documentales(id);
+
+
+--
+-- Name: tipos_relevo tipos_relevo_tipo_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tipos_relevo
+    ADD CONSTRAINT tipos_relevo_tipo_id_fkey FOREIGN KEY (tipo_id) REFERENCES public.tipos_documentales(id);
 
 
 --
@@ -2094,28 +2604,13 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- Name: valores_documento valores_documento_campo_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.valores_documento
-    ADD CONSTRAINT valores_documento_campo_id_fkey FOREIGN KEY (campo_id) REFERENCES public.campos_opcionales(id);
-
-
---
--- Name: valores_documento valores_documento_documento_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.valores_documento
-    ADD CONSTRAINT valores_documento_documento_id_fkey FOREIGN KEY (documento_id) REFERENCES public.documentos(id);
-
-
---
 -- PostgreSQL database dump complete
 --
 
-\unrestrict zmMsG8IhrmJ7p8UA5S0qavQRSSBeH5xCUkldp9U7OhYAnPtWZ44qEmHQbx5aRHl
+\unrestrict uWGQH7LHLDj48aLvvpEHnjXD4hZjcIzdCkj2LO0Jtuqt6dx3AOQMEHZ3RMw69SL
 
 
+SET search_path = public;
 INSERT INTO roles(id,codigo) VALUES(1,'SUPERADMINISTRADOR'),(2,'ADMINISTRADOR'),(3,'DIRECTOR'),(4,'SECRETARIA_DIRECCION'),(5,'USUARIO');
 INSERT INTO oficinas(nombre) VALUES('Dirección'),('Mesa de Partes');
 INSERT INTO ambitos_registro(clase) VALUES('COMPARTIDO_DIRECCION');

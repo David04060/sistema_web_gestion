@@ -44,11 +44,6 @@ export async function opciones(actor: string) {
           [ambito],
         )
       ).rows,
-      campos: [], // Compatibilidad durante el despliegue del frontend.
-      // Compatibilidad con pestañas que aún cargaron el selector anterior.
-      destinatarios: (await cliente.query(
-        "SELECT id::text,concat_ws(' ',nombre,apellido) nombre,oficina_id::text FROM usuarios WHERE activo ORDER BY nombre,apellido,id LIMIT 20",
-      )).rows,
       oficinas: (
         await cliente.query('SELECT id::text,nombre FROM oficinas WHERE activa ORDER BY nombre')
       ).rows,
@@ -171,12 +166,6 @@ export async function listar(actor: string, f: z.infer<typeof filtros>) {
 export async function detalle(actor: string, documentoId: string) {
   return operacion(actor, 'Consulta', async (cliente, identidad) => {
     const d = await documento(cliente, identidad, documentoId);
-    const valores = (
-      await cliente.query(
-        'SELECT campo_id::text,nombre_guardado,valor FROM valores_documento WHERE documento_id=$1 ORDER BY campo_id',
-        [documentoId],
-      )
-    ).rows;
     const destino =
       (
         await cliente.query(
@@ -199,7 +188,6 @@ export async function detalle(actor: string, documentoId: string) {
     return {
       documento: {
         ...d,
-        valores,
         delegacion: destino,
         ubicacion: lugar,
         relacionados,
@@ -257,7 +245,7 @@ export async function buscarDestinatarios(actor: string, filtro: z.infer<typeof 
   });
 }
 
-/** Alta atómica con valores históricos, relación y ubicación; el trigger asigna el correlativo. */
+/** Alta atómica con relación y ubicación; el trigger asigna el correlativo. */
 export async function registrar(actor: string, datos: z.infer<typeof alta>) {
   const nuevo = await operacion(actor, 'Registro', async (cliente, identidad) => {
     const ambito = exigirAmbito(identidad);

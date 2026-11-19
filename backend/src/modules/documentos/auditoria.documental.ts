@@ -25,10 +25,6 @@ export function datosAuditoria(anterior: unknown, posterior: unknown) {
     persona: 'Persona indicada',
     ruta: 'Ubicación',
   };
-  if ('valor' in anteriorPublico || 'valor' in posteriorPublico)
-    campos.valor = String(
-      posteriorPublico.nombre_guardado ?? anteriorPublico.nombre_guardado ?? 'Campo opcional',
-    );
   const texto = (v: unknown) =>
     typeof v === 'string' && v.trim()
       ? (etiquetas[v] ?? v)

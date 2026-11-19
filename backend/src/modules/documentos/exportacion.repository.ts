@@ -24,7 +24,6 @@ export interface RegistroExcel {
   delegado_por: string | null;
   delegacion_fecha: Date | null;
   delegacion_observaciones: string | null;
-  opcionales: Array<{ nombre: string; valor: string }>;
   pdf_nombre: string | null;
   pdf_bytes: number | null;
   pdf_mime: string | null;
@@ -43,9 +42,6 @@ const seleccion = `SELECT d.codigo_visible codigo,d.tipo_nombre_guardado tipo,d.
   CASE WHEN de.id IS NULL THEN NULL ELSE concat_ws(' ',de.nombre,
   de.apellido) END delegado_por,
  e.delegado_en delegacion_fecha,e.observaciones delegacion_observaciones,
-  coalesce((SELECT jsonb_agg(jsonb_build_object('nombre',v.nombre_guardado,
-  'valor',v.valor) ORDER BY v.campo_id) FROM valores_documento v WHERE v.documento_id=d.id),
-  '[]'::jsonb) opcionales,
  p.nombre pdf_nombre,p.tamano_bytes pdf_bytes,p.tipo_mime pdf_mime,
   p.actualizado_en pdf_fecha
  FROM documentos d JOIN usuarios u ON u.id=d.registrado_por

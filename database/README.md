@@ -42,12 +42,9 @@ No usar los scripts antiguos de migración, Neon, QA ni circulación con este es
 | ambitos_registro | Ámbito compartido único y un ámbito personal por Usuario |
 | miembros_ambito | Una pertenencia por cuenta; FK compuesta usada por documentos |
 | tipos_documentales | Nombre y prefijo únicos dentro de cada ámbito |
-| campos_opcionales | Configuración administrativa por Usuario; no se borra |
-| cambios_nombre_campo | Historia inmutable de nombres, actor, motivo y fecha |
 | unidades_ubicacion | Árbol opcional propio de cada cuenta con oficina; clase y nombre libres |
 | correlativos_documentales | Contador bloqueado transaccionalmente por ámbito, tipo y año |
 | documentos | Identidad global; código visible dentro del ámbito; clasificación, situación y revisión |
-| valores_documento | Nombre histórico y valor del campo; FK al documento y campo |
 | delegaciones_documento | Una constancia de destino; no transfiere ámbito ni acceso |
 | ubicaciones_documento | Unidad seleccionada y ruta histórica; una ubicación vigente |
 | documentos_relaciones | Documento nuevo con origen en el mismo ámbito; sin autorreferencia/ciclos |
@@ -55,7 +52,7 @@ No usar los scripts antiguos de migración, Neon, QA ni circulación con este es
 | pdf_cargas | Preparación, actor, vencimiento y revisión PDF esperada |
 | pdf_objetos_pendientes | Limpieza durable de temporales y objetos desvinculados; sin versiones descargables |
 | pdf_eventos | Auditoría técnica inmutable de carga, sustitución, borrado y limpieza |
-| auditoria_documental | Registro, corrección, anulación, delegación, ubicación, campos y PDF |
+| auditoria_documental | Registro, corrección, anulación, delegación, ubicación y PDF |
 | auditoria_configuracion | Cambios administrativos auditados; sin hashes ni contraseñas en las respuestas |
 
 ## Triggers e integridad
@@ -67,7 +64,7 @@ documento protegen autoría, ámbito, código y clasificación, exigen motivo pa
 corregir/anular y registran antes/después. Los de delegación y ubicación insertan
 sus hechos y actualizan situación en la misma transacción. La comprobación
 diferida impide situaciones sin el hecho correspondiente. Los de unidades evitan
-padres ajenos/cíclicos. Los de campos conservan el nombre histórico al renombrar.
+padres ajenos/cíclicos.
 Los de PDF verifican actor, permiso, tamaño y metadatos, agregan auditoría y
 programan limpieza. Los históricos prohíben actualización/borrado, y los triggers
 de truncado protegen registros y auditorías.
@@ -98,6 +95,23 @@ existente (`postgres`); no es una recomendación para producción. El esquema
 entregado no incluye un rol de conexión limitado. Este backend no se publica
 ni conecta a Neon en esta etapa.
 
-## Incremental posterior a la instantánea
+## Instalación actual y limpieza 014
 
-Aplicar también changes/007-retencion-pdf-anulados.sql en instalaciones nuevas. Programa la retención de PDF anulados desde su auditoría, sin eliminar documentos. Véase [RETENCION_PDF_ANULADOS](../docs/RETENCION_PDF_ANULADOS.md).
+El instalador completo se regeneró desde el catálogo local depurado: 23 tablas,
+35 funciones y 41 disparadores. Incluye el esquema funcional de 007–013 y la
+retirada 014. Para una base NUEVA vacía se ejecuta únicamente el instalador;
+no se vuelven a aplicar los incrementales históricos sobre esa instantánea.
+El runner de pruebas aisladas usa también ese instalador completo. En esta tarea
+no se ejecutó ese runner ni se creó una base o clúster.
+
+Para una instalación existente anterior a esta limpieza se aplica solamente
+`changes/014-retirar-campos-opcionales.sql`, después de inventariar dependencias
+y verificar un respaldo. Retira las tres tablas y funciones exclusivas, elimina
+solo auditoría de entidad `CAMPO_OPCIONAL`, conserva las protecciones generales
+y conserva `documentos_relaciones_origen` como índice de búsqueda de origen.
+No utiliza CASCADE ni cambia funciones de permisos. Las migraciones 001–013
+se conservan como historial y no deben reejecutarse para recuperar objetos retirados.
+
+La alineación de las dos funciones locales de permisos con las definiciones
+productivas comprobadas se realizó por separado; no forma parte del DDL de 014.
+Véase el informe de retirada para las pruebas y límites.

@@ -22,10 +22,9 @@ END $$;
 -- Name: validar_usuario_oficina(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE OR REPLACE FUNCTION public.validar_usuario_oficina()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
+CREATE FUNCTION public.validar_usuario_oficina() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
 DECLARE o text;
 BEGIN
   IF NEW.oficina_id IS NOT NULL AND
@@ -33,10 +32,10 @@ BEGIN
      NOT EXISTS(SELECT 1 FROM public.oficinas WHERE id=NEW.oficina_id AND activa) THEN
     RAISE EXCEPTION 'Una oficina inactiva no admite nuevas asignaciones';
   END IF;
-  IF NEW.rol_id=3 THEN
+  IF NEW.rol_id=3 AND NEW.oficina_id IS NOT NULL THEN
     SELECT nombre INTO o FROM oficinas WHERE id=NEW.oficina_id;
     IF o IS DISTINCT FROM 'Dirección' THEN RAISE EXCEPTION 'Dirección requiere su oficina'; END IF;
-  ELSIF NEW.rol_id=4 THEN
+  ELSIF NEW.rol_id=4 AND NEW.oficina_id IS NOT NULL THEN
     SELECT nombre INTO o FROM oficinas WHERE id=NEW.oficina_id;
     IF o IS DISTINCT FROM 'Mesa de Partes' THEN RAISE EXCEPTION 'Secretaría requiere Mesa de Partes'; END IF;
   ELSIF NEW.rol_id IN (1,2) AND NEW.oficina_id IS NOT NULL THEN
@@ -45,9 +44,12 @@ BEGIN
   IF NEW.rol_id=5 AND EXISTS(SELECT 1 FROM oficinas WHERE id=NEW.oficina_id AND nombre IN('Dirección','Mesa de Partes')) THEN RAISE EXCEPTION 'Usuario no puede asignarse a Dirección ni Mesa de Partes'; END IF;
   NEW.actualizada_en:=clock_timestamp();
   RETURN NEW;
-END $function$;
+END $$;
 
 
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
 
 --
 -- Name: ambitos_registro; Type: TABLE; Schema: public; Owner: -
@@ -121,7 +123,9 @@ ALTER TABLE public.oficinas ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 CREATE TABLE public.roles (
     id smallint NOT NULL,
     codigo text NOT NULL,
-    CONSTRAINT roles_codigo_check CHECK ((codigo = ANY (ARRAY['SUPERADMINISTRADOR'::text, 'ADMINISTRADOR'::text, 'DIRECTOR'::text, 'SECRETARIA_DIRECCION'::text, 'USUARIO'::text])))
+    nombre_visible text,
+    CONSTRAINT roles_codigo_check CHECK ((codigo = ANY (ARRAY['SUPERADMINISTRADOR'::text, 'ADMINISTRADOR'::text, 'DIRECTOR'::text, 'SECRETARIA_DIRECCION'::text, 'USUARIO'::text]))),
+    CONSTRAINT roles_nombre_visible_check CHECK (((nombre_visible IS NULL) OR ((char_length(btrim(nombre_visible)) >= 1) AND (char_length(btrim(nombre_visible)) <= 250))))
 );
 
 
@@ -270,6 +274,20 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
+-- Name: usuarios_oficina_activa_unica; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX usuarios_oficina_activa_unica ON public.usuarios USING btree (oficina_id) WHERE (activo AND (oficina_id IS NOT NULL));
+
+
+--
+-- Name: usuarios sincronizar_periodo_oficina; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER sincronizar_periodo_oficina AFTER INSERT OR UPDATE OF activo, oficina_id ON public.usuarios FOR EACH ROW EXECUTE FUNCTION public.sincronizar_periodo_oficina();
+
+
+--
 -- Name: miembros_ambito validar_miembro_ambito; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -323,3 +341,8 @@ ALTER TABLE ONLY public.usuarios
     ADD CONSTRAINT usuarios_rol_id_fkey FOREIGN KEY (rol_id) REFERENCES public.roles(id);
 
 
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict uWGQH7LHLDj48aLvvpEHnjXD4hZjcIzdCkj2LO0Jtuqt6dx3AOQMEHZ3RMw69SL

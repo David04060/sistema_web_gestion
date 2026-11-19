@@ -15,6 +15,7 @@
     "test:revision:local": "npm run build && node scripts/probar-backend-aislado.mjs revision",
     "test:unitarias:heredadas": "npm run build && node scripts/probar-backend-aislado.mjs unitarias-heredadas",
     "test:guard": "node --test tests/entorno-prueba.test.mjs",
+    "test:limpieza:local": "npm run build && node tests/limpieza-campos.local.test.mjs",
     "schema:documentar": "node scripts/documentar-base-documental.mjs",
     "hash:local": "npm run build && node scripts/generar-hash-local.mjs"
   },

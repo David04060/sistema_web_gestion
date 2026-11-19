@@ -75,27 +75,12 @@ function fechaExcel(valor: Date): Date {
     `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}.${String(valor.getUTCMilliseconds()).padStart(3, '0')}Z`,
   );
 }
-/** Divide campos completos sin cortar pares sustitutos Unicode ni perder nombres históricos. */
-function partesOpcionales(r: RegistroExcel): string[] {
-  let texto = r.opcionales.map((v) => `${v.nombre}: ${v.valor}`).join('\n');
-  const partes: string[] = [];
-  while (texto.length) {
-    let fin = Math.min(30000, texto.length);
-    if (fin < texto.length && /[\uD800-\uDBFF]/.test(texto[fin - 1]!)) fin--;
-    partes.push(texto.slice(0, fin));
-    texto = texto.slice(fin);
-  }
-  return partes;
-}
-
 /** Texto explícito (nunca objetos formula/hyperlink), ZIP por flujo y filas liberadas al confirmar. */
 export async function escribirExcel(
   ruta: string,
   registros: RegistroExcel[],
   actualizado: Date,
 ): Promise<void> {
-  const partes = registros.map(partesOpcionales),
-    cantidad = Math.max(1, ...partes.map((p) => p.length));
   for (const registro of registros)
     for (const columna of columnas) {
       const valor = registro[columna.key];
@@ -117,17 +102,7 @@ export async function escribirExcel(
     libro.creator = 'I.E. Enrique Paillardelle';
     libro.created = actualizado;
     const hoja = libro.addWorksheet('Documentos', { views: [{ state: 'frozen', ySplit: 1 }] });
-    hoja.columns = [
-      ...columnas.map((c) => ({ header: c.header, key: c.key, width: c.width })),
-      ...Array.from({ length: cantidad }, (_, i) => ({
-        header:
-          cantidad === 1
-            ? 'Campos opcionales (nombre histórico: valor)'
-            : `Campos opcionales (${i + 1}/${cantidad}; continuación)`,
-        key: 'opcional_' + i,
-        width: 60,
-      })),
-    ];
+    hoja.columns = columnas.map((c) => ({ header: c.header, key: c.key, width: c.width }));
     hoja.autoFilter = {
       from: { row: 1, column: 1 },
       to: { row: Math.max(1, registros.length + 1), column: hoja.columns.length },
@@ -143,7 +118,6 @@ export async function escribirExcel(
     for (let i = 0; i < registros.length; i++) {
       const r = registros[i]!;
       const valores: ExcelJS.CellValue[] = columnas.map((col) => valorCelda(col, r));
-      valores.push(...Array.from({ length: cantidad }, (_, j) => partes[i]?.[j] ?? null));
       const fila = hoja.addRow(valores);
       fila.alignment = { vertical: 'top', wrapText: true };
       fila.font = { name: 'Calibri', size: 11 };

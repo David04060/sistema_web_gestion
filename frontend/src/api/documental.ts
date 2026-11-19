@@ -52,7 +52,6 @@ export const permisosSchema = z.object({
 });
 export const detalleSchema = z.object({
   documento: documentoSchema.extend({
-    valores: z.array(z.object({ campo_id: id, nombre_guardado: z.string(), valor: z.string() })),
     delegacion: z
       .object({
         nombre_persona_guardado: z.string(),

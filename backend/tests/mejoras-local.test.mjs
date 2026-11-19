@@ -11,7 +11,6 @@ import {datosAuditoria} from '../dist/modules/documentos/auditoria.documental.js
 test('Auditoría normalizada: datos reales legibles, sin identificadores ni claves privadas',()=>{
  assert.deepEqual(datosAuditoria({asunto:null},{asunto:''}),[]);
  assert.deepEqual(datosAuditoria(null,{nombre:'Archivo.pdf',tamano_bytes:123,clave_r2:'privado',documento_id:1,revision:'interna'}),[{campo:'Nombre del PDF',anterior:null,posterior:'Archivo.pdf'},{campo:'Tamaño del PDF (bytes)',anterior:null,posterior:'123'}]);
- assert.deepEqual(datosAuditoria({valor:'Antes',nombre_guardado:'Etiqueta histórica'},{valor:'Después',nombre_guardado:'Etiqueta histórica'}),[{campo:'Etiqueta histórica',anterior:'Antes',posterior:'Después'}]);
 });
 
 test('Mejoras locales por HTTP y PostgreSQL real: fixtures revertidos íntegramente',async t=>{
@@ -76,7 +75,7 @@ test('Mejoras locales por HTTP y PostgreSQL real: fixtures revertidos íntegrame
    for (const [ruta, metodo] of [['/campos-opcionales','GET'],['/campos-opcionales','POST'],['/campos-opcionales/1','PUT']])
     assert.equal((await pedir(admin,ruta,metodo)).status,404);
    for(const cuenta of [director,secretaria,usuario])
-    assert.deepEqual((await pedir(cuenta,'/documentos/opciones')).body.campos,[]);
+    assert.ok(!('campos' in (await pedir(cuenta,'/documentos/opciones')).body));
   });
   await t.test('Crear lugar y contenido propio; rechazar padre ajeno y ciclos; ruta documental legible',async()=>{
    const r=await pedir(usuario,'/ubicaciones','POST',{clase:'Lugar',nombre:'Estante PRUEBA LOCAL',padre_id:null});assert.equal(r.status,201);lugar=r.body.id;

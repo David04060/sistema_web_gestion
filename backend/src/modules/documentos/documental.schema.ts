@@ -45,8 +45,6 @@ export const alta = z
     unidad_id: id.nullable().optional(),
     origen_id: id.optional(),
     destino: destinoDelegacion.superRefine(validarDestino).optional(),
-    // Acepta el arreglo vacío de pestañas abiertas antes de la retirada.
-    valores: z.tuple([]).optional(),
   })
   .strict();
 export const correccion = z
@@ -56,8 +54,6 @@ export const correccion = z
     asunto: z.string().trim().min(1).max(20000),
     remitente: texto,
     observaciones: texto,
-    // Acepta el arreglo vacío de pestañas abiertas antes de la retirada.
-    valores: z.tuple([]).optional(),
   })
   .strict();
 export const ubicacion = z.object({ revision: id, unidad_id: id }).strict();

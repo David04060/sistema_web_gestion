@@ -13,12 +13,12 @@ mkdirSync('.private/render-tipos',{recursive:true});
 const file=resolve('.private/render-tipos/entrada.mjs');writeFileSync(file,chunk.code);
 const m=await import(pathToFileURL(file).href);
 const doc={id:'9007199254740993',ambito_id:'20',tipo_id:'9007199254740994',registrado_por:'8',registrado_por_nombre:'Nombre de contrato',tipo_nombre_guardado:'Informe histórico',clasificacion:'RECIBIDO',asunto:'Prueba de contrato en memoria',remitente:null,observaciones:null,codigo_visible:'INF2026001',situacion:'PERSONAL',revision:'1',creado_en:'2026-11-01T12:00:00Z',actualizado_en:'2026-11-01T12:00:00Z'};
-const opciones={ambito_id:'20',tipos:[],campos:[],unidades:[],destinatarios:[{id:'90',nombre:'Persona elegible',oficina_id:'1'},{id:'91',nombre:'Otra oficina',oficina_id:'2'}],oficinas:[{id:'1',nombre:'Oficina elegible'},{id:'2',nombre:'Otra oficina'},{id:'3',nombre:'Sin personas'}]};
+const opciones={ambito_id:'20',tipos:[],unidades:[],destinatarios:[{id:'90',nombre:'Persona elegible',oficina_id:'1'},{id:'91',nombre:'Otra oficina',oficina_id:'2'}],oficinas:[{id:'1',nombre:'Oficina elegible'},{id:'2',nombre:'Otra oficina'},{id:'3',nombre:'Sin personas'}]};
 test('Los contratos documentales nuevos conservan bigint como texto y exigen capacidades backend',()=>{
  assert.equal(m.documentoSchema.parse(doc).id,doc.id);assert.equal(m.documentoSchema.safeParse({...doc,tipo_id:123}).success,false);
  const permisos={relacionar:true,corregir:false,anular:false,delegar:false,ubicar:false,pdf:false};
- const d=m.detalleSchema.parse({documento:{...doc,valores:[{campo_id:'4',nombre_guardado:'Etiqueta anterior',valor:'Valor histórico'}],delegacion:null,ubicacion:null,relacionados:[],permisos}}).documento;
- assert.deepEqual(d.permisos,permisos);assert.equal(d.valores[0].nombre_guardado,'Etiqueta anterior');
+ const d=m.detalleSchema.parse({documento:{...doc,delegacion:null,ubicacion:null,relacionados:[],permisos}}).documento;
+ assert.deepEqual(d.permisos,permisos);
  assert.equal(m.detalleSchema.safeParse({documento:{...d,permisos:undefined}}).success,false);
 });
 test('Cinco perfiles: Administrador sin documentos y navegación sin circuitos retirados',()=>{
@@ -44,7 +44,7 @@ test('Delegación exige persona; modo manual no envía oficina ni usuario y no t
 });
 test('API vigente: filtros, revisión, motivo, delegación y configuración usan endpoints nuevos',async()=>{
  const original=globalThis.fetch,peticiones=[];
- globalThis.fetch=async(ruta,opciones)=>{peticiones.push({ruta,opciones});if(ruta.includes('/documentos?'))return Response.json({documentos:[doc],total:1,pagina:1,limite:20});if(ruta.endsWith('/anular'))return Response.json({anulado:true});if(ruta.includes('/ubicaciones')&&opciones.method==='PUT')return Response.json({actualizado:true});return Response.json({documento:{...doc,valores:[],delegacion:null,ubicacion:null,relacionados:[],permisos:{relacionar:true,corregir:true,anular:true,delegar:true,ubicar:false,pdf:true}}});};
+ globalThis.fetch=async(ruta,opciones)=>{peticiones.push({ruta,opciones});if(ruta.includes('/documentos?'))return Response.json({documentos:[doc],total:1,pagina:1,limite:20});if(ruta.endsWith('/anular'))return Response.json({anulado:true});if(ruta.includes('/ubicaciones')&&opciones.method==='PUT')return Response.json({actualizado:true});return Response.json({documento:{...doc,delegacion:null,ubicacion:null,relacionados:[],permisos:{relacionar:true,corregir:true,anular:true,delegar:true,ubicar:false,pdf:true}}});};
  try{
   await m.api.lista('token','clasificacion=RECIBIDO');assert.equal(peticiones.at(-1).ruta,'/api/documentos?clasificacion=RECIBIDO');
   await m.api.corregir('token',doc.id,{revision:'2',motivo:'Corrección justificada',asunto:'Texto'});assert.equal(peticiones.at(-1).opciones.method,'PUT');assert.equal(JSON.parse(peticiones.at(-1).opciones.body).revision,'2');
@@ -69,7 +69,6 @@ test('Botones PDF: resumen simple y herramientas del visor según capacidad real
 });
 
 test('Historial legible conserva etiquetas históricas y no muestra claves privadas',()=>{
- assert.deepEqual(m.cambioLegible({nombre_guardado:'Referencia histórica',valor:'Antes'},{nombre_guardado:'Referencia histórica',valor:'Después'}),[{campo:'Referencia histórica',antes:'Antes',despues:'Después'}]);
  const cambios=m.cambioLegible(null,{persona:'Persona indicada',clave_r2:'privada/no-mostrar',revision:'uuid-interno'});
  assert.deepEqual(cambios,[{campo:'Persona indicada',antes:'—',despues:'Persona indicada'}]);
 });
