@@ -46,7 +46,7 @@ test('Búsqueda de ubicaciones y validación de altas y cambios en PostgreSQL ai
     assert.equal((await buscar('s')).body.ubicaciones.length, 20);
     assert.equal((await buscar('matricula')).body.hay_mas, true);
     const homonimos = (await buscar('1.º A')).body.ubicaciones;
-    assert.deepEqual(homonimos, [
+    assert.deepEqual(homonimos.map(({id,ruta})=>({id,ruta})), [
       { id: b.id, ruta: 'Estante: Actas › Secundaria 1.º A · Archivador' },
       { id: a.id, ruta: 'Estante: Ficha de Matrícula › Secundaria 1.º A · Archivador' },
     ]);

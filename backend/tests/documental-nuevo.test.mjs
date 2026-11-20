@@ -66,10 +66,10 @@ test('PostgreSQL aislado: identidad, esquema, acceso SQL y bloqueo concurrente s
   const antes=(await a.query('SELECT count(*)::int n FROM usuarios')).rows[0].n;
   const total=(await a.query("SELECT count(*)::int total,count(*) FILTER(WHERE situacion<>'ANULADO')::int ordinarios FROM documentos")).rows[0];
   const f=leerFixtures(),actores={1:f.cuentas.superadmin,2:f.cuentas.admin,3:f.cuentas.director,4:f.cuentas.secretaria,5:f.cuentas.usuario};
-  for(const rol of [1,2,3,4,5]){const u=actores[rol];const q=await a.query(`SELECT count(*)::int n FROM documentos d WHERE ${lecturaSQL}`,[u.id,rol,u.ambito_id??null]);const propios=(await a.query("SELECT count(*)::int n FROM documentos WHERE ambito_id=$1 AND situacion<>'ANULADO'",[u.ambito_id??null])).rows[0].n;assert.equal(q.rows[0].n,rol===1?total.total:[3,4].includes(rol)?total.ordinarios:rol===5?propios:0);}
+  for(const rol of [1,2,3,4,5]){const u=actores[rol];const q=await a.query(`SELECT count(*)::int n FROM documentos d WHERE ${lecturaSQL}`,[u.id,rol,u.ambito_id??null]);const propios=(await a.query("SELECT count(*)::int n FROM documentos WHERE ambito_id=$1 AND situacion<>'ANULADO'",[u.ambito_id??null])).rows[0].n;assert.equal(q.rows[0].n,rol===1?total.total:rol===3?total.ordinarios:[4,5].includes(rol)?propios:0);}
   const ids=[f.documentos.personal.id,f.documentos.otroPersonal.id,f.documentos.anulado.id];
   const ordenar=x=>x.toSorted((a,b)=>BigInt(a)<BigInt(b)?-1:1);
-  const esperados={1:ordenar(ids),2:[],3:ordenar(ids.slice(0,2)),4:ordenar(ids.slice(0,2)),5:[ids[0]]};
+  const esperados={1:ordenar(ids),2:[],3:ordenar(ids.slice(0,2)),4:[],5:[ids[0]]};
   for(const rol of [1,2,3,4,5]){
    const u=actores[rol];
    const visibles=(await a.query(`SELECT d.id::text FROM documentos d WHERE d.id=ANY($4::bigint[]) AND ${lecturaSQL} ORDER BY d.id`,[u.id,rol,u.ambito_id??null,ids])).rows.map(r=>r.id);

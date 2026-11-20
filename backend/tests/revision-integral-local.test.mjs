@@ -45,7 +45,8 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
    for(const actor of [ids.a,ids.b,sec])ids['doc'+actor]=(await ok(actor,'/documentos','POST',{tipo_id:ids['tipo'+actor],clasificacion:'RECIBIDO',asunto:'PRUEBA REVISIÓN INTEGRAL '+marca},201)).documento;
    const docs=[ids['doc'+ids.a],ids['doc'+ids.b],ids['doc'+sec]];assert.equal(new Set(docs.map(d=>d.codigo_visible)).size,1);
    const codigo=docs[0].codigo_visible;ids.codigo=codigo;
-   for(const actor of [dir,sec,su]){const p=await ok(actor,'/documentos?q='+codigo+'&limite=1');assert.equal(p.total,3);assert.equal(p.documentos.length,1);const p2=await ok(actor,'/documentos?q='+codigo+'&limite=1&pagina=2');assert.equal(p2.total,3);assert.notEqual(p.documentos[0].id,p2.documentos[0].id);assert.ok(p.documentos[0].registrado_por_oficina);}
+   assert.equal((await ok(sec,'/documentos?q='+codigo)).total,1);
+   for(const actor of [dir,su]){const p=await ok(actor,'/documentos?q='+codigo+'&limite=1');assert.equal(p.total,3);assert.equal(p.documentos.length,1);const p2=await ok(actor,'/documentos?q='+codigo+'&limite=1&pagina=2');assert.equal(p2.total,3);assert.notEqual(p.documentos[0].id,p2.documentos[0].id);assert.ok(p.documentos[0].registrado_por_oficina);}
    for(const actor of [ids.a,ids.b])assert.equal((await ok(actor,'/documentos?q='+codigo)).total,1);
    assert.equal((await ok(existente,'/documentos?q='+codigo)).total,0);
    const emitido=(await ok(ids.a,'/documentos','POST',{tipo_id:ids['tipo'+ids.a],clasificacion:'EMITIDO',asunto:'PRUEBA REVISIÓN EMITIDO '+marca},201)).documento;assert.equal(emitido.clasificacion,'EMITIDO');
@@ -116,7 +117,7 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
    assert.ok(acciones.includes('LIMPIEZA_PENDIENTE'));assert.ok(acciones.includes('LIMPIEZA_COMPLETADA'));
   });
   await t.test('Lectura institucional sin escritura y aislamiento por API directa, historial y PDF',async()=>{
-   const d=ids['doc'+ids.a];for(const actor of [dir,sec]){const r=await ok(actor,'/documentos/'+d.id);assert.equal(r.documento.permisos.relacionar,true);assert.ok(Object.entries(r.documento.permisos).filter(([k])=>k!=='relacionar').every(([,v])=>!v));await ok(actor,'/documentos/'+d.id+'/historial');await ok(actor,'/documentos/'+d.id+'/auditoria');await ok(actor,'/documentos/'+d.id+'/pdf');assert.equal((await pedir(actor,'/documentos/'+d.id,'PUT',{revision:d.revision,motivo,asunto:'Prohibido'})).status,403);assert.equal((await pedir(actor,'/documentos/'+d.id+'/pdf/cargas','POST',{nombre:'test.pdf',tamano:100,mime:'application/pdf',revision:null})).status,403);}
+   const d=ids['doc'+ids.a];for(const ruta of ['', '/historial','/auditoria','/pdf'])assert.equal((await pedir(sec,'/documentos/'+d.id+ruta)).status,404);for(const actor of [dir]){const r=await ok(actor,'/documentos/'+d.id);assert.equal(r.documento.permisos.relacionar,true);assert.ok(Object.entries(r.documento.permisos).filter(([k])=>k!=='relacionar').every(([,v])=>!v));await ok(actor,'/documentos/'+d.id+'/historial');await ok(actor,'/documentos/'+d.id+'/auditoria');await ok(actor,'/documentos/'+d.id+'/pdf');assert.equal((await pedir(actor,'/documentos/'+d.id,'PUT',{revision:d.revision,motivo,asunto:'Prohibido'})).status,403);assert.equal((await pedir(actor,'/documentos/'+d.id+'/pdf/cargas','POST',{nombre:'test.pdf',tamano:100,mime:'application/pdf',revision:null})).status,403);}
    for(const actor of [ids.b,existente,admin])for(const ruta of ['', '/historial','/auditoria','/pdf'])assert.equal((await pedir(actor,'/documentos/'+d.id+ruta)).status,404);
   });
   await t.test('Ubicaciones propias, padre obligatorio de contenido, rutas y sin oficina',async()=>{
@@ -150,7 +151,7 @@ test('Sistema nuevo: API y PostgreSQL reales, conservación íntegra mediante ro
    const guardado=(await ok(dir,'/documentos/'+pendiente.id+'/ubicacion','POST',{revision:pendiente.revision,unidad_id:unidad})).documento;assert.equal(guardado.situacion,'GUARDADO_DIRECCION');
   });
   await t.test('Anulación lógica: solo Superadministrador consulta, sin perder historia',async()=>{
-   const d=ids.campoDoc;const vinculado=(await ok(ids.a,'/documentos','POST',{tipo_id:ids['tipo'+ids.a],clasificacion:'EMITIDO',asunto:'Vínculo conservado '+marca,origen_id:d.id},201)).documento;
+   const d=(await ok(ids.a,'/documentos','POST',{tipo_id:ids['tipo'+ids.a],clasificacion:'RECIBIDO',asunto:'Anulación sintética '+marca},201)).documento;const vinculado=(await ok(ids.a,'/documentos','POST',{tipo_id:ids['tipo'+ids.a],clasificacion:'EMITIDO',asunto:'Vínculo conservado '+marca,origen_id:d.id},201)).documento;
    const actual=(await ok(ids.a,'/documentos/'+d.id)).documento;await ok(ids.a,'/documentos/'+d.id+'/anular','POST',{revision:actual.revision,motivo});
    for(const actor of [ids.a,ids.b,dir,sec,admin]){assert.equal((await pedir(actor,'/documentos/'+d.id)).status,404);assert.equal((await pedir(actor,'/documentos?situacion=ANULADO')).status,403);}
    const r=(await ok(su,'/documentos/'+d.id)).documento;assert.equal(r.situacion,'ANULADO');assert.ok(Object.values(r.permisos).every(v=>!v));await ok(su,'/documentos/'+d.id+'/auditoria');

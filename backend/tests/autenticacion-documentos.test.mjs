@@ -66,8 +66,15 @@ test('Documentos y PDF: una autenticación SQL por petición con JWT verificable
       await pedir('', jwt, 200);
       await pedir('?situacion=ANULADO', jwt, rol === 'superadmin' ? 200 : 403);
       const id = documentos.personal.id;
-      const lectura = ['admin', 'sinOficina'].includes(rol) ? 404 : 200;
+      const lectura = ['admin', 'sinOficina', 'secretaria'].includes(rol) ? 404 : 200;
       await pedir('/' + id, jwt, lectura);
+      for (const ruta of ['/historial', '/auditoria']) await pedir('/' + id + ruta, jwt, lectura);
+      const lista = await pedir('', jwt, 200);
+      assert.equal(lista.datos.documentos.some(d => d.id === id), lectura === 200);
+      if (rol === 'secretaria') {
+        for (const propio of [documentos.secretaria, documentos.pendiente, documentos.delegado])
+          await pedir('/' + propio.id, jwt, 200);
+      }
       const pdf = await pedir('/' + id + '/pdf', jwt, lectura);
       if (lectura === 200) {
         assert.equal(pdf.datos.archivo.nombre, 'fixture.pdf');
