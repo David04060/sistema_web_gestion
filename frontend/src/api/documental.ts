@@ -94,6 +94,7 @@ export const historialSchema = z.object({
 });
 export const opcionesSchema = z.object({
   ambito_id: id,
+  oficina_actual_id: id.nullable().default(null),
   tipos: z.array(z.object({ id, nombre: z.string(), prefijo: z.string() })),
   oficinas: z.array(z.object({ id, nombre: z.string() })),
 });

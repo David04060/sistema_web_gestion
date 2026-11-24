@@ -93,6 +93,7 @@ export function DestinoDocumental({
             >
               <option value="">Todas las oficinas</option>
               {opciones.oficinas
+                .filter((o) => o.id !== opciones.oficina_actual_id)
                 .map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.nombre}

@@ -14,6 +14,13 @@ const file=resolve('.private/render-tipos/entrada.mjs');writeFileSync(file,chunk
 const m=await import(pathToFileURL(file).href);
 const doc={id:'9007199254740993',ambito_id:'20',tipo_id:'9007199254740994',registrado_por:'8',registrado_por_nombre:'Nombre de contrato',tipo_nombre_guardado:'Informe histórico',clasificacion:'RECIBIDO',asunto:'Prueba de contrato en memoria',remitente:null,observaciones:null,codigo_visible:'INF2026001',situacion:'PERSONAL',revision:'1',creado_en:'2026-11-01T12:00:00Z',actualizado_en:'2026-11-01T12:00:00Z'};
 const opciones={ambito_id:'20',tipos:[],unidades:[],destinatarios:[{id:'90',nombre:'Persona elegible',oficina_id:'1'},{id:'91',nombre:'Otra oficina',oficina_id:'2'}],oficinas:[{id:'1',nombre:'Oficina elegible'},{id:'2',nombre:'Otra oficina'},{id:'3',nombre:'Sin personas'}]};
+test('Oficina de delegación: excluye únicamente la propia y conserva todas y oficinas ajenas',()=>{
+ for(const oficina_actual_id of ['1','2',null]){
+  const html=renderToStaticMarkup(createElement(m.DestinoDocumental,{valor:m.destinoVacio,cambiar:()=>{},opciones:{...opciones,oficina_actual_id}}));
+  assert.ok(html.includes('Todas las oficinas'));
+  for(const o of opciones.oficinas)assert.equal(html.includes(`<option value="${o.id}">`),o.id!==oficina_actual_id);
+ }
+});
 test('Los contratos documentales nuevos conservan bigint como texto y exigen capacidades backend',()=>{
  assert.equal(m.documentoSchema.parse(doc).id,doc.id);assert.equal(m.documentoSchema.safeParse({...doc,tipo_id:123}).success,false);
  const permisos={relacionar:true,corregir:false,anular:false,delegar:false,ubicar:false,pdf:false};

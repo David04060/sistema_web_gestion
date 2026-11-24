@@ -38,6 +38,7 @@ export async function opciones(actor: string) {
     const ambito = exigirAmbito(identidad);
     return {
       ambito_id: ambito,
+      oficina_actual_id: identidad.oficina_id,
       tipos: (
         await cliente.query(
           'SELECT id::text,nombre,prefijo FROM tipos_documentales WHERE ambito_id=$1 AND activo ORDER BY nombre',
@@ -241,9 +242,11 @@ export async function buscarDestinatarios(actor: string, filtro: z.infer<typeof 
        ), elegibles AS (
          SELECT u.id,u.nombre,u.apellido,u.nombre_usuario,o.nombre oficina,r.ultima
          FROM usuarios u
+         JOIN roles rol ON rol.id=u.rol_id
          LEFT JOIN oficinas o ON o.id=u.oficina_id
          LEFT JOIN recientes r ON r.usuario_indicado_id=u.id
-         WHERE u.activo AND ($2::bigint IS NULL OR u.oficina_id=$2)
+         WHERE u.activo AND rol.codigo NOT IN ('ADMINISTRADOR','SUPERADMINISTRADOR')
+           AND ($2::bigint IS NULL OR u.oficina_id=$2)
            AND ($1='' OR strpos(lower(concat_ws(' ',u.nombre,u.apellido)),lower($1))>0
              OR strpos(lower(u.nombre_usuario),lower($1))>0)
        )
@@ -344,7 +347,10 @@ async function insertarDelegacion(
   if (datos.usuario_id) {
     const u = (
       await cliente.query(
-        "SELECT oficina_id::text,concat(nombre,' ',apellido) nombre FROM usuarios WHERE id=$1 AND activo FOR SHARE",
+        `SELECT u.oficina_id::text,concat(u.nombre,' ',u.apellido) nombre
+         FROM usuarios u JOIN roles rol ON rol.id=u.rol_id
+         WHERE u.id=$1 AND u.activo
+           AND rol.codigo NOT IN ('ADMINISTRADOR','SUPERADMINISTRADOR') FOR SHARE OF u,rol`,
         [datos.usuario_id],
       )
     ).rows[0];
