@@ -31,4 +31,19 @@ La revisión automática rechazó una propuesta de crear tokens de sesión produ
 
 ## Publicación
 
-Los identificadores y comprobaciones finales de GitHub, Render y Pages se informan al cerrar la entrega, tras observar los despliegues activos.
+Código publicado: `3c32d67c4342e9457da64ae739f0233d5e327ab8`, confirmado en GitHub `main`.
+
+| Servicio | Resultado |
+| --- | --- |
+| Render | `dep-dc2eojei0phs73al3r2g`, commit `3c32d67`, `Deploy succeeded / Live`, duración 55,3 s |
+| Cloudflare Pages | `e4de271f-af66-481d-9429-0994ccf431b3`, commit `3c32d67`, despliegue canónico `success` |
+| Dominio principal | `https://sistema-documental-p.pages.dev`, 52 recursos idénticos por SHA-256 al build local |
+| Backend | `https://sistema-documental-hw7t.onrender.com/api/health`, HTTP 200, `status: ok` |
+
+El login normal de Dirección se completó con intervención del usuario. Tras recargar el dominio principal, el formulario de delegación mostró «Todas las oficinas» y las doce oficinas activas ajenas, sin «Dirección». La búsqueda vacía ofreció personal operativo; las búsquedas `admin` y `superadmin` devolvieron «No se encontraron personas». El filtro «Mesa de Partes» devolvió su cuenta operativa y permitió seleccionarla. No se enviaron registros ni delegaciones de prueba a producción.
+
+También se comprobó en navegador local el listado administrativo, el detalle y el formulario de edición de Administrador. La modificación efectiva de ambas cuentas administrativas se probó por HTTP dentro de la transacción revertida.
+
+Una consulta auxiliar con el archivo local `.env.neon` fue rechazada por Neon (`28P01`, credencial guardada no vigente). No se cambiaron credenciales ni configuración de la base. Render mantuvo su configuración válida y la aplicación publicada pasó login, lecturas y salud. Esta consulta auxiliar no fue necesaria para la comprobación de la mejora en el dominio real.
+
+Los cambios preexistentes del árbol local se conservaron fuera de los commits de esta entrega. La documentación de cierre se publica en un commit posterior sin cambios de aplicación; ambos servicios conservan el commit de código indicado arriba.
