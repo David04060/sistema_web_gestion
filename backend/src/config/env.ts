@@ -1,3 +1,5 @@
+/** Archivo: Lee y valida la configuración elegida antes de conectar con servicios externos.
+ */
 import { config } from 'dotenv';
 import { z } from 'zod';
 import { readFileSync } from 'node:fs';
@@ -48,8 +50,7 @@ if (!administrado && !perfilNeon && process.env.NODE_ENV !== 'test') {
       'R2_PDF_SECRET_ACCESS_KEY',
       'R2_PDF_PREFIX',
     ]) {
-      if (process.env[nombre] === undefined && pdf[nombre] !== undefined)
-        process.env[nombre] = pdf[nombre];
+      if (process.env[nombre] === undefined && pdf[nombre] !== undefined) process.env[nombre] = pdf[nombre];
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
@@ -116,7 +117,8 @@ if (
       env.JWT_SECRET.startsWith('REEMPLAZAR_')))
 ) {
   console.error(
-    'Render requiere NODE_ENV=production, NEON_DATABASE, NEON_BRANCH_ID, NEON_HOST, CORS_ORIGINS, JWT_SECRET vigente y TRUST_PROXY_HOPS=1.',
+    'Render requiere NODE_ENV=production, NEON_DATABASE, NEON_BRANCH_ID, NEON_HOST, ' +
+      'CORS_ORIGINS, JWT_SECRET vigente y TRUST_PROXY_HOPS=1.',
   );
   process.exit(1);
 }

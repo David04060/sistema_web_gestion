@@ -3,6 +3,7 @@
 -- Name: validar_tipo_documental(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Comprueba ámbito y creador del tipo y normaliza sus datos para la numeración documental.
 CREATE FUNCTION public.validar_tipo_documental() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -19,6 +20,7 @@ END $$;
 -- Name: validar_unidad_ubicacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Valida dueño y padre de una unidad; rechaza padres ajenos y ciclos en el árbol.
 CREATE FUNCTION public.validar_unidad_ubicacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -53,6 +55,7 @@ END $$;
 -- Name: tipos_documentales; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Tipos y prefijos únicos por ámbito para clasificación y correlativos.
 CREATE TABLE public.tipos_documentales (
     id bigint NOT NULL,
     ambito_id bigint NOT NULL,
@@ -84,6 +87,7 @@ ALTER TABLE public.tipos_documentales ALTER COLUMN id ADD GENERATED ALWAYS AS ID
 -- Name: unidades_ubicacion; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Árbol personal de unidades, como estantes y archivadores.
 CREATE TABLE public.unidades_ubicacion (
     id bigint NOT NULL,
     propietario_id bigint NOT NULL,

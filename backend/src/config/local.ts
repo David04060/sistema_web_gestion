@@ -1,3 +1,5 @@
+/** Archivo: Comprueba que la conexión local apunta a la base documental esperada en este equipo.
+ */
 import type { ClientBase } from 'pg';
 import { verificarEsquemaDocumental } from './esquema.js';
 export function validarUrlLocal(valor: string) {

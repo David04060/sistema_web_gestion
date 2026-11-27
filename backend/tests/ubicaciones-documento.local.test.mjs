@@ -1,3 +1,5 @@
+/** Archivo: Comprueba búsqueda, pertenencia, jerarquía activa y revisión al ubicar documentos.
+ */
 import './helpers/exigir-aislamiento.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -27,7 +29,8 @@ test('Búsqueda de ubicaciones y validación de altas y cambios en PostgreSQL ai
   const buscar = (q, actor) => pedir('/documentos/ubicaciones?' + new URLSearchParams({ q }), actor);
   try {
     assert.deepEqual(await buscar('inexistente'), {
-      status: 200, body: { ubicaciones: [], hay_mas: false },
+      status: 200,
+      body: { ubicaciones: [], hay_mas: false },
     });
     const grande = await crear(usuario, 'Ficha de Matrícula');
     const breve = await crear(usuario, 'Actas');
@@ -46,10 +49,13 @@ test('Búsqueda de ubicaciones y validación de altas y cambios en PostgreSQL ai
     assert.equal((await buscar('s')).body.ubicaciones.length, 20);
     assert.equal((await buscar('matricula')).body.hay_mas, true);
     const homonimos = (await buscar('1.º A')).body.ubicaciones;
-    assert.deepEqual(homonimos.map(({id,ruta})=>({id,ruta})), [
-      { id: b.id, ruta: 'Estante: Actas › Secundaria 1.º A · Archivador' },
-      { id: a.id, ruta: 'Estante: Ficha de Matrícula › Secundaria 1.º A · Archivador' },
-    ]);
+    assert.deepEqual(
+      homonimos.map(({ id, ruta }) => ({ id, ruta })),
+      [
+        { id: b.id, ruta: 'Estante: Actas › Secundaria 1.º A · Archivador' },
+        { id: a.id, ruta: 'Estante: Ficha de Matrícula › Secundaria 1.º A · Archivador' },
+      ],
+    );
     for (const q of ['%', '_', 'retirado', 'padre inactivo', 'ajena'])
       assert.deepEqual((await buscar(q)).body.ubicaciones, []);
     assert.deepEqual((await buscar('', sinOficina)).body.ubicaciones, []);
@@ -62,7 +68,16 @@ test('Búsqueda de ubicaciones y validación de altas y cambios en PostgreSQL ai
     for (const unidad_id of [ajena.id, inactiva.id, hijo.id])
       assert.equal((await pedir('/documentos', usuario, { ...alta, unidad_id })).status, 400);
     const unidadMesa = await crear(secretaria, 'Mesa');
-    assert.equal((await pedir('/documentos', secretaria, { ...alta, tipo_id: f.tipos.director, unidad_id: unidadMesa.id })).status, 400);
+    assert.equal(
+      (
+        await pedir('/documentos', secretaria, {
+          ...alta,
+          tipo_id: f.tipos.director,
+          unidad_id: unidadMesa.id,
+        })
+      ).status,
+      400,
+    );
     const registrado = await pedir('/documentos', usuario, { ...alta, unidad_id: a.id });
     assert.equal(registrado.status, 201);
     assert.equal(registrado.body.documento.ubicacion.unidad_id, a.id);

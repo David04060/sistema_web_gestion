@@ -1,3 +1,5 @@
+/** Archivo: Conecta con el almacenamiento privado R2, verifica archivos y crea enlaces de duración limitada.
+ */
 import {
   S3Client,
   PutObjectCommand,
@@ -41,10 +43,7 @@ export async function validarPdf(bytes: Uint8Array, tamano: number) {
       ignoreEncryption: false,
       throwOnInvalidObject: true,
     });
-    if (
-      !pdf.getPageCount() ||
-      !Buffer.from(bytes.subarray(-2048)).toString('latin1').includes('%%EOF')
-    )
+    if (!pdf.getPageCount() || !Buffer.from(bytes.subarray(-2048)).toString('latin1').includes('%%EOF'))
       throw new Error();
   } catch {
     throw new HttpError(400, 'El archivo no es un PDF válido sin cifrado');
@@ -143,7 +142,9 @@ export function crearAlmacenS3(s3: S3Client, bucket: string): AlmacenPdf {
           Key: clave,
           ResponseContentType: 'application/pdf',
           ResponseCacheControl: 'no-store',
-          ResponseContentDisposition: `${descargar ? 'attachment' : 'inline'}; filename="documento.pdf"; filename*=UTF-8''${nombreSeguro}`,
+          ResponseContentDisposition:
+            `${descargar ? 'attachment' : 'inline'}; filename="documento.pdf"; ` +
+            `filename*=UTF-8''${nombreSeguro}`,
         }),
         { expiresIn: 60 },
       );

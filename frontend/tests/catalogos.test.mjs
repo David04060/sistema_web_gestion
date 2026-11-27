@@ -28,7 +28,7 @@ const resultado = await build({
         }],
     build: { write: false, minify: false, rollupOptions: { input: 'virtual:catalogos-contracts', preserveEntrySignatures: 'strict', output: { format: 'es', codeSplitting: false } } },
 });
-const chunk = (Array.isArray(resultado) ? resultado : [resultado]).flatMap(/** Transforma cada entrada de (Array.isArray(resultado) ? resultado : [resultado]) para construir los datos que comprueba este escenario. */ /** Reúne los archivos emitidos por Vite tanto si devolvió un resultado único como si generó varios. */ item => item.output).find(/** Selecciona las entradas de (Array.isArray(resultado) ? resultado : [resultado]).flatMap(item => item.output) que cumplen el criterio requerido por la comprobación. */ /** Identifica el chunk JavaScript de entrada entre los archivos generados por Vite para inspeccionar el código real. */ item => item.type === 'chunk' && item.isEntry);
+const chunk = (Array.isArray(resultado) ? resultado : [resultado]).flatMap(/** Reúne los archivos emitidos por Vite tanto si devolvió un resultado único como si generó varios. */ item => item.output).find(/** Identifica el chunk JavaScript de entrada entre los archivos generados por Vite para inspeccionar el código real. */ item => item.type === 'chunk' && item.isEntry);
 const { formularioTipoSchema, estanteDatosSchema, archivadorDatosSchema, opcionesSchema, tiposApi, ubicacionesApi } = await import(`data:text/javascript;base64,${Buffer.from(chunk.code).toString('base64')}`);
 const fechas = { fecha_creacion: '2026-10-21T12:00:00Z', fecha_modificacion: '2026-10-21T12:00:00Z' };
 const tipo = { id: '1', nombre: 'Informe', prefijo_codigo: 'INF', requiere_clave: false, prefijo_protegido: false, ...fechas };

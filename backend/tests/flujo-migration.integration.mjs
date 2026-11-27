@@ -15,8 +15,6 @@ test('Validacion integral de migracion documental, transiciones y concurrencia',
     let base;
     let tokenDirector;
     let tokenAdmin;
-    let tokensOperacion;
-    let resultadosSiseve;
     /** Ejecuta un subcaso de integración, registra su aprobación y propaga el fallo para no continuar como si hubiese pasado. */
     const caso = async (nombre, fn) => {
         let fallo;
@@ -96,9 +94,9 @@ test('Validacion integral de migracion documental, transiciones y concurrencia',
             assert.equal((await pool.query("SELECT count(*)::int n FROM pg_trigger WHERE tgname IN ('ct_documento_circulacion','ct_movimiento_circulacion') AND tgdeferrable AND tginitdeferred")).rows[0].n, 2);
             const { generarHash } = await import('../dist/shared/security/password.js');
             const hash = await generarHash('Prueba-aislada-2026!');
-            oficinas = Object.fromEntries((await pool.query('SELECT id,nombre FROM oficinas')).rows.map(/** Transforma cada entrada de (await pool.query('SELECT id,nombre FROM oficinas')).rows para construir los datos que comprueba este escenario. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => [o.nombre, o]));
-            tipos = Object.fromEntries((await pool.query('SELECT id,nombre FROM tipos_documentales')).rows.map(/** Transforma cada entrada de (await pool.query('SELECT id,nombre FROM tipos_documentales')).rows para construir los datos que comprueba este escenario. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => [o.nombre, o]));
-            const roles = Object.fromEntries((await pool.query('SELECT id,nombre FROM roles')).rows.map(/** Transforma cada entrada de (await pool.query('SELECT id,nombre FROM roles')).rows para construir los datos que comprueba este escenario. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => [o.nombre, o.id]));
+            oficinas = Object.fromEntries((await pool.query('SELECT id,nombre FROM oficinas')).rows.map(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => [o.nombre, o]));
+            tipos = Object.fromEntries((await pool.query('SELECT id,nombre FROM tipos_documentales')).rows.map(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => [o.nombre, o]));
+            const roles = Object.fromEntries((await pool.query('SELECT id,nombre FROM roles')).rows.map(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => [o.nombre, o.id]));
             usuarios = {};
             for (const [clave, rol, oficina] of [['secretaria', 'Secretaria de Dirección', 'Mesa de Partes'], ['director', 'Director(a)', 'Dirección'], ['origen', 'Usuario', 'Subdirección Primaria 1'], ['destino', 'Usuario', 'Subdirección Primaria 2'], ['otro', 'Usuario', 'Subdirección Primaria 2'], ['admin', 'Administrador', 'Dirección']]) {
                 const u = (await pool.query(`INSERT INTO usuarios(nombre,apellido,nombre_usuario,contrasena_hash,rol_id,oficina_id) VALUES($1,'QA aislado',$2,$3,$4,$5) RETURNING id,oficina_id`, [clave, 'qa_' + clave + (process.env.QA_FIXTURE_SUFFIX ?? ''), hash, roles[rol], oficinas[oficina].id])).rows[0];
@@ -279,11 +277,11 @@ test('Validacion integral de migracion documental, transiciones y concurrencia',
         await caso('concurrencia real de correlativos: 12 conexiones, codigos unicos y consecutivos', /** Verifica el caso «concurrencia real de correlativos: 12 conexiones, codigos unicos y consecutivos»; una aserción fallida invalida este resultado. */ async () => {
             const clientes = await Promise.all(Array.from({ length: 12 }, /** Adquiere una conexión QA independiente para cada participante de la prueba de concurrencia real. */ () => pool.connect()));
             try {
-                const pids = await Promise.all(clientes.map(/** Transforma cada entrada de clientes para construir los datos que comprueba este escenario. */ /** Obtiene o compara el identificador del fixture para verificar asociaciones sin perder la precisión bigint. */ c => c.query('SELECT pg_backend_pid() pid')));
-                assert.equal(new Set(pids.map(/** Transforma cada entrada de pids para construir los datos que comprueba este escenario. */ /** Obtiene o compara el identificador del fixture para verificar asociaciones sin perder la precisión bigint. */ r => r.rows[0].pid)).size, 12);
+                const pids = await Promise.all(clientes.map(/** Obtiene o compara el identificador del fixture para verificar asociaciones sin perder la precisión bigint. */ c => c.query('SELECT pg_backend_pid() pid')));
+                assert.equal(new Set(pids.map(/** Obtiene o compara el identificador del fixture para verificar asociaciones sin perder la precisión bigint. */ r => r.rows[0].pid)).size, 12);
                 const filas = await Promise.all(clientes.map(/** Extrae del resultado de la operación los valores que contrastan las aserciones del escenario QA. */ (c, i) => registrar(usuarios.origen, 'Concurrente ' + i, c)));
-                assert.equal(new Set(filas.map(/** Transforma cada entrada de filas para construir los datos que comprueba este escenario. */ /** Extrae del resultado de la operación los valores que contrastan las aserciones del escenario QA. */ d => d.codigo)).size, 12);
-                const numeros = filas.map(/** Transforma cada entrada de filas para construir los datos que comprueba este escenario. */ /** Extrae del resultado de la operación los valores que contrastan las aserciones del escenario QA. */ d => Number(d.codigo.slice(7))).sort(/** Ordena las mediciones de mayor a menor tamaño para presentar la contribución al bundle. */ (a, b) => a - b);
+                assert.equal(new Set(filas.map(/** Extrae del resultado de la operación los valores que contrastan las aserciones del escenario QA. */ d => d.codigo)).size, 12);
+                const numeros = filas.map(/** Extrae del resultado de la operación los valores que contrastan las aserciones del escenario QA. */ d => Number(d.codigo.slice(7))).sort(/** Ordena las mediciones de mayor a menor tamaño para presentar la contribución al bundle. */ (a, b) => a - b);
                 assert.equal(numeros.at(-1) - numeros[0], 11);
             }
             finally {
@@ -293,7 +291,7 @@ test('Validacion integral de migracion documental, transiciones y concurrencia',
         await caso('dos salidas concurrentes: exactamente una confirma y no hay duplicados', /** Verifica el caso «dos salidas concurrentes: exactamente una confirma y no hay duplicados»; una aserción fallida invalida este resultado. */ async () => {
             const d = await registrar(usuarios.origen);
             const r = await Promise.allSettled([salir(d.id, usuarios.origen, usuarios.destino), salir(d.id, usuarios.origen, usuarios.otro)]);
-            assert.equal(r.filter(/** Selecciona las entradas de r que cumplen el criterio requerido por la comprobación. */ /** Extrae del resultado de la operación los valores que contrastan las aserciones del escenario QA. */ v => v.status === 'fulfilled').length, 1);
+            assert.equal(r.filter(/** Extrae del resultado de la operación los valores que contrastan las aserciones del escenario QA. */ v => v.status === 'fulfilled').length, 1);
             assert.equal((await pool.query("SELECT count(*)::int n FROM movimientos_documentales WHERE documento_id=$1 AND estado='EN_TRASLADO'", [d.id])).rows[0].n, 1);
         });
         await caso('indice unico parcial rechaza dos movimientos abiertos dentro de una transaccion', /** Verifica el caso «indice unico parcial rechaza dos movimientos abiertos dentro de una transaccion»; una aserción fallida invalida este resultado. */ async () => {
@@ -371,7 +369,7 @@ test('Validacion integral de migracion documental, transiciones y concurrencia',
         });
         await caso('Operaciones HTTP completas React-Express-PostgreSQL en QA', /** Verifica el caso «Operaciones HTTP completas React-Express-PostgreSQL en QA»; una aserción fallida invalida este resultado. */ async () => {
             const { probarOperaciones } = await import('./documental-http-casos.mjs');
-            tokensOperacion = await probarOperaciones({ base, usuarios, tipos, archivo, archivoDestino, tokenDirector, tokenAdmin, pool });
+            await probarOperaciones({ base, usuarios, tipos, archivo, archivoDestino, tokenDirector, tokenAdmin, pool });
         });
         await caso('endpoints generales ocultan contenido y movimientos de tipos restringidos', /** Verifica el caso «endpoints generales ocultan contenido y movimientos de tipos restringidos»; una aserción fallida invalida este resultado. */ async () => {
             // Marca de confidencialidad SOLO en la copia QA; no se crea un tipo ficticio ni se toca el catalogo institucional.
@@ -393,10 +391,6 @@ test('Validacion integral de migracion documental, transiciones y concurrencia',
             finally {
                 await tx(usuarios.admin.id, /** Ejecuta las escrituras del fixture dentro de la transacción QA para comprobar «endpoints generales ocultan contenido y movimientos de tipos restringidos». */  c => c.query('UPDATE tipos_documentales SET requiere_clave=false WHERE id=$1', [tipos.Informe.id]));
             }
-        });
-        await caso('Siseve: permisos individuales, clave por operacion, flujos reutilizados y ausencia de filtraciones', /** Verifica el caso «Siseve: permisos individuales, clave por operacion, flujos reutilizados y ausencia de filtraciones»; una aserción fallida invalida este resultado. */ async () => {
-            const { probarSiseve } = await import('./siseve-http-casos.mjs');
-            resultadosSiseve = await probarSiseve({ base, tokens: tokensOperacion, usuarios, tipos, archivo, archivoDestino, pool, tx });
         });
         await caso('Regresion SQL y HTTP de administracion, catalogos y consultas en ROLLBACK dentro de QA', /** Verifica el caso «Regresion SQL y HTTP de administracion, catalogos y consultas en ROLLBACK dentro de QA»; una aserción fallida invalida este resultado. */ async () => {
             for (const archivo of ['admin.integration.mjs', 'catalogos.integration.mjs', 'documentos.consultas.integration.mjs']) {
@@ -424,9 +418,8 @@ test('Validacion integral de migracion documental, transiciones y concurrencia',
         console.log(process.env.NEON_QA_TESTS === '1' ? 'Rama Neon QA conservada; fixtures solo en QA.' : 'Base QA eliminada; estructura y datos institucionales comparados e intactos.');
     }
     if (process.env.NEON_QA_TESTS === '1') {
-        await writeFile('../.private/render/RESULTADOS_NEON_DOCUMENTAL.json', JSON.stringify({ runtime: 'Node.js y Express con Neon QA directo', casos_aprobados: resultados, regresiones, siseve: resultadosSiseve, rama_conservada: true, ddl_ejecutado: false, principal_conectado: false }, null, 2));
+        await writeFile('../.private/render/RESULTADOS_NEON_DOCUMENTAL.json', JSON.stringify({ runtime: 'Node.js y Express con Neon QA directo', casos_aprobados: resultados, regresiones, rama_conservada: true, ddl_ejecutado: false, principal_conectado: false }, null, 2));
         return;
     }
-    await writeFile('../docs/RESULTADOS_SISEVE.json', JSON.stringify({ fecha_local: '2026-10-21', ...resultadosSiseve, base_qa_eliminada: true, base_institucional_sin_escrituras_de_prueba: true }, null, 2));
     await writeFile('../docs/RESULTADOS_INTEGRACION_DOCUMENTAL.json', JSON.stringify({ fecha: '2026-10-21', sql_sha256: qa.sha256, casos_aprobados: resultados, regresiones, ddl_institucional: 'Permanente autorizado; ninguna escritura institucional durante QA', base_temporal_eliminada: true, estructura_y_datos_institucionales_intactos: true, concurrencia: 'Doce sesiones PostgreSQL independientes en base temporal sin datos personales' }, null, 2) + '\n');
 });

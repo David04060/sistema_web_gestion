@@ -1,9 +1,7 @@
+/** Archivo: Solicita inicio de sesión y perfil y valida las respuestas antes de mostrarlas.
+ */
 import { apiRequest } from '../../../api/client';
-import {
-  loginRespuestaSchema,
-  perfilRespuestaSchema,
-  type LoginInput,
-} from '../schemas/auth.schema';
+import { loginRespuestaSchema, perfilRespuestaSchema, type LoginInput } from '../schemas/auth.schema';
 /** Envía las credenciales y valida la respuesta antes de permitir su uso en React. */
 export function iniciarSesion(datos: LoginInput) {
   return apiRequest('/api/auth/login', loginRespuestaSchema, {

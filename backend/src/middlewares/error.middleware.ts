@@ -1,6 +1,11 @@
+/** Archivo: Convierte fallos de entrada, permisos o base de datos en mensajes seguros para la interfaz.
+ */
 import type { ErrorRequestHandler } from 'express';
 import { HttpError } from '../shared/http/HttpError.js';
-/** Traduce errores del parser sin exponer cuerpo, cabeceras, SQL ni credenciales en respuestas/logs. */
+/** Recibe el fallo de una petición y devuelve un mensaje que pueda mostrarse en pantalla.
+ * Un JSON mal escrito se informa como entrada inválida; permisos y cambios simultáneos
+ * tienen mensajes propios. Los detalles internos de SQL y credenciales no se envían.
+ */
 export const manejarError: ErrorRequestHandler = (error: unknown, _req, res, next) => {
   if (res.headersSent) {
     next(error);
@@ -16,32 +21,31 @@ export const manejarError: ErrorRequestHandler = (error: unknown, _req, res, nex
     return;
   }
   if (codigo === 'P0001' || codigo === '40001' || codigo === '40P01') {
-    res
-      .status(409)
-      .json({
-        error:
-          'La operación no es compatible con el estado o la versión actual; vuelva a consultar',
-      });
+    // La base rechazó la operación por una regla o por cambios simultáneos; hay que volver a consultar.
+    res.status(409).json({
+      error: 'La operación no es compatible con el estado o la versión actual; vuelva a consultar',
+    });
     return;
   }
   if (codigo === '23505') {
-    if (error && typeof error === 'object' && 'constraint' in error && error.constraint === 'usuarios_oficina_activa_unica') {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'constraint' in error &&
+      error.constraint === 'usuarios_oficina_activa_unica'
+    ) {
       res.status(409).json({ error: 'La oficina ya tiene una cuenta activa; utiliza el relevo' });
       return;
     }
-    res
-      .status(409)
-      .json({ error: 'El nombre de usuario, correo o denominación ya está registrado' });
+    res.status(409).json({ error: 'El nombre de usuario, correo o denominación ya está registrado' });
     return;
   }
   if (codigo === '23503' || codigo === '23514') {
-    res
-      .status(400)
-      .json({ error: 'Los datos no cumplen las relaciones o restricciones institucionales' });
+    // Un identificador relacionado no existe o un valor incumple una regla de la base.
+    res.status(400).json({ error: 'Los datos no cumplen las relaciones o restricciones institucionales' });
     return;
   }
-  const tipo =
-    error !== null && typeof error === 'object' && 'type' in error ? error.type : undefined;
+  const tipo = error !== null && typeof error === 'object' && 'type' in error ? error.type : undefined;
   switch (tipo) {
     case 'entity.parse.failed':
       res.status(400).json({ error: 'JSON inválido' });

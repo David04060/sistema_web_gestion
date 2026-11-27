@@ -1,3 +1,5 @@
+/** Archivo: Crea la sesión y comprueba su validez al regresar a la pestaña.
+ */
 import { useEffect, useState, type ReactNode } from 'react';
 import { AuthContext } from './AuthContext';
 import { AuthSession } from '../services/AuthSession';

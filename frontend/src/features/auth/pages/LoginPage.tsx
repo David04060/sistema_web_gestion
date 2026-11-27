@@ -1,3 +1,7 @@
+/**
+ * Archivo: Presenta el formulario de acceso, muestra errores por campo y permite ver u ocultar la
+ * contraseña.
+ */
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { loginSchema, type LoginInput } from '../schemas/auth.schema';
@@ -23,8 +27,9 @@ export function LoginPage({ cargando, error, mensaje, onIngresar }: Props) {
     defaultValues: { identificador: '', contrasena: '' },
   });
   /**
-   * Valida las credenciales con Zod, asigna errores a los campos y delega la autenticación; no almacena la contraseña.
-   * @param datos - Datos de entrada según el contrato tipado de esta operación.
+   * Valida las credenciales con Zod, asigna errores a los campos y delega la autenticación; no
+   * almacena la contraseña. @param datos - Datos de entrada según el contrato tipado de esta
+   * operación.
    */
   async function enviar(datos: LoginInput): Promise<void> {
     const resultado = loginSchema.safeParse(datos);
@@ -56,8 +61,8 @@ export function LoginPage({ cargando, error, mensaje, onIngresar }: Props) {
           <span className={styles.institucion}>I.E. ENRIQUE PAILLARDELLE</span>
           <h1>La documentación institucional, en su lugar.</h1>
           <p>
-            Registra, consulta y organiza los documentos de la I.E. Enrique Paillardelle desde un
-            solo espacio.
+            Registra, consulta y organiza los documentos de la I.E. Enrique Paillardelle desde un solo
+            espacio.
           </p>
           <div className={styles.sello}>
             <Icono nombre="documentos" tamano={20} />

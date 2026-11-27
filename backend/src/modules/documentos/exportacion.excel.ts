@@ -1,3 +1,5 @@
+/** Archivo: Construye el Excel con fechas de Perú, texto seguro y control de exportaciones simultáneas.
+ */
 import ExcelJS from 'exceljs';
 import { z } from 'zod';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -71,8 +73,9 @@ const formatoFecha = new Intl.DateTimeFormat('en-CA', {
 /** Excel no almacena zona: serial de fecha real con la hora institucional explícita en el encabezado. */
 function fechaExcel(valor: Date): Date {
   const p = Object.fromEntries(formatoFecha.formatToParts(valor).map((v) => [v.type, v.value]));
+  const milisegundos = String(valor.getUTCMilliseconds()).padStart(3, '0');
   return new Date(
-    `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}.${String(valor.getUTCMilliseconds()).padStart(3, '0')}Z`,
+    `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}.${milisegundos}Z`,
   );
 }
 /** Texto explícito (nunca objetos formula/hyperlink), ZIP por flujo y filas liberadas al confirmar. */
@@ -87,7 +90,8 @@ export async function escribirExcel(
       if (typeof valor === 'string' && valor.length > 32767)
         throw new HttpError(
           422,
-          'Un campo documental supera los 32 767 caracteres que permite Excel por celda. No se genera un archivo parcial.',
+          'Un campo documental supera los 32 767 caracteres que permite Excel por celda. No se ' +
+            'genera un archivo parcial.',
         );
     }
   const salida = createWriteStream(ruta, { mode: 0o600 });
@@ -152,10 +156,7 @@ export async function prepararExportacion(
   signal?: AbortSignal,
 ) {
   if (activas >= 2 || actores.has(actorId))
-    throw new HttpError(
-      429,
-      'Hay una exportación en curso. Espera a que termine e inténtalo de nuevo.',
-    );
+    throw new HttpError(429, 'Hay una exportación en curso. Espera a que termine e inténtalo de nuevo.');
   activas++;
   actores.add(actorId);
   let carpeta: string | undefined;

@@ -1,3 +1,5 @@
+/** Archivo: Solicita confirmación del mes y descarga el Excel; cancelar invalida la descarga en curso.
+ */
 import { useEffect, useId, useRef, useState } from 'react';
 import { apiArchivo } from '../../../api/client';
 import admin from '../../../components/ui/Admin.module.css';
@@ -30,8 +32,19 @@ function periodoActual() {
   };
 }
 
-/** La primera acción solo abre el diálogo. La generación comienza exclusivamente al confirmar el formulario. */
-export function ExportarDocumentos({ token, rol, conRelacionados = false }: { token: string; rol: string; conRelacionados?: boolean }) {
+/**
+ * La primera acción solo abre el diálogo. La generación comienza exclusivamente al confirmar el
+ * formulario.
+ */
+export function ExportarDocumentos({
+  token,
+  rol,
+  conRelacionados = false,
+}: {
+  token: string;
+  rol: string;
+  conRelacionados?: boolean;
+}) {
   const [abierto, setAbierto] = useState(false),
     [periodo, setPeriodo] = useState(periodoActual),
     [ocupado, setOcupado] = useState(false),
@@ -82,7 +95,7 @@ export function ExportarDocumentos({ token, rol, conRelacionados = false }: { to
     control.current = abortar;
     try {
       const q = new URLSearchParams(periodo);
-      if(conRelacionados) q.set('con_relacionados','true');
+      if (conRelacionados) q.set('con_relacionados', 'true');
       const { blob, total } = await apiArchivo(
         '/api/documentos/exportar-excel?' + q,
         token,
@@ -193,8 +206,7 @@ export function ExportarDocumentos({ token, rol, conRelacionados = false }: { to
               </label>
             </div>
             <p className={styles.nota}>
-              Fecha de registro en hora de Perú. Los datos y la situación corresponden al momento de
-              exportar.
+              Fecha de registro en hora de Perú. Los datos y la situación corresponden al momento de exportar.
             </p>
             {ocupado && (
               <div role="status" className={styles.progreso}>

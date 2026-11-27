@@ -1,3 +1,5 @@
+/** Archivo: Inicia la API tras comprobar PostgreSQL y cierra conexiones y mantenimiento al detenerse.
+ */
 import { app } from './app.js';
 import { env } from './config/env.js';
 import { iniciarMantenimientoPdf } from './modules/documentos-pdf/pdf.maintenance.js';
@@ -21,7 +23,8 @@ async function iniciarServidor(): Promise<void> {
   });
   let cerrando = false;
   /**
-   * Evita cierres simultáneos, deja finalizar HTTP y libera el pool PostgreSQL; informa fallos de cierre sin imprimir credenciales.
+   * Evita cierres simultáneos, deja finalizar HTTP y libera el pool PostgreSQL; informa fallos de cierre
+   * sin imprimir credenciales.
    */
   async function cerrarServidor(): Promise<void> {
     if (cerrando) return;

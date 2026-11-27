@@ -3,6 +3,7 @@
 -- Name: auditoria_configuracion; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Cambios administrativos inmutables con actor, motivo y valores públicos.
 CREATE TABLE public.auditoria_configuracion (
     id bigint NOT NULL,
     actor_id bigint NOT NULL,
@@ -34,6 +35,7 @@ ALTER TABLE public.auditoria_configuracion ALTER COLUMN id ADD GENERATED ALWAYS 
 -- Name: auditoria_documental; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Historia de operaciones documentales y sus cambios.
 CREATE TABLE public.auditoria_documental (
     id bigint NOT NULL,
     documento_id bigint NOT NULL,

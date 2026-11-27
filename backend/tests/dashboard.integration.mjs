@@ -66,7 +66,7 @@ test('Dashboard HTTP PostgreSQL QA aislada', /** Verifica el caso «Dashboard HT
             assert.equal(n(p, 'inactivos'), inicialUsuarios.inactivos);
             assert.deepEqual(p.recientes, []);
             assert.deepEqual(p.estados, []);
-            assert.ok(p.accesos.some(/** Selecciona las entradas de p.accesos que cumplen el criterio requerido por la comprobación. */ /** Extrae del resultado de la operación los valores que contrastan las aserciones del escenario QA. */ a => a.ruta === '/usuarios'));
+            assert.ok(p.accesos.some(/** Extrae del resultado de la operación los valores que contrastan las aserciones del escenario QA. */ a => a.ruta === '/usuarios'));
         });
         await t.test('registro aislamiento y Direccion', /** Verifica el caso «registro aislamiento y Direccion»; una aserción fallida invalida este resultado. */ async () => {
             const tipo = (await pool.query("SELECT id::text FROM tipos_documentales WHERE nombre='Informe'")).rows[0].id;

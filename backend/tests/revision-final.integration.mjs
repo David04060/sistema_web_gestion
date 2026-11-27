@@ -94,7 +94,7 @@ test('Revisión final: diez módulos con PostgreSQL QA aislado y navegador', /**
         const usuarios = { admin: { ...admin, nombre_usuario: 'qa_final_admin', token: tokens.admin } };
         await caso('Crear cuentas por API con rol y oficina; login y perfil reales', /** Verifica el caso «Crear cuentas por API con rol y oficina; login y perfil reales»; una aserción fallida invalida este resultado. */ async () => {
             for (const [nombre, rol, oficina] of [['director', 'Director(a)', 'Dirección'], ['secretaria', 'Secretaria de Dirección', 'Mesa de Partes'], ['origen', 'Usuario', 'Subdirección Primaria 1'], ['destino', 'Usuario', 'Subdirección Primaria 2'], ['otro', 'Usuario', 'Subdirección Primaria 2']]) {
-                const datos = { nombre, apellido: 'QA final', nombre_usuario: 'qa_final_' + nombre, email: null, telefono: null, rol_id: roles.find(/** Selecciona las entradas de roles que cumplen el criterio requerido por la comprobación. */ /** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ r => r.nombre === rol).id, oficina_id: oficinas.find(/** Selecciona las entradas de oficinas que cumplen el criterio requerido por la comprobación. */ /** Localiza la oficina del catálogo o comprueba su correspondencia con la asignación del fixture. */ o => o.nombre === oficina).id, contrasena: clave, activo: true };
+                const datos = { nombre, apellido: 'QA final', nombre_usuario: 'qa_final_' + nombre, email: null, telefono: null, rol_id: roles.find(/** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ r => r.nombre === rol).id, oficina_id: oficinas.find(/** Localiza la oficina del catálogo o comprueba su correspondencia con la asignación del fixture. */ o => o.nombre === oficina).id, contrasena: clave, activo: true };
                 const { usuario } = await req('admin', '/api/usuarios', datos, 'POST', 201);
                 assert.ok(!JSON.stringify(usuario).includes('scrypt$'));
                 const login = await req(null, '/api/auth/login', { identificador: datos.nombre_usuario, contrasena: clave });
@@ -130,9 +130,9 @@ test('Revisión final: diez módulos con PostgreSQL QA aislado y navegador', /**
         let d, m;
         const motivo = { motivo: 'Verificación final QA' };
         /** Consulta el Dashboard QA y extrae el indicador o contrato que necesita comprobar el caso. */
-        const panel = async (a, k) => (await req(a, '/api/dashboard')).operaciones.find(/** Selecciona las entradas de (await req(a, '/api/dashboard')).operaciones que cumplen el criterio requerido por la comprobación. */ /** Localiza el indicador por su clave estable para comparar el total calculado por PostgreSQL. */ i => i.clave === k)?.total;
+        const panel = async (a, k) => (await req(a, '/api/dashboard')).operaciones.find(/** Localiza el indicador por su clave estable para comparar el total calculado por PostgreSQL. */ i => i.clave === k)?.total;
         await caso('Registro, código, búsqueda literal, paginación y corrección auditada', /** Verifica el caso «Registro, código, búsqueda literal, paginación y corrección auditada»; una aserción fallida invalida este resultado. */ async () => {
-            const datos = { tipo_documental_id: tipos.find(/** Selecciona las entradas de tipos que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ t => t.nombre === 'Informe').id, asunto: 'QA final %_ único', remitente: 'Verificación', observaciones: null, archivador_id: archivos.origen };
+            const datos = { tipo_documental_id: tipos.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ t => t.nombre === 'Informe').id, asunto: 'QA final %_ único', remitente: 'Verificación', observaciones: null, archivador_id: archivos.origen };
             d = (await req('origen', '/api/documentos', datos, 'POST', 201)).documento;
             assert.match(d.codigo, /^INF\d+$/);
             assert.equal(d.estado_tramite, 'RECIBIDO');

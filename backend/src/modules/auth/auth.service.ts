@@ -1,10 +1,8 @@
+/** Archivo: Comprueba contraseñas y vuelve a validar la cuenta al recibir un identificador de sesión.
+ */
 import { buscarPorIdentificador, buscarPorId } from './auth.repository.js';
 import { verificarContrasena } from '../../shared/security/password.js';
-import {
-  generarToken,
-  verificarToken,
-  TOKEN_DURACION_SEGUNDOS,
-} from '../../shared/security/jwt.js';
+import { generarToken, verificarToken, TOKEN_DURACION_SEGUNDOS } from '../../shared/security/jwt.js';
 import type { LoginInput } from './auth.schema.js';
 import type { LoginRespuesta, UsuarioAuth } from './auth.types.js';
 import { usuarioPublico } from './auth.mapper.js';

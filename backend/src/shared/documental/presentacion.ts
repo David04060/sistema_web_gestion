@@ -1,3 +1,5 @@
+/** Archivo: Asocia cada situación documental con la etiqueta que se muestra a la persona usuaria.
+ */
 /** Etiquetas de situación y presentación por cuenta, independientes de la clasificación del registro. */
 export const etiquetasSituacion: Record<string, string> = {
   EN_MI_OFICINA: 'En mi oficina',

@@ -1,3 +1,6 @@
+/** Archivo: Reúne la cuenta actual, las operaciones indivisibles y los permisos de lectura y escritura
+ * documental.
+ */
 import type { PoolClient } from 'pg';
 import { pool } from '../../config/database.js';
 import { HttpError } from '../http/HttpError.js';
@@ -20,7 +23,12 @@ export async function actorActual(cliente: PoolClient, id: string): Promise<Acto
   if (!identidad?.activo) throw new HttpError(401, 'Cuenta inactiva');
   return identidad;
 }
-/** Identidad revalidada y configuración exclusivamente transaccional de los triggers nuevos. */
+/** Unidad de trabajo con identidad revalidada y contexto local para los triggers vigentes.
+ * @param id Cuenta autenticada que ejecuta la operación.
+ * @param motivo Texto que los triggers incorporan a la auditoría correspondiente.
+ * @param fn Consulta o mutación que comparte conexión, actor y bloqueo de configuración.
+ * @returns Resultado de fn después de COMMIT; un error revierte y siempre libera la conexión.
+ */
 export async function operacion<T>(
   id: string,
   motivo: string,
@@ -31,10 +39,10 @@ export async function operacion<T>(
     await cliente.query('BEGIN');
     await cliente.query("SELECT pg_advisory_xact_lock(hashtext('documental-configuracion'))");
     const identidad = await actorActual(cliente, id);
-    await cliente.query(
-      "SELECT set_config('app.actor_id',$1,true),set_config('app.motivo',$2,true)",
-      [identidad.id, motivo],
-    );
+    await cliente.query("SELECT set_config('app.actor_id',$1,true),set_config('app.motivo',$2,true)", [
+      identidad.id,
+      motivo,
+    ]);
     const r = await fn(cliente, identidad);
     await cliente.query('COMMIT');
     return r;
@@ -51,18 +59,27 @@ export function exigirAdministracion(identidad: Actor) {
 }
 /** Los roles documentales necesitan pertenencia vigente para registrar en su ámbito. */
 export function exigirAmbito(identidad: Actor) {
-  if (!identidad.ambito_id || ![3, 4, 5].includes(identidad.rol_id) || ([3,4].includes(identidad.rol_id) && identidad.oficina_id === null))
+  if (
+    !identidad.ambito_id ||
+    ![3, 4, 5].includes(identidad.rol_id) ||
+    ([3, 4].includes(identidad.rol_id) && identidad.oficina_id === null)
+  )
     throw new HttpError(403, 'No tiene ámbito documental');
   return identidad.ambito_id;
 }
+// PostgreSQL añade la consulta del destinatario mediante documento_delegado_por; no concede escritura.
 // Parámetros: identidad autenticada, rol y ámbito. Administrador carece de lectura documental.
-export const lecturaSQL = `($1::bigint IS NOT NULL AND $2::smallint IS NOT NULL AND ($3::bigint IS NULL OR $3::bigint IS NOT NULL) AND public.documento_consultable_con_delegacion($1::bigint,d.id))`;
+export const lecturaSQL = `($1::bigint IS NOT NULL
+ AND $2::smallint IS NOT NULL AND ($3::bigint IS NULL OR $3::bigint IS NOT NULL)
+ AND public.documento_consultable_con_delegacion($1::bigint,d.id))`;
+/** Proyecta la situación para la cuenta consultante sin modificar el estado persistido.
+ * Usa los mismos parámetros actor/rol/ámbito de lecturaSQL; las etiquetas personales
+ * dependen de autor, destinatario y periodo de oficina, no de pertenecer a otra oficina. */
 export const situacionCuentaSQL = `CASE
-  WHEN d.situacion='DELEGADO' THEN COALESCE((
-    SELECT CASE WHEN e.delegado_por=$1 THEN 'DELEGADO_POR_MI'
-                WHEN e.usuario_indicado_id=$1 THEN 'DELEGADO_A_MI' END
-    FROM delegaciones_documento e WHERE e.documento_id=d.id
-  ), CASE WHEN d.registrado_por=$1 THEN 'EN_MI_OFICINA' ELSE 'PERSONAL' END)
+  WHEN d.situacion='DELEGADO' THEN CASE
+    WHEN EXISTS(SELECT 1 FROM delegaciones_documento e WHERE e.documento_id=d.id AND e.usuario_indicado_id=$1) THEN 'DELEGADO_A_MI'
+    WHEN EXISTS(SELECT 1 FROM delegaciones_documento e WHERE e.documento_id=d.id AND e.delegado_por=$1) THEN 'DELEGADO_POR_MI'
+    ELSE CASE WHEN d.registrado_por=$1 THEN 'EN_MI_OFICINA' ELSE 'PERSONAL' END END
   WHEN $2::smallint IN (3,4) AND d.situacion IN
     ('PENDIENTE_DIRECCION','GUARDADO_DIRECCION','EN_MESA_DE_PARTES') THEN d.situacion
   WHEN d.registrado_por=$1 AND d.situacion IN ('PERSONAL','GUARDADO_DIRECCION','EN_MESA_DE_PARTES') THEN 'EN_MI_OFICINA'
@@ -109,41 +126,56 @@ export async function documento(
   if (!d) throw new HttpError(404, 'Documento inexistente o no autorizado');
   return d;
 }
-/** Separa lectura de escritura: ver documentos de otro ámbito nunca concede corrección, delegación ni PDF. */
+/** Calcula cada acción por separado: consultar un documento o su PDF no concede permiso para modificarlos. */
 export function permisos(identidad: Actor, d: Registro) {
   const recibido = Boolean(d.delegado_por_nombre),
     propio = d.registrado_por === identidad.id && !d.historico_solo_lectura,
     compartido = identidad.ambito_id === d.ambito_id && [3, 4].includes(identidad.rol_id),
-    vigente = !recibido && d.situacion !== 'ANULADO' && !d.historico_solo_lectura && (identidad.rol_id === 5 || identidad.oficina_id !== null),
+    vigente =
+      !recibido &&
+      d.situacion !== 'ANULADO' &&
+      !d.historico_solo_lectura &&
+      (identidad.rol_id === 5 || identidad.oficina_id !== null),
     antes = vigente && d.situacion !== 'DELEGADO';
-  const direccionPendiente =
-    compartido && identidad.rol_id === 3 && d.situacion === 'PENDIENTE_DIRECCION';
+  // La delegación no concede escritura del registro original; atención y nueva delegación se calculan aparte.
+  const direccionPendiente = compartido && identidad.rol_id === 3 && d.situacion === 'PENDIENTE_DIRECCION';
   // Para un alta propia de Secretaría, solo Dirección puede haber delegado por otro actor.
-  const secretariaConDecision = identidad.rol_id === 4 &&
+  const secretariaConDecision =
+    identidad.rol_id === 4 &&
     (d.situacion === 'GUARDADO_DIRECCION' ||
       (d.situacion === 'DELEGADO' && d.delegacion_por_otro_actor === true));
   const ubicacionPropia = d.titular_ubicacion === identidad.id;
   const puedeCerrarUbicacion = d.titular_ubicacion == null || ubicacionPropia;
   return {
+    // Relacionar no modifica el origen: solo el propio autor o un destinatario conserva esta opción.
     relacionar:
-      !recibido && d.lectura_ordinaria !== false && d.situacion !== 'ANULADO' && !!identidad.ambito_id &&
-      ((identidad.rol_id === 5 && (identidad.ambito_id === d.ambito_id || d.historico_solo_lectura === true)) ||
-       ([3,4].includes(identidad.rol_id) && identidad.oficina_id !== null)),
+      (d.registrado_por === identidad.id || recibido) &&
+      d.situacion !== 'ANULADO' &&
+      !!identidad.ambito_id &&
+      ((identidad.rol_id === 5 &&
+        (recibido || identidad.ambito_id === d.ambito_id || d.historico_solo_lectura === true)) ||
+        ([3, 4].includes(identidad.rol_id) && identidad.oficina_id !== null)),
     corregir: vigente && propio && (identidad.rol_id !== 5 || d.situacion !== 'DELEGADO'),
-    anular: !secretariaConDecision && ((antes && (propio || direccionPendiente)) ||
-      (vigente && propio && d.situacion === 'DELEGADO' && d.delegacion_registrada === true)),
+    anular:
+      !secretariaConDecision &&
+      ((antes && (propio || direccionPendiente)) ||
+        (vigente && propio && d.situacion === 'DELEGADO' && d.delegacion_registrada === true)),
+    acciones: recibido && d.situacion !== 'ANULADO' && !d.historico_solo_lectura,
+    recorrido: identidad.rol_id === 3 || recibido || propio,
     delegar:
-      vigente && puedeCerrarUbicacion &&
-      (direccionPendiente ||
-        (compartido && identidad.rol_id === 3 && d.situacion === 'GUARDADO_DIRECCION' && ubicacionPropia) ||
-        (propio && identidad.rol_id === 4 && d.situacion === 'EN_MESA_DE_PARTES') ||
-        (propio && identidad.rol_id === 5 && d.situacion === 'PERSONAL')),
+      (recibido && d.situacion === 'DELEGADO' && !d.historico_solo_lectura) ||
+      (vigente &&
+        puedeCerrarUbicacion &&
+        (direccionPendiente ||
+          (compartido && identidad.rol_id === 3 && d.situacion === 'GUARDADO_DIRECCION' && ubicacionPropia) ||
+          (propio && identidad.rol_id === 4 && d.situacion === 'EN_MESA_DE_PARTES') ||
+          (propio && identidad.rol_id === 5 && d.situacion === 'PERSONAL') ||
+          (propio && d.situacion === 'DELEGADO'))),
     ubicar:
       vigente &&
       identidad.oficina_id !== null &&
       (direccionPendiente || (propio && ['PERSONAL', 'EN_MESA_DE_PARTES'].includes(d.situacion))),
-    pdf:
-      vigente && (compartido || (propio && [3, 4, 5].includes(identidad.rol_id))),
+    pdf: vigente && (compartido || (propio && [3, 4, 5].includes(identidad.rol_id))),
   };
 }
 /** Rechaza escrituras sobre una revisión anterior antes de modificar datos. */

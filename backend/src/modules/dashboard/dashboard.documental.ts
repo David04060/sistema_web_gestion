@@ -1,3 +1,6 @@
+/** Archivo: Calcula cifras y series mensuales únicamente sobre cuentas y documentos que el perfil puede
+ * consultar.
+ */
 import type { PoolClient } from 'pg';
 import { pool } from '../../config/database.js';
 import { actorActual, lecturaSQL, situacionCuentaSQL, type Actor } from '../../shared/documental/nucleo.js';
@@ -57,7 +60,10 @@ async function contexto(cliente: Conexion, referencia?: Date): Promise<Contexto>
   };
 }
 
-/** Agrega cuentas y oficinas sin consultar contenido documental; excluye al Superadministrador cuando corresponde. */
+/**
+ * Agrega cuentas y oficinas sin consultar contenido documental; excluye al Superadministrador cuando
+ * corresponde.
+ */
 async function administracion(cliente: Conexion, identidad: Actor) {
   const valores = [identidad.rol_id];
   const cuentas_por_rol = (
@@ -78,7 +84,11 @@ async function administracion(cliente: Conexion, identidad: Actor) {
   const {
     rows: [oficinas],
   } = await cliente.query<{ activas: number; inactivas: number }>(
-    'SELECT count(*) FILTER(WHERE activa)::int activas,count(*) FILTER(WHERE NOT activa)::int inactivas FROM oficinas',
+    `SELECT
+  count(*) FILTER (WHERE activa)::int activas,
+  count(*) FILTER (WHERE NOT activa)::int inactivas
+FROM
+  oficinas`,
   );
   const nombres: Record<string, string> = {
     SUPERADMINISTRADOR: 'Superadministrador',
@@ -103,7 +113,10 @@ async function administracion(cliente: Conexion, identidad: Actor) {
   };
 }
 
-/** El filtro procede de constantes internas; lecturaSQL sigue delimitando cada contador, tipo y serie mensual. */
+/**
+ * El filtro procede de constantes internas; lecturaSQL sigue delimitando cada contador, tipo y serie
+ * mensual.
+ */
 async function grupoDocumental(
   cliente: Conexion,
   identidad: Actor,

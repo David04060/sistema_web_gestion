@@ -1,3 +1,5 @@
+/** Archivo: Consulta detalles adicionales de auditoría solo cuando se abre su sección.
+ */
 import { useCallback, useState } from 'react';
 import { api } from '../../../api/documental';
 import { useConsulta } from '../../../hooks/useConsulta';
@@ -61,9 +63,7 @@ export function AuditoriaDocumento({
                             )}
                             {d.posterior !== null && (
                               <p>
-                                <strong>
-                                  {d.anterior === null ? 'Valor registrado: ' : 'Posterior: '}
-                                </strong>
+                                <strong>{d.anterior === null ? 'Valor registrado: ' : 'Posterior: '}</strong>
                                 {d.posterior}
                               </p>
                             )}

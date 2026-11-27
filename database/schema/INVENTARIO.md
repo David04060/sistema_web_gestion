@@ -1,15 +1,11 @@
-# Inventario real
+# Inventario del esquema vigente
 
-{
-  "base": "sistema_web_documental_final",
-  "host": "::1/128",
-  "puerto": 5432,
-  "oid": "98367",
-  "esquema": "public"
-}
+[Guía de instalación](../README.md). Los fragmentos SQL de este directorio son referencia por dominio, no pasos ejecutables. La instalación utiliza `../instalar.sql` o su alternativa monolítica `../sistema_documental_instalacion.sql`.
 
 ## Tablas
 
+- `acciones_documento`
+- `acciones_pdf_cargas`
 - `ambitos_registro`
 - `auditoria_configuracion`
 - `auditoria_documental`
@@ -363,3 +359,55 @@
 - `usuarios.usuarios_rol_id_not_null`: `NOT NULL rol_id`
 - `usuarios.usuarios_version_autenticacion_check`: `CHECK ((version_autenticacion >= 0))`
 - `usuarios.usuarios_version_autenticacion_not_null`: `NOT NULL version_autenticacion`
+
+## Vistas
+
+- `documentos_anulados`
+- `documentos_ordinarios`
+
+## Secuencias de identidad
+
+- `ambitos_registro_id_seq`
+- `auditoria_configuracion_id_seq`
+- `auditoria_documental_id_seq`
+- `documentos_id_seq`
+- `oficina_periodos_id_seq`
+- `oficinas_id_seq`
+- `pdf_eventos_id_seq`
+- `tipos_documentales_id_seq`
+- `ubicaciones_documento_id_seq`
+- `unidades_ubicacion_id_seq`
+- `usuarios_id_seq`
+
+## Índices explícitos
+
+- `documentos_oficina_periodo`
+- `documentos_relaciones_origen`
+- `ix_auditoria_documento_fecha`
+- `ix_documentos_ambito_situacion_fecha`
+- `ix_documentos_autor_fecha`
+- `oficina_periodo_abierto`
+- `oficina_periodos_usuario`
+- `pdf_retenciones_pendientes`
+- `usuario_periodo_abierto`
+- `usuarios_oficina_activa_unica`
+- `ux_ambito_compartido`
+- `ux_superadministrador_unico`
+- `ux_ubicacion_hija_nombre`
+- `ux_ubicacion_raiz_nombre`
+- `ux_ubicacion_vigente`
+
+Los índices de claves primarias y restricciones UNIQUE se crean además de los índices explícitos. Las secuencias se inicializan sin valores de cuentas o documentos existentes.
+
+## Ampliación vigente del 26/11/2026
+
+Migración `changes/016-atencion-seguimiento.sql`; instalación modular en `instalacion/atencion.sql`.
+Referencia de detalle: `atencion.schema.sql` y `docs/ATENCION_SEGUIMIENTO_DOCUMENTAL_20261126.md`.
+
+- `delegaciones_documento.id`: identidad y nueva clave primaria. `documento_id` deja de ser único; se conserva la FK.
+- Índices `delegaciones_documento_recorrido`, `delegaciones_documento_destinatario`, `acciones_documento_recorrido`, `acciones_pdf_cargas_pendientes`.
+- Funciones modificadas: `validar_delegacion`, `documento_delegado_por`, `validar_estado_final`, `validar_relacion`.
+- Funciones nuevas: `validar_accion_documental`, `auditar_accion_documental`.
+- Triggers nuevos sobre `acciones_documento`: `validar_accion_documental`, `auditar_accion_documental`, `proteger_acciones`, `no_truncar_acciones`.
+- Descripción obligatoria, responsable y oficina derivados del actor; oficina nullable. Revisión positiva y PDF opcional de hasta 15 MiB.
+- Las correcciones permanecen en `auditoria_documental`; el recorrido se deriva de los hechos existentes, sin tabla de estados de atención.

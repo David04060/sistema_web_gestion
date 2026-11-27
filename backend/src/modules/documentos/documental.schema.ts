@@ -1,3 +1,5 @@
+/** Archivo: Define entradas válidas para registrar, buscar, corregir, delegar, ubicar y anular documentos.
+ */
 import { z } from 'zod';
 import { fechaRegistro } from './fecha-registro.js';
 import { idSchema } from '../../shared/admin/admin.schema.js';
@@ -6,14 +8,22 @@ import { idSchema } from '../../shared/admin/admin.schema.js';
 export const id = idSchema;
 const texto = z.string().trim().max(20000).nullable().optional().default(null);
 const motivo = z.string().trim().min(1).max(1000);
-export const consultaDestinatarios = z.object({ q: z.string().trim().max(100).default(''), oficina_id: id.optional() }).strict();
-export const consultaUbicaciones = z.object({
-  q: z.string().trim().max(250).default(''),
-  nivel: z.literal('estantes').optional(),
-  estante_id: id.optional(),
-}).strict().refine(d => !(d.nivel && d.estante_id), 'Selecciona un nivel o un estante');
+export const consultaDestinatarios = z
+  .object({ q: z.string().trim().max(100).default(''), oficina_id: id.optional() })
+  .strict();
+export const consultaUbicaciones = z
+  .object({
+    q: z.string().trim().max(250).default(''),
+    nivel: z.literal('estantes').optional(),
+    estante_id: id.optional(),
+  })
+  .strict()
+  .refine((d) => !(d.nivel && d.estante_id), 'Selecciona un nivel o un estante');
 export const consultaOrigenes = z.object({ q: z.string().trim().max(250).default('') }).strict();
-export const filtroRelacionados = z.union([z.boolean(),z.enum(['true','false']).transform(v=>v==='true')]).optional().default(false);
+export const filtroRelacionados = z
+  .union([z.boolean(), z.enum(['true', 'false']).transform((v) => v === 'true')])
+  .optional()
+  .default(false);
 
 const destinoDelegacion = z
   .object({
@@ -25,16 +35,12 @@ const destinoDelegacion = z
   .strict();
 
 const validarDestino = (v: z.infer<typeof destinoDelegacion>, c: z.RefinementCtx) => {
-    if (
-      (!v.usuario_id && !v.nombre) ||
-      (v.usuario_id && v.nombre) ||
-      (v.oficina_id && !v.usuario_id)
-    )
-      c.addIssue({
-        code: 'custom',
-        message: 'Seleccione una persona registrada o escriba su nombre; oficina sola no basta',
-      });
-  };
+  if ((!v.usuario_id && !v.nombre) || (v.usuario_id && v.nombre) || (v.oficina_id && !v.usuario_id))
+    c.addIssue({
+      code: 'custom',
+      message: 'Seleccione una persona registrada o escriba su nombre; oficina sola no basta',
+    });
+};
 
 export const delegacion = destinoDelegacion.extend({ revision: id }).superRefine(validarDestino);
 

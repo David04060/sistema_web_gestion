@@ -26,7 +26,7 @@ export async function verificarNavegador({ base, usuarios }) {
                 assert.equal(await page.getByRole('alert').count(), 0);
                 await page.screenshot({ path: `.private/dashboard/${rol}-${width}.png`, fullPage: true });
             }
-            const enlaces = await page.locator('nav[aria-label="Accesos rápidos"] a').evaluateAll(/** Extrae destinos de los accesos rápidos para comprobar que respeten el rol del actor QA. */  as => as.map(/** Transforma cada entrada de as para construir los datos que comprueba este escenario. */ /** Obtiene destinos o nombres accesibles de elementos reales para contrastar la navegación del rol. */ a => a.getAttribute('href')));
+            const enlaces = await page.locator('nav[aria-label="Accesos rápidos"] a').evaluateAll(/** Extrae destinos de los accesos rápidos para comprobar que respeten el rol del actor QA. */  as => as.map(/** Obtiene destinos o nombres accesibles de elementos reales para contrastar la navegación del rol. */ a => a.getAttribute('href')));
             for (const ruta of enlaces) {
                 await page.goto('http://127.0.0.1:5178' + ruta);
                 await page.locator('main h1').first().waitFor();

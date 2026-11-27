@@ -1,9 +1,49 @@
-.badge { display:inline-flex; align-items:center; gap:6px; border:1px solid transparent; padding:4px 8px; border-radius:6px; font-size:.75rem; font-weight:600; line-height:1.6; max-width:100%; }
-.badge::before { content:''; width:5px; height:5px; flex:none; border-radius:50%; background:currentColor; }
-.advertencia { color:var(--advertencia); background:var(--advertencia-fondo); border-color:var(--advertencia-borde); }
-.info { color:var(--texto); background:var(--info-fondo); border-color:var(--info-borde); }
-.exito { color:var(--exito); background:var(--exito-fondo); border-color:var(--exito-borde); }
-.error { color:var(--error); background:var(--error-fondo); border-color:var(--error-borde); }
-.neutro { color:var(--neutro-texto); background:var(--neutro-fondo); border-color:var(--neutro-borde); }
-
-.info::before { background:var(--info); }
+/* Indicador de situación: forma común y variantes semánticas por tema. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: .75rem;
+  font-weight: 600;
+  line-height: 1.6;
+  max-width: 100%;
+}
+.badge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+.advertencia {
+  color: var(--advertencia);
+  background: var(--advertencia-fondo);
+  border-color: var(--advertencia-borde);
+}
+.info {
+  color: var(--texto);
+  background: var(--info-fondo);
+  border-color: var(--info-borde);
+}
+.exito {
+  color: var(--exito);
+  background: var(--exito-fondo);
+  border-color: var(--exito-borde);
+}
+.error {
+  color: var(--error);
+  background: var(--error-fondo);
+  border-color: var(--error-borde);
+}
+.neutro {
+  color: var(--neutro-texto);
+  background: var(--neutro-fondo);
+  border-color: var(--neutro-borde);
+}
+.info::before {
+  background: var(--info);
+}

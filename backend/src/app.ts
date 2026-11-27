@@ -1,3 +1,5 @@
+/** Archivo: Conecta las rutas de la API con autenticación, protección de solicitudes y mensajes de error.
+ */
 import { pdfRouter } from './modules/documentos-pdf/pdf.routes.js';
 import { dashboardActual } from './modules/dashboard/dashboard.documental.js';
 import { administracionRouter } from './modules/usuarios/administracion.routes.js';

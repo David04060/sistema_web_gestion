@@ -1,3 +1,5 @@
+/** Archivo: Consulta el adjunto y coordina previsualización, carga, descarga y eliminación confirmada.
+ */
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import {
@@ -14,7 +16,10 @@ import { ResumenPdf, HerramientasPdf } from './ControlesPdf';
 import { fechaLocal } from '../../../lib/fechas';
 import { Esqueleto } from '../../../components/ui/Esqueleto';
 const VisorPdf = lazy(() => import('./VisorPdf'));
-/** Cada cambio de sesión o documento invalida respuestas pendientes y descarta la selección local anterior. */
+/**
+ * Cada cambio de sesión o documento invalida respuestas pendientes y descarta la selección local
+ * anterior.
+ */
 export function ArchivoPdf({
   token,
   id,
@@ -60,6 +65,7 @@ export function ArchivoPdf({
       generacion.current++;
     };
   }, [token, id, intento]);
+  /** Ejecuta una acción y muestra su resultado solo si siguen seleccionados la misma cuenta y documento. */
   async function ejecutar(fn: (vigente: () => boolean) => Promise<void>) {
     const turno = generacion.current;
     setOcupado(true);
@@ -74,6 +80,7 @@ export function ArchivoPdf({
       if (generacion.current === turno) setOcupado(false);
     }
   }
+  /** Valida el archivo elegido y guarda sus bytes para la vista previa; todavía no envía nada a R2. */
   async function seleccionar(f: File, vigente: () => boolean) {
     setConfirmarEliminacion(false);
     comprobarSeleccion(f);
@@ -81,6 +88,7 @@ export function ArchivoPdf({
     if (vigente())
       setSeleccion({ archivo: f, bytes: contenido, revision: estado?.archivo?.revision ?? null });
   }
+  /** Sube la selección con la revisión esperada y vuelve a consultar el adjunto confirmado por la API. */
   async function confirmar(vigente: () => boolean) {
     if (!seleccion) return;
     const pedir = clientePdf(token, id, undefined, vigente);
@@ -94,6 +102,7 @@ export function ArchivoPdf({
       alCambiar?.();
     }
   }
+  /** Solicita una lectura autorizada; descargar crea un archivo local y la otra opción abre el visor. */
   async function abrir(descargar: boolean, vigente: () => boolean) {
     const pedir = clientePdf(token, id, undefined, vigente);
     const enlace = await pedir(
@@ -101,9 +110,11 @@ export function ArchivoPdf({
       { descargar },
       z.union([z.object({ url: z.url(), vence_en: z.number() }), z.object({ contenido: z.base64() })]),
     );
-    const contenido = 'contenido' in enlace
-      ? Uint8Array.from(atob(enlace.contenido), caracter => caracter.charCodeAt(0))
-      : await obtenerContenidoPdf(enlace.url, vigente);
+    // El destinatario recibe el contenido a través de la API; otros accesos usan un enlace temporal.
+    const contenido =
+      'contenido' in enlace
+        ? Uint8Array.from(atob(enlace.contenido), (caracter) => caracter.charCodeAt(0))
+        : await obtenerContenidoPdf(enlace.url, vigente);
     if (!vigente()) return;
     if (descargar) {
       const url = URL.createObjectURL(new Blob([contenido], { type: 'application/pdf' }));
@@ -114,6 +125,7 @@ export function ArchivoPdf({
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } else setBytes(contenido);
   }
+  /** Exige confirmación y revisión actual; retira el vínculo y presenta el estado de limpieza del objeto. */
   async function eliminar(vigente: () => boolean) {
     if (!estado?.archivo || !confirmarEliminacion) return;
     const nuevo = await clientePdf(
@@ -148,8 +160,7 @@ export function ArchivoPdf({
       {seleccion ? (
         <div className={pdfStyles.visor}>
           <p>
-            <strong>{seleccion.archivo.name}</strong> · {(seleccion.archivo.size / 1024).toFixed(1)}{' '}
-            KiB
+            <strong>{seleccion.archivo.name}</strong> · {(seleccion.archivo.size / 1024).toFixed(1)} KiB
           </p>
           <p>Previsualización local. El archivo todavía no se ha enviado.</p>
           {seleccion.revision && <p>Al confirmar se reemplazará el PDF actual.</p>}
@@ -200,10 +211,7 @@ export function ArchivoPdf({
       {confirmarEliminacion && estado?.archivo && (
         <section className={styles.aviso} aria-label="Confirmar eliminación del PDF">
           <h3>¿Eliminar el PDF?</h3>
-          <p>
-            Se eliminará «{estado.archivo.nombre}». El registro documental y su historial se
-            conservarán.
-          </p>
+          <p>Se eliminará «{estado.archivo.nombre}». El registro documental y su historial se conservarán.</p>
           <div className={styles.acciones}>
             <button type="button" disabled={ocupado} onClick={() => void ejecutar(eliminar)}>
               Eliminar PDF

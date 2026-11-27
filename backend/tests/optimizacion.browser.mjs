@@ -12,7 +12,7 @@ export async function probarRendimiento({ base, usuarios, fase }) {
     const resultados = [];
     try {
         const informe = JSON.parse(await readFile(`../docs/optimizacion/bundle-${fase}.json`, 'utf8'));
-        const administrativos = informe.chunks.filter(/** Selecciona las entradas de informe.chunks que cumplen el criterio requerido por la comprobación. */ /** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ c => c.modulos.some(/** Selecciona las entradas de c.modulos que cumplen el criterio requerido por la comprobación. */ /** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ m => /features\/(usuarios|roles|oficinas)\/pages\//.test(m.ruta))).map(/** Transforma cada entrada de informe.chunks.filter(c => c.modulos.some(m => /features\/(usuarios|roles|oficinas)\/pages para construir los datos que comprueba este escenario. */ /** Asocia la petición observada en Chrome con el recurso del build para medir lo que realmente se descargó. */ c => '/' + c.archivo);
+        const administrativos = informe.chunks.filter(/** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ c => c.modulos.some(/** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ m => /features\/(usuarios|roles|oficinas)\/pages\//.test(m.ruta))).map(/** Asocia la petición observada en Chrome con el recurso del build para medir lo que realmente se descargó. */ c => '/' + c.archivo);
         for (const [perfil, rutas] of [['anonimo', ['/login']], ['origen', ['/dashboard', '/documentos', '/siseve', '/usuarios', ...(fase === 'despues' ? ['/ubicaciones', '/ubicaciones/estantes/nuevo', '/ubicaciones/archivadores/nuevo'] : [])]], ['admin', ['/dashboard', '/usuarios']]]) {
             for (const ruta of rutas) {
                 const contexto = await browser.newContext();
@@ -28,14 +28,14 @@ export async function probarRendimiento({ base, usuarios, fase }) {
                 await page.locator('main h1').first().waitFor();
                 await page.waitForLoadState('networkidle');
                 const http = {};
-                for (const p of peticiones.filter(/** Selecciona las entradas de peticiones que cumplen el criterio requerido por la comprobación. */ /** Extrae las mediciones de recursos y solicitudes del escenario de navegación para el informe comparativo. */ p => p.startsWith('/api/')))
+                for (const p of peticiones.filter(/** Extrae las mediciones de recursos y solicitudes del escenario de navegación para el informe comparativo. */ p => p.startsWith('/api/')))
                     http[p] = (http[p] ?? 0) + 1;
-                const js = [...new Set(peticiones.filter(/** Selecciona las entradas de peticiones que cumplen el criterio requerido por la comprobación. */ /** Extrae las mediciones de recursos y solicitudes del escenario de navegación para el informe comparativo. */ p => p.endsWith('.js')))];
-                const cargados = informe.chunks.filter(/** Selecciona las entradas de informe.chunks que cumplen el criterio requerido por la comprobación. */ /** Asocia la petición observada en Chrome con el recurso del build para medir lo que realmente se descargó. */ c => js.includes('/' + c.archivo));
+                const js = [...new Set(peticiones.filter(/** Extrae las mediciones de recursos y solicitudes del escenario de navegación para el informe comparativo. */ p => p.endsWith('.js')))];
+                const cargados = informe.chunks.filter(/** Asocia la petición observada en Chrome con el recurso del build para medir lo que realmente se descargó. */ c => js.includes('/' + c.archivo));
                 const datos = { perfil, ruta, js, js_bytes: cargados.reduce(/** Agrega los tamaños de los recursos realmente solicitados para comparar la descarga de la ruta. */ (s, c) => s + c.bytes, 0), js_gzip: cargados.reduce(/** Agrega los tamaños de los recursos realmente solicitados para comparar la descarga de la ruta. */ (s, c) => s + c.gzip, 0), http, ms_hasta_estable: Date.now() - inicio, errores };
                 assert.deepEqual(errores, []);
                 if (fase === 'despues' && perfil !== 'admin')
-                    assert.ok(!js.some(/** Selecciona las entradas de js que cumplen el criterio requerido por la comprobación. */ /** Comprueba la presencia de un módulo o endpoint en las descargas reales del escenario de navegación. */ p => administrativos.includes(p)), `Carga administrativa innecesaria ${perfil} ${ruta}`);
+                    assert.ok(!js.some(/** Comprueba la presencia de un módulo o endpoint en las descargas reales del escenario de navegación. */ p => administrativos.includes(p)), `Carga administrativa innecesaria ${perfil} ${ruta}`);
                 if (fase === 'despues' && ruta === '/siseve')
                     assert.equal(http['/api/siseve/acceso'], 1);
                 if (ruta === '/usuarios' && perfil === 'origen')
@@ -55,7 +55,7 @@ export async function probarRendimiento({ base, usuarios, fase }) {
                     await page.locator('main h1').first().waitFor();
                     await page.waitForLoadState('networkidle');
                     if (perfil !== 'anonimo')
-                        assert.equal(peticiones.filter(/** Selecciona las entradas de peticiones que cumplen el criterio requerido por la comprobación. */ /** Extrae las mediciones de recursos y solicitudes del escenario de navegación para el informe comparativo. */ p => p === '/api/auth/me').length, 2, 'Una validación por recarga');
+                        assert.equal(peticiones.filter(/** Extrae las mediciones de recursos y solicitudes del escenario de navegación para el informe comparativo. */ p => p === '/api/auth/me').length, 2, 'Una validación por recarga');
                     datos.recarga = 'aprobada';
                 }
                 resultados.push(datos);
@@ -68,14 +68,14 @@ export async function probarRendimiento({ base, usuarios, fase }) {
             const page = await contexto.newPage();
             await page.goto('http://127.0.0.1:5182/dashboard');
             await page.getByRole('heading', { name: 'Accesos rápidos', exact: true }).waitFor();
-            const usuariosChunk = informe.chunks.find(/** Selecciona las entradas de informe.chunks que cumplen el criterio requerido por la comprobación. */ /** Extrae las mediciones de recursos y solicitudes del escenario de navegación para el informe comparativo. */ c => c.modulos.some(/** Selecciona las entradas de c.modulos que cumplen el criterio requerido por la comprobación. */ /** Extrae las mediciones de recursos y solicitudes del escenario de navegación para el informe comparativo. */ m => m.ruta.endsWith('/usuarios/pages/UsuariosListaPage.tsx')));
+            const usuariosChunk = informe.chunks.find(/** Extrae las mediciones de recursos y solicitudes del escenario de navegación para el informe comparativo. */ c => c.modulos.some(/** Extrae las mediciones de recursos y solicitudes del escenario de navegación para el informe comparativo. */ m => m.ruta.endsWith('/usuarios/pages/UsuariosListaPage.tsx')));
             await page.route('**/' + usuariosChunk.archivo, /** Interrumpe deliberadamente la descarga del chunk para comprobar la recuperación de ErrorRuta. */  r => r.abort());
             await page.getByRole('navigation', { name: 'Navegación principal', exact: true }).getByRole('link', { name: 'Usuarios', exact: true }).click();
             await page.getByRole('heading', { name: 'No se pudo cargar la pantalla', exact: true }).waitFor();
             await page.unroute('**/' + usuariosChunk.archivo);
             await page.getByRole('button', { name: 'Recargar pantalla', exact: true }).click();
             await page.getByRole('heading', { name: 'Usuarios', exact: true }).waitFor();
-            const rolesChunk = informe.chunks.find(/** Selecciona las entradas de informe.chunks que cumplen el criterio requerido por la comprobación. */ /** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ c => c.modulos.some(/** Selecciona las entradas de c.modulos que cumplen el criterio requerido por la comprobación. */ /** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ m => m.ruta.endsWith('/roles/pages/RolesPages.tsx')));
+            const rolesChunk = informe.chunks.find(/** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ c => c.modulos.some(/** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ m => m.ruta.endsWith('/roles/pages/RolesPages.tsx')));
             await page.route('**/' + rolesChunk.archivo, /** Retrasa la solicitud interceptada y después la continúa para comprobar el estado visible de carga. */ async (r) => {
                 await pausa(1200);
                 await r.continue();

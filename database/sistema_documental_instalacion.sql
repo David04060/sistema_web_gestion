@@ -1,4 +1,7 @@
--- DDL real exportado de sistema_web_documental_final. Solo instalación NUEVA vacía.
+-- Instalador PostgreSQL 18 para una base NUEVA y VACÍA. Ejecutar con psql -X -v ON_ERROR_STOP=1 -f.
+-- Orden: funciones, tablas/vistas y secuencias, restricciones/índices, triggers, claves foráneas y catálogos.
+-- Solo DDL y catálogos técnicos; no contiene cuentas, documentos ni credenciales.
+-- Los cuerpos de funciones definen escrituras futuras dentro de operaciones autorizadas.
 BEGIN;
 --
 -- PostgreSQL database dump
@@ -25,6 +28,7 @@ SET row_security = off;
 -- Name: aplicar_delegacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Tras insertar la constancia, cierra ubicación vigente, cambia situación y registra auditoría dentro de la misma transacción.
 CREATE FUNCTION public.aplicar_delegacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -62,6 +66,7 @@ END $$;
 -- Name: aplicar_ubicacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Tras ubicar, actualiza la situación documental y registra la ruta histórica; no transfiere autoría.
 CREATE FUNCTION public.aplicar_ubicacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -81,6 +86,7 @@ END $$;
 -- Name: asignar_codigo_documental(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Antes del alta, valida tipo y ámbito y reserva correlativo por año bajo bloqueo; devuelve NEW con código visible.
 CREATE FUNCTION public.asignar_codigo_documental() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -116,6 +122,7 @@ END $$;
 -- Name: auditar_documento(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Registra alta o cambios de contenido/situación con actor y motivo de la transacción, preservando antes y después.
 CREATE FUNCTION public.auditar_documento() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -145,6 +152,7 @@ END $$;
 -- Name: auditar_pdf(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Registra eventos y auditoría PDF y encola objetos sustituidos para limpieza; no almacena binarios.
 CREATE FUNCTION public.auditar_pdf() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -174,6 +182,7 @@ END $$;
 -- Name: documento_consultable(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Recibe actor y documento; devuelve lectura ordinaria por perfil, ámbito y periodos de oficina. Secretaría no tiene consulta personal general.
 CREATE FUNCTION public.documento_consultable(actor bigint, doc bigint) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -191,6 +200,7 @@ $$;
 -- Name: documento_consultable_con_delegacion(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Amplía la lectura ordinaria con el destinatario registrado. El resultado booleano no concede escritura.
 CREATE FUNCTION public.documento_consultable_con_delegacion(actor bigint, doc bigint) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -207,6 +217,7 @@ $$;
 -- Name: documento_delegado_por(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Devuelve el nombre del emisor para una cuenta destinataria elegible; NULL significa que no hay acceso por esta delegación.
 CREATE FUNCTION public.documento_delegado_por(actor bigint, doc bigint) RETURNS text
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -233,6 +244,7 @@ $$;
 -- Name: documento_periodo_cerrado(bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Indica si el documento pertenece a un periodo institucional cerrado, utilizado para impedir mutaciones históricas.
 CREATE FUNCTION public.documento_periodo_cerrado(doc bigint) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -245,6 +257,7 @@ $$;
 -- Name: documento_tiene_relacion_consultable(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Indica si existe otro documento consultable en el grupo, incluida lectura por delegación. Lo usan filtros de listado y exportación.
 CREATE FUNCTION public.documento_tiene_relacion_consultable(actor bigint, doc bigint) RETURNS boolean
     LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog', 'public'
@@ -261,6 +274,7 @@ $$;
 -- Name: documento_tiene_relacion_visible(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Versión anterior del filtro de relaciones, basada en lectura ordinaria. Se conserva en el catálogo; no amplía permisos por delegación.
 CREATE FUNCTION public.documento_tiene_relacion_visible(actor bigint, doc bigint) RETURNS boolean
     LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog', 'public'
@@ -274,6 +288,7 @@ $$;
 -- Name: documentos_grupo(bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Recorre relaciones en ambos sentidos desde un documento y devuelve IDs del grupo. El llamador filtra cada ID por actor.
 CREATE FUNCTION public.documentos_grupo(doc bigint) RETURNS TABLE(id bigint)
     LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog', 'public'
@@ -291,6 +306,7 @@ $$;
 -- Name: es_finalizacion_retencion(bigint, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Reconoce el contexto interno de finalización de una revisión PDF; evita confundir mantenimiento con edición documental.
 CREATE FUNCTION public.es_finalizacion_retencion(doc bigint, rev uuid, clave text) RETURNS boolean
     LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog', 'public'
@@ -307,6 +323,7 @@ $$;
 -- Name: exigir_oficina_autor(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Valida al insertar que el autor documental cumple la oficina exigida para su rol.
 CREATE FUNCTION public.exigir_oficina_autor() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog', 'public'
@@ -321,6 +338,7 @@ END $$;
 -- Name: finalizar_retencion_pdf(bigint, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Finaliza una retención identificada por documento y revisión después de la eliminación externa; registra su evento técnico.
 CREATE FUNCTION public.finalizar_retencion_pdf(doc bigint, rev uuid) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -346,6 +364,7 @@ END $$;
 -- Name: impedir_borrado_documento(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Rechaza DELETE de documentos: la operación de negocio es anular y conservar historial.
 CREATE FUNCTION public.impedir_borrado_documento() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -356,6 +375,7 @@ BEGIN RAISE EXCEPTION 'Documento inmutable; usar anulación lógica'; END $$;
 -- Name: impedir_cambio_historico(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Rechaza UPDATE/DELETE de hechos y auditorías inmutables.
 CREATE FUNCTION public.impedir_cambio_historico() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -366,6 +386,7 @@ BEGIN RAISE EXCEPTION 'Registro histórico inmutable'; END $$;
 -- Name: impedir_truncado(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Rechaza TRUNCATE de tablas documentales e históricas protegidas.
 CREATE FUNCTION public.impedir_truncado() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -376,6 +397,7 @@ BEGIN RAISE EXCEPTION 'TRUNCATE de hechos prohibido'; END $$;
 -- Name: programar_retencion_pdf_anulado(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Al anular, registra revisión y clave con su vencimiento de retención; no borra inmediatamente R2.
 CREATE FUNCTION public.programar_retencion_pdf_anulado() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -396,6 +418,7 @@ END $$;
 -- Name: proteger_anulacion_decidida_por_direccion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Impide anulación por Secretaría después de decisión de Dirección; valida actor transaccional y situación previa.
 CREATE FUNCTION public.proteger_anulacion_decidida_por_direccion() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog', 'public'
@@ -424,6 +447,7 @@ END $$;
 -- Name: proteger_documento_historico(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Rechaza cambios documentales/PDF sobre periodos cerrados, salvo la finalización interna de retención autorizada.
 CREATE FUNCTION public.proteger_documento_historico() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog', 'public'
@@ -454,6 +478,7 @@ END $$;
 -- Name: registrar_oficina_documento(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Vincula el alta al periodo de oficina vigente del autor para permitir consulta histórica tras relevo.
 CREATE FUNCTION public.registrar_oficina_documento() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -469,6 +494,7 @@ END $$;
 -- Name: registrar_oficina_tipo(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Conserva la oficina de origen de un tipo documental para mapear tipos en relevos posteriores.
 CREATE FUNCTION public.registrar_oficina_tipo() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -483,6 +509,7 @@ END $$;
 -- Name: sincronizar_periodo_oficina(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Al cambiar actividad u oficina, cierra el periodo anterior y abre el vigente; conserva trazabilidad de titularidad.
 CREATE FUNCTION public.sincronizar_periodo_oficina() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -506,6 +533,7 @@ END $$;
 -- Name: validar_delegacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Antes de insertar, verifica actor, situación y destino compatible. No permite delegaciones sucesivas ni cambio de ámbito.
 CREATE FUNCTION public.validar_delegacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -579,6 +607,7 @@ END $$;
 -- Name: validar_documento_actualizacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Protege identidad y clasificación; exige permiso, motivo y transición válida y actualiza revisión/fecha.
 CREATE FUNCTION public.validar_documento_actualizacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -688,6 +717,7 @@ END $$;
 -- Name: validar_estado_final(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Trigger diferido: comprueba al confirmar que situación y hechos de delegación/ubicación sean coherentes.
 CREATE FUNCTION public.validar_estado_final() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -712,6 +742,7 @@ END $$;
 -- Name: validar_mapeo_tipo_relevo(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Valida que origen, destino y ámbito del tipo correspondan al relevo; evita asociaciones ajenas.
 CREATE FUNCTION public.validar_mapeo_tipo_relevo() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog', 'public'
@@ -732,6 +763,7 @@ END $$;
 -- Name: validar_miembro_ambito(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Impide pertenencias incompatibles con rol y titularidad: ámbito compartido institucional o personal del usuario.
 CREATE FUNCTION public.validar_miembro_ambito() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -751,6 +783,7 @@ END $$;
 -- Name: validar_pdf_permiso(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Comprueba actor, alcance y situación en INSERT/UPDATE/DELETE de metadatos PDF, incluida la excepción de mantenimiento.
 CREATE FUNCTION public.validar_pdf_permiso() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -809,6 +842,7 @@ END $$;
 -- Name: validar_relacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Valida origen y nuevo documento, acceso y ausencia de autorreferencias/ciclos antes de crear la relación.
 CREATE FUNCTION public.validar_relacion() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog', 'public'
@@ -837,6 +871,7 @@ END $$;
 -- Name: validar_tipo_documental(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Comprueba ámbito y creador del tipo y normaliza sus datos para la numeración documental.
 CREATE FUNCTION public.validar_tipo_documental() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -853,6 +888,7 @@ END $$;
 -- Name: validar_ubicacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Verifica propietario, oficina, estado y jerarquía elegibles antes de registrar una ubicación histórica.
 CREATE FUNCTION public.validar_ubicacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -891,6 +927,7 @@ END $$;
 -- Name: validar_unidad_ubicacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Valida dueño y padre de una unidad; rechaza padres ajenos y ciclos en el árbol.
 CREATE FUNCTION public.validar_unidad_ubicacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -925,6 +962,7 @@ END $$;
 -- Name: validar_usuario_oficina(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Exige oficina compatible con rol y actividad; permite conservar asignación anterior a una oficina inactiva.
 CREATE FUNCTION public.validar_usuario_oficina() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -958,6 +996,7 @@ SET default_table_access_method = heap;
 -- Name: ambitos_registro; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Alcance compartido institucional o personal de una cuenta.
 CREATE TABLE public.ambitos_registro (
     id bigint NOT NULL,
     clase text NOT NULL,
@@ -986,6 +1025,7 @@ ALTER TABLE public.ambitos_registro ALTER COLUMN id ADD GENERATED ALWAYS AS IDEN
 -- Name: auditoria_configuracion; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Cambios administrativos inmutables con actor, motivo y valores públicos.
 CREATE TABLE public.auditoria_configuracion (
     id bigint NOT NULL,
     actor_id bigint NOT NULL,
@@ -1017,6 +1057,7 @@ ALTER TABLE public.auditoria_configuracion ALTER COLUMN id ADD GENERATED ALWAYS 
 -- Name: auditoria_documental; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Historia de operaciones documentales y sus cambios.
 CREATE TABLE public.auditoria_documental (
     id bigint NOT NULL,
     documento_id bigint NOT NULL,
@@ -1048,6 +1089,7 @@ ALTER TABLE public.auditoria_documental ALTER COLUMN id ADD GENERATED ALWAYS AS 
 -- Name: correlativos_documentales; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Contadores transaccionales por ámbito, tipo y año.
 CREATE TABLE public.correlativos_documentales (
     ambito_id bigint NOT NULL,
     tipo_id bigint NOT NULL,
@@ -1062,6 +1104,7 @@ CREATE TABLE public.correlativos_documentales (
 -- Name: delegaciones_documento; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Constancia única de destino por documento; no modifica autor ni ámbito.
 CREATE TABLE public.delegaciones_documento (
     documento_id bigint NOT NULL,
     oficina_indicada_id bigint,
@@ -1079,6 +1122,7 @@ CREATE TABLE public.delegaciones_documento (
 -- Name: documentos; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Registro central con clasificación, situación, autor y revisión de concurrencia.
 CREATE TABLE public.documentos (
     id bigint NOT NULL,
     ambito_id bigint NOT NULL,
@@ -1152,6 +1196,7 @@ ALTER TABLE public.documentos ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 -- Name: documentos_oficina; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Relación entre documento y periodo institucional de su alta.
 CREATE TABLE public.documentos_oficina (
     documento_id bigint NOT NULL,
     periodo_id bigint NOT NULL
@@ -1189,6 +1234,7 @@ CREATE VIEW public.documentos_ordinarios AS
 -- Name: documentos_pdf; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Metadatos y referencia privada del único PDF vigente de cada documento.
 CREATE TABLE public.documentos_pdf (
     documento_id bigint NOT NULL,
     revision uuid NOT NULL,
@@ -1208,6 +1254,7 @@ CREATE TABLE public.documentos_pdf (
 -- Name: documentos_relaciones; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Vínculo del documento nuevo con su origen; base del recorrido de grupos.
 CREATE TABLE public.documentos_relaciones (
     documento_id bigint NOT NULL,
     origen_id bigint NOT NULL,
@@ -1221,6 +1268,7 @@ CREATE TABLE public.documentos_relaciones (
 -- Name: miembros_ambito; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Pertenencia de cada cuenta a su ámbito; clave compuesta protege autor/ámbito.
 CREATE TABLE public.miembros_ambito (
     usuario_id bigint NOT NULL,
     ambito_id bigint NOT NULL
@@ -1231,6 +1279,7 @@ CREATE TABLE public.miembros_ambito (
 -- Name: oficina_periodos; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Responsables de una oficina a lo largo del tiempo; fin NULL identifica vigencia.
 CREATE TABLE public.oficina_periodos (
     id bigint NOT NULL,
     oficina_id bigint NOT NULL,
@@ -1259,6 +1308,7 @@ ALTER TABLE public.oficina_periodos ALTER COLUMN id ADD GENERATED ALWAYS AS IDEN
 -- Name: oficinas; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Catálogo de oficinas, con actividad y nombres institucionales reservados.
 CREATE TABLE public.oficinas (
     id bigint NOT NULL,
     nombre text NOT NULL,
@@ -1286,6 +1336,7 @@ ALTER TABLE public.oficinas ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 -- Name: pdf_cargas; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Intenciones de carga con actor, vencimiento y revisión esperada.
 CREATE TABLE public.pdf_cargas (
     id uuid NOT NULL,
     documento_id bigint NOT NULL,
@@ -1306,6 +1357,7 @@ CREATE TABLE public.pdf_cargas (
 -- Name: pdf_eventos; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Auditoría técnica inmutable de las revisiones PDF.
 CREATE TABLE public.pdf_eventos (
     id bigint NOT NULL,
     documento_id bigint NOT NULL,
@@ -1335,6 +1387,7 @@ ALTER TABLE public.pdf_eventos ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 -- Name: pdf_objetos_pendientes; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Cola durable de objetos R2 desvinculados y reintentos de eliminación.
 CREATE TABLE public.pdf_objetos_pendientes (
     clave_r2 text NOT NULL,
     documento_id bigint NOT NULL,
@@ -1349,6 +1402,7 @@ CREATE TABLE public.pdf_objetos_pendientes (
 -- Name: pdf_retenciones_anulacion; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Retención por anulación, con revisión, clave, vencimiento y confirmación de eliminación.
 CREATE TABLE public.pdf_retenciones_anulacion (
     documento_id bigint NOT NULL,
     revision uuid NOT NULL,
@@ -1367,6 +1421,7 @@ CREATE TABLE public.pdf_retenciones_anulacion (
 -- Name: roles; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Códigos fijos de autorización; nombre visible editable sin cambiar semántica.
 CREATE TABLE public.roles (
     id smallint NOT NULL,
     codigo text NOT NULL,
@@ -1380,6 +1435,7 @@ CREATE TABLE public.roles (
 -- Name: tipos_documentales; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Tipos y prefijos únicos por ámbito para clasificación y correlativos.
 CREATE TABLE public.tipos_documentales (
     id bigint NOT NULL,
     ambito_id bigint NOT NULL,
@@ -1411,6 +1467,7 @@ ALTER TABLE public.tipos_documentales ALTER COLUMN id ADD GENERATED ALWAYS AS ID
 -- Name: tipos_oficina; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Oficina histórica de origen de cada tipo documental.
 CREATE TABLE public.tipos_oficina (
     tipo_id bigint NOT NULL,
     oficina_id bigint NOT NULL
@@ -1421,6 +1478,7 @@ CREATE TABLE public.tipos_oficina (
 -- Name: tipos_relevo; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Correspondencia de tipos entre ámbito saliente y entrante, sin mover documentos.
 CREATE TABLE public.tipos_relevo (
     origen_id bigint NOT NULL,
     destino_ambito_id bigint NOT NULL,
@@ -1432,6 +1490,7 @@ CREATE TABLE public.tipos_relevo (
 -- Name: ubicaciones_documento; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Ubicación física con ruta guardada, actor y vigencia histórica.
 CREATE TABLE public.ubicaciones_documento (
     id bigint NOT NULL,
     documento_id bigint NOT NULL,
@@ -1462,6 +1521,7 @@ ALTER TABLE public.ubicaciones_documento ALTER COLUMN id ADD GENERATED ALWAYS AS
 -- Name: unidades_ubicacion; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Árbol personal de unidades, como estantes y archivadores.
 CREATE TABLE public.unidades_ubicacion (
     id bigint NOT NULL,
     propietario_id bigint NOT NULL,
@@ -1495,6 +1555,7 @@ ALTER TABLE public.unidades_ubicacion ALTER COLUMN id ADD GENERATED ALWAYS AS ID
 -- Name: usuarios; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Identidad, hash scrypt, actividad, rol y versión de autenticación; sin filas iniciales.
 CREATE TABLE public.usuarios (
     id bigint NOT NULL,
     rol_id smallint NOT NULL,
@@ -2610,8 +2671,329 @@ ALTER TABLE ONLY public.usuarios
 \unrestrict uWGQH7LHLDj48aLvvpEHnjXD4hZjcIzdCkj2LO0Jtuqt6dx3AOQMEHZ3RMw69SL
 
 
+-- Catálogos mínimos de arranque: no representan usuarios ni documentos reales.
 SET search_path = public;
 INSERT INTO roles(id,codigo) VALUES(1,'SUPERADMINISTRADOR'),(2,'ADMINISTRADOR'),(3,'DIRECTOR'),(4,'SECRETARIA_DIRECCION'),(5,'USUARIO');
 INSERT INTO oficinas(nombre) VALUES('Dirección'),('Mesa de Partes');
 INSERT INTO ambitos_registro(clase) VALUES('COMPARTIDO_DIRECCION');
+-- 26/11/2026. Ejecutar una sola vez sobre el esquema vigente, dentro de una transacción.
+ALTER TABLE public.delegaciones_documento ADD COLUMN id bigint GENERATED ALWAYS AS IDENTITY;
+ALTER TABLE public.delegaciones_documento DROP CONSTRAINT delegaciones_documento_pkey;
+ALTER TABLE public.delegaciones_documento ADD PRIMARY KEY(id);
+CREATE INDEX delegaciones_documento_recorrido ON public.delegaciones_documento(documento_id,delegado_en,id);
+CREATE INDEX delegaciones_documento_destinatario ON public.delegaciones_documento(usuario_indicado_id,documento_id);
+-- Antes de insertar, verifica actor, situación y destino compatible. Permite delegaciones sucesivas sin
+-- cambio de ámbito.
+-- Se ejecuta desde database/instalar.sql, dentro de una sola transacción.
+CREATE OR REPLACE FUNCTION public.validar_delegacion ()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+DECLARE
+  d documentos%ROWTYPE;
+  rol smallint;
+  oficina bigint;
+  nombre_persona text;
+  titular bigint;
+BEGIN
+  SELECT
+    *
+  INTO
+    d
+  FROM
+    documentos
+  WHERE
+    id = NEW.documento_id
+  FOR UPDATE;
+  IF d.id IS NULL OR d.situacion NOT IN ('PENDIENTE_DIRECCION', 'EN_MESA_DE_PARTES', 'PERSONAL',
+    'GUARDADO_DIRECCION', 'DELEGADO') THEN
+    RAISE EXCEPTION 'Documento no delegable';
+  END IF;
+  SELECT
+    rol_id
+  INTO
+    rol
+  FROM
+    usuarios
+  WHERE
+    id = NEW.delegado_por
+    AND activo;
+  SELECT
+    l.propietario_id
+  INTO
+    titular
+  FROM
+    ubicaciones_documento u
+    JOIN unidades_ubicacion l ON l.id = u.unidad_id
+  WHERE
+    u.documento_id = d.id
+    AND u.vigente
+  FOR UPDATE
+    OF u FOR SHARE OF l;
+  IF titular IS NOT NULL AND titular <> NEW.delegado_por THEN
+    RAISE EXCEPTION 'Ubicación vigente ajena';
+  END IF;
+  IF ((d.situacion='DELEGADO' AND (d.registrado_por=NEW.delegado_por OR public.documento_delegado_por(NEW.delegado_por,d.id) IS NOT NULL)) OR (d.situacion IN ('PENDIENTE_DIRECCION', 'GUARDADO_DIRECCION') AND rol = 3 AND (d.situacion <>
+    'GUARDADO_DIRECCION' OR
+    titular = NEW.delegado_por) AND EXISTS (
+  SELECT
+    1
+  FROM
+    miembros_ambito m
+  WHERE
+    m.usuario_id = NEW.delegado_por
+      AND m.ambito_id = d.ambito_id)) OR (d.situacion = 'EN_MESA_DE_PARTES' AND rol = 4 AND d.registrado_por =
+	NEW.delegado_por) OR (d.situacion = 'PERSONAL' AND rol = 5 AND d.registrado_por =
+	NEW.delegado_por)) IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION 'Actor sin permiso para delegar';
+  END IF;
+  IF NEW.delegado_por IS DISTINCT FROM nullif(current_setting('app.actor_id',true),'')::bigint OR rol NOT IN (3,4,5) THEN
+    RAISE EXCEPTION 'Actor de delegación incompatible';
+  END IF;
+  IF NEW.usuario_indicado_id IS NOT NULL THEN
+    SELECT
+      u.oficina_id,
+      u.nombre || ' ' || u.apellido
+    INTO
+      oficina,
+      nombre_persona
+    FROM
+      usuarios u
+    WHERE
+      u.id = NEW.usuario_indicado_id
+      AND u.activo AND u.rol_id IN (3,4,5);
+    IF nombre_persona IS NULL OR (NEW.oficina_indicada_id IS NOT NULL AND oficina IS DISTINCT FROM
+      NEW.oficina_indicada_id) OR NEW.nombre_persona_guardado IS DISTINCT FROM nombre_persona THEN
+      RAISE EXCEPTION 'Persona u oficina indicada incompatible';
+    END IF;
+  END IF;
+  RETURN NEW;
+END
+$$;
+
+-- Devuelve el nombre del emisor para una cuenta destinataria elegible; NULL significa que no hay acceso por
+-- esta delegación.
+-- Se ejecuta desde database/instalar.sql, dentro de una sola transacción.
+CREATE OR REPLACE FUNCTION public.documento_delegado_por (actor bigint, doc bigint)
+  RETURNS text
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path TO 'pg_catalog', 'public'
+  AS $$
+  SELECT
+    concat_ws(' ', emisor.nombre, emisor.apellido)
+  FROM
+    public.delegaciones_documento e
+    JOIN public.documentos d ON d.id = e.documento_id
+      AND d.situacion = 'DELEGADO'
+    JOIN public.usuarios u ON u.id = e.usuario_indicado_id
+      AND u.activo
+    JOIN public.usuarios emisor ON emisor.id = e.delegado_por
+  WHERE
+    e.documento_id = doc
+    AND u.id = actor
+    AND u.id <> d.registrado_por
+    AND (u.rol_id = 5
+      OR (u.rol_id IN (3, 4)
+        AND u.oficina_id IS NOT NULL))
+  ORDER BY e.delegado_en DESC,e.id DESC LIMIT 1
+$$;
+
+-- Trigger diferido: comprueba al confirmar que situación y hechos de delegación/ubicación sean coherentes.
+-- Se ejecuta desde database/instalar.sql, dentro de una sola transacción.
+CREATE OR REPLACE FUNCTION public.validar_estado_final ()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+DECLARE
+  actual text;
+  n integer;
+BEGIN
+  SELECT
+    situacion
+  INTO
+    actual
+  FROM
+    documentos
+  WHERE
+    id = NEW.id;
+  IF actual = 'DELEGADO' THEN
+    SELECT
+      count(*)
+    INTO
+      n
+    FROM
+      delegaciones_documento
+    WHERE
+      documento_id = NEW.id;
+    IF n < 1 THEN
+      RAISE EXCEPTION 'Delegación sin hecho asociado';
+    END IF;
+  ELSIF actual = 'GUARDADO_DIRECCION' THEN
+    SELECT
+      count(*)
+    INTO
+      n
+    FROM
+      ubicaciones_documento u
+      JOIN unidades_ubicacion lugar ON lugar.id = u.unidad_id
+      JOIN usuarios propietario ON propietario.id = lugar.propietario_id
+    WHERE
+      u.documento_id = NEW.id
+      AND u.vigente
+      AND propietario.rol_id = 3;
+    IF n < 1 THEN
+      RAISE EXCEPTION 'Guardado en Dirección sin ubicación';
+    END IF;
+  END IF;
+  RETURN NULL;
+END
+$$;
+
+-- Valida origen y nuevo documento, acceso y ausencia de autorreferencias/ciclos antes de crear la relación.
+-- Se ejecuta desde database/instalar.sql, dentro de una sola transacción.
+CREATE OR REPLACE FUNCTION public.validar_relacion ()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  SET search_path TO 'pg_catalog', 'public'
+  AS $$
+DECLARE
+  hijo public.documentos%ROWTYPE;
+  actor bigint;
+BEGIN
+  actor := nullif (current_setting('app.actor_id', true), '')::bigint;
+  SELECT
+    *
+  INTO
+    hijo
+  FROM
+    public.documentos
+  WHERE
+    id = NEW.documento_id FOR SHARE;
+  PERFORM
+    1
+  FROM
+    public.documentos
+  WHERE
+    id = NEW.origen_id FOR SHARE;
+  IF hijo.id IS NULL OR actor IS DISTINCT FROM NEW.creado_por OR hijo.registrado_por IS DISTINCT FROM actor
+    OR hijo.situacion = 'ANULADO' OR public.documento_periodo_cerrado (hijo.id) OR NOT
+    (EXISTS(SELECT 1 FROM documentos origen WHERE origen.id=NEW.origen_id AND origen.registrado_por=actor) OR public.documento_delegado_por(actor,NEW.origen_id) IS NOT NULL) OR EXISTS (
+    SELECT
+      1
+    FROM
+      public.documentos
+    WHERE
+      id = NEW.origen_id
+      AND situacion = 'ANULADO') THEN
+    RAISE EXCEPTION 'Origen no consultable o autor incompatible';
+  END IF;
+  IF NEW.documento_id = NEW.origen_id OR EXISTS ( WITH RECURSIVE cadena (
+      id
+    ) AS (
+    SELECT
+      NEW.origen_id
+    UNION
+    SELECT
+      r.origen_id
+    FROM
+      public.documentos_relaciones r
+      JOIN cadena c ON r.documento_id = c.id
+    )
+    SELECT
+      1
+    FROM
+      cadena
+    WHERE
+      id = NEW.documento_id) THEN
+    RAISE EXCEPTION 'Ciclo documental';
+  END IF;
+  RETURN NEW;
+END
+$$;
+
+SET LOCAL search_path TO public,pg_catalog;
+-- Acciones independientes: sin estados de atención, sin oficina obligatoria ni límite de cantidad.
+CREATE TABLE public.acciones_documento (
+ id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ documento_id bigint NOT NULL REFERENCES public.documentos(id),
+ responsable_id bigint NOT NULL REFERENCES public.usuarios(id),
+ oficina_id bigint REFERENCES public.oficinas(id),
+ oficina_nombre text,
+ descripcion text NOT NULL CHECK(length(btrim(descripcion)) BETWEEN 1 AND 20000),
+ creado_en timestamptz NOT NULL DEFAULT clock_timestamp(),
+ actualizado_en timestamptz NOT NULL DEFAULT clock_timestamp(),
+ revision bigint NOT NULL DEFAULT 1 CHECK(revision>0),
+ pdf_clave text UNIQUE,
+ pdf_nombre text,
+ pdf_tamano integer,
+ CHECK ((pdf_clave IS NULL AND pdf_nombre IS NULL AND pdf_tamano IS NULL) OR
+ (pdf_clave IS NOT NULL AND pdf_nombre IS NOT NULL AND pdf_tamano BETWEEN 1 AND 15728640))
+);
+CREATE INDEX acciones_documento_recorrido ON public.acciones_documento(documento_id,creado_en,id);
+-- Intenciones durables; las claves finales nunca se exponen mediante URL de carga.
+CREATE TABLE public.acciones_pdf_cargas (
+ id uuid PRIMARY KEY,
+ documento_id bigint NOT NULL REFERENCES public.documentos(id),
+ actor_id bigint NOT NULL REFERENCES public.usuarios(id),
+ temporal text NOT NULL UNIQUE,
+ definitiva text NOT NULL UNIQUE,
+ nombre text NOT NULL,
+ tamano integer NOT NULL CHECK(tamano BETWEEN 1 AND 15728640),
+ vence_en timestamptz NOT NULL,
+ accion_id bigint REFERENCES public.acciones_documento(id),
+ confirmada_en timestamptz
+);
+CREATE INDEX acciones_pdf_cargas_pendientes ON public.acciones_pdf_cargas(actor_id,vence_en) WHERE confirmada_en IS NULL;
+
+-- El autor y su oficina se obtienen en PostgreSQL; una corrección mantiene la identidad original.
+CREATE FUNCTION public.validar_accion_documental() RETURNS trigger LANGUAGE plpgsql SET search_path TO pg_catalog,public AS $$
+DECLARE actor bigint; d documentos%ROWTYPE; u usuarios%ROWTYPE;
+BEGIN
+ actor:=nullif(current_setting('app.actor_id',true),'')::bigint;
+ SELECT * INTO d FROM documentos WHERE id=NEW.documento_id FOR UPDATE;
+ SELECT * INTO u FROM usuarios WHERE id=actor AND activo;
+ IF d.id IS NULL OR d.situacion='ANULADO' OR documento_periodo_cerrado(d.id)
+ OR u.id IS NULL OR documento_delegado_por(actor,d.id) IS NULL THEN
+  RAISE EXCEPTION 'Acción documental no autorizada' USING ERRCODE='42501';
+ END IF;
+ IF TG_OP='INSERT' THEN
+  NEW.responsable_id:=actor; NEW.oficina_id:=u.oficina_id;
+  SELECT nombre INTO NEW.oficina_nombre FROM oficinas WHERE id=u.oficina_id;
+  NEW.creado_en:=clock_timestamp(); NEW.actualizado_en:=NEW.creado_en; NEW.revision:=1;
+ ELSE
+  IF OLD.responsable_id<>actor OR (NEW.id,NEW.documento_id,NEW.responsable_id,NEW.oficina_id,NEW.oficina_nombre,NEW.creado_en)
+   IS DISTINCT FROM (OLD.id,OLD.documento_id,OLD.responsable_id,OLD.oficina_id,OLD.oficina_nombre,OLD.creado_en) THEN
+   RAISE EXCEPTION 'Solo el autor corrige su acción sin alterar su identidad' USING ERRCODE='42501';
+  END IF;
+  NEW.revision:=OLD.revision+1; NEW.actualizado_en:=clock_timestamp();
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER validar_accion_documental BEFORE INSERT OR UPDATE ON acciones_documento FOR EACH ROW EXECUTE FUNCTION validar_accion_documental();
+
+-- La corrección actualiza la misma acción y registra el antes/después en la auditoría existente.
+CREATE FUNCTION public.auditar_accion_documental() RETURNS trigger LANGUAGE plpgsql SET search_path TO pg_catalog,public AS $$
+DECLARE antes jsonb; despues jsonb;
+BEGIN
+ IF TG_OP='UPDATE' THEN
+  antes:=jsonb_build_object('accion_id',OLD.id::text,'descripcion',OLD.descripcion,'pdf_nombre',OLD.pdf_nombre);
+  IF OLD.pdf_clave IS DISTINCT FROM NEW.pdf_clave AND OLD.pdf_clave IS NOT NULL THEN
+   INSERT INTO pdf_objetos_pendientes(clave_r2,documento_id,limpiar_desde) VALUES(OLD.pdf_clave,OLD.documento_id,clock_timestamp())
+   ON CONFLICT(clave_r2) DO UPDATE SET limpiar_desde=clock_timestamp();
+  END IF;
+ END IF;
+ despues:=jsonb_build_object('accion_id',NEW.id::text,'descripcion',NEW.descripcion,'pdf_nombre',NEW.pdf_nombre);
+ INSERT INTO auditoria_documental(documento_id,actor_id,accion,motivo,anterior,posterior)
+ VALUES(NEW.documento_id,NEW.responsable_id,CASE WHEN TG_OP='INSERT' THEN 'ACCION_REGISTRADA' ELSE 'ACCION_CORREGIDA' END,
+ current_setting('app.motivo',true),antes,despues);
+ RETURN NULL;
+END $$;
+CREATE TRIGGER auditar_accion_documental AFTER INSERT OR UPDATE ON acciones_documento FOR EACH ROW EXECUTE FUNCTION auditar_accion_documental();
+CREATE TRIGGER proteger_acciones BEFORE DELETE ON acciones_documento FOR EACH ROW EXECUTE FUNCTION impedir_cambio_historico();
+CREATE TRIGGER no_truncar_acciones BEFORE TRUNCATE ON acciones_documento EXECUTE FUNCTION impedir_truncado();
+
+
+
 COMMIT;

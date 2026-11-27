@@ -1,3 +1,5 @@
+/** Archivo: Define los campos admitidos al administrar cuentas, oficinas, tipos y ubicaciones.
+ */
 import { z } from 'zod';
 import { idSchema as id } from '../../shared/admin/admin.schema.js';
 
@@ -36,10 +38,12 @@ export const tipo = z
       .regex(/^[A-Z]{2,8}$/),
   })
   .strict();
-export const tipoEdicion = tipo.extend({
-  activo: z.boolean(),
-  motivo: z.string().trim().min(1).max(1000),
-}).strict();
+export const tipoEdicion = tipo
+  .extend({
+    activo: z.boolean(),
+    motivo: z.string().trim().min(1).max(1000),
+  })
+  .strict();
 export const motivoTipo = z.object({ motivo: z.string().trim().min(1).max(1000) }).strict();
 export const unidad = z
   .object({

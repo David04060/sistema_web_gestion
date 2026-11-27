@@ -1,3 +1,5 @@
+/** Archivo: Organiza lugares y contenido de una cuenta y muestra grupos de cinco elementos expandibles.
+ */
 import { useCallback, useId, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { config, rutaUnidades, padresElegibles } from '../../../api/documental';
@@ -6,6 +8,9 @@ import { useAuth } from '../../auth/hooks/useAuth';
 import { useConsulta } from '../../../hooks/useConsulta';
 import { EstadoCarga } from '../../../components/ui/EstadoCarga';
 import styles from '../../../components/ui/Admin.module.css';
+/** Muestra el árbol de la cuenta; administración selecciona una cuenta con oficina.
+ * El cambio de cuenta invalida las consultas anteriores. Crear o renombrar unidades
+ * afecta al catálogo, mientras las rutas históricas documentales permanecen guardadas. */
 export function UbicacionesPage() {
   const { token, usuario } = useAuth().sesion!,
     admin = esAdministracion(usuario.rol),
@@ -41,9 +46,7 @@ export function UbicacionesPage() {
           </label>
         </>
       ) : !usuario.oficina_id ? (
-        <p className={styles.aviso}>
-          No tienes oficina asignada. Puedes registrar documentos sin ubicación.
-        </p>
+        <p className={styles.aviso}>No tienes oficina asignada. Puedes registrar documentos sin ubicación.</p>
       ) : null}
       {target && (admin || usuario.oficina_id) && (
         <UnidadesCuenta key={target} token={token} usuario={target} admin={admin} />
@@ -60,15 +63,7 @@ type Unidad = {
 };
 const vistaBreve = 5;
 
-function UnidadesCuenta({
-  token,
-  usuario,
-  admin,
-}: {
-  token: string;
-  usuario: string;
-  admin: boolean;
-}) {
+function UnidadesCuenta({ token, usuario, admin }: { token: string; usuario: string; admin: boolean }) {
   const consulta = useConsulta(
     useCallback(() => config.unidades(token, admin ? usuario : undefined), [token, usuario, admin]),
   );
@@ -111,6 +106,7 @@ function UnidadesCuenta({
     setMensaje('');
     document.getElementById('formulario-ubicacion')?.scrollIntoView({ block: 'start' });
   }
+  // Un lugar es raíz; su contenido exige padre. Administración indica la cuenta propietaria elegida.
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
     if (ocupado) return;
@@ -138,6 +134,7 @@ function UnidadesCuenta({
       setOcupado(false);
     }
   }
+  /** Dibuja cada rama sin repetir ancestros y permite ampliar los primeros cinco elementos. */
   function grupo(u: Unidad, visitados = new Set<string>()): React.ReactNode {
     if (visitados.has(u.id)) return null;
     const siguientes = new Set([...visitados, u.id]);
@@ -165,7 +162,9 @@ function UnidadesCuenta({
         {ocultos > 0 && (
           <div className={styles.resumenUbicaciones}>
             {!expandido && (
-              <small>{ocultos} {ocultos === 1 ? 'elemento oculto' : 'elementos ocultos'}</small>
+              <small>
+                {ocultos} {ocultos === 1 ? 'elemento oculto' : 'elementos ocultos'}
+              </small>
             )}
             <button
               type="button"
@@ -240,9 +239,7 @@ function UnidadesCuenta({
                 <input
                   required
                   maxLength={250}
-                  placeholder={
-                    modo === 'lugar' ? 'Estante A, caja de expedientes…' : 'Informes de marzo…'
-                  }
+                  placeholder={modo === 'lugar' ? 'Estante A, caja de expedientes…' : 'Informes de marzo…'}
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
                 />
@@ -262,10 +259,7 @@ function UnidadesCuenta({
               )}
             </div>
             <div className={styles.acciones}>
-              <button
-                className={styles.boton}
-                disabled={ocupado || (modo === 'contenido' && !padre)}
-              >
+              <button className={styles.boton} disabled={ocupado || (modo === 'contenido' && !padre)}>
                 {ocupado
                   ? 'Guardando…'
                   : edicion

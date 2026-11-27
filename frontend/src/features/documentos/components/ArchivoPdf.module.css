@@ -1,3 +1,6 @@
+/** Archivo: Presenta controles, metadatos, paginación y lienzo de los PDF.
+ */
+/* Carga PDF: controles, foco, estados deshabilitados y selector de archivo. */
 .archivo button {
   min-height: 44px;
   padding: 10px 16px;
@@ -63,6 +66,7 @@
     margin-bottom: 8px;
   }
 }
+/* Metadatos del archivo vigente y acciones disponibles. */
 .resumen {
   display: flex;
   align-items: center;
@@ -102,6 +106,7 @@
   background: var(--error-fondo);
   border-color: var(--error-borde);
 }
+/* Visor PDF.js: herramientas, paginación y lienzo. */
 .visor {
   border: 1px solid var(--borde);
   border-radius: 10px;

@@ -1,3 +1,5 @@
+/** Archivo: Define los campos válidos del acceso, perfil y respuesta de sesión.
+ */
 import { z } from 'zod';
 /** Contrato público emitido por Express. Los bigint llegan como texto para evitar pérdida de precisión. */
 export const usuarioSchema = z.object({

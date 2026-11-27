@@ -1,3 +1,5 @@
+/** Archivo: Abre y cierra el menú móvil y libera el diálogo al pasar a una pantalla amplia.
+ */
 import { useEffect, useRef } from 'react';
 /**
  * Mantiene el diálogo móvil fuera de la composición visual del layout.

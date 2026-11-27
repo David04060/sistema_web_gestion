@@ -1,3 +1,6 @@
+/** Archivo: Distribuye las tarjetas de cifras del panel y ajusta su tamaño en móvil.
+ */
+/* Tarjetas de resumen del dashboard y adaptación de cifras. */
 .resumen {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

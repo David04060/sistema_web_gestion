@@ -21,13 +21,13 @@ test('Tipos y ubicaciones: contratos y permisos sobre PostgreSQL real con ROLLBA
         });
         await t.test('catálogo real e integridad del cambio de esquema autorizado', /** Verifica el caso «catálogo real e integridad del cambio de esquema autorizado»; una aserción fallida invalida este resultado. */ async () => {
             tipos = (await call('/api/tipos-documentales')).body.tipos;
-            assert.equal(tipos.find(/** Selecciona las entradas de tipos que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ x => x.nombre === 'SíseVe').prefijo_codigo, 'SISEVE');
-            assert.equal(tipos.find(/** Selecciona las entradas de tipos que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ x => x.nombre === 'Informe').prefijo_codigo, 'INF');
+            assert.equal(tipos.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ x => x.nombre === 'SíseVe').prefijo_codigo, 'SISEVE');
+            assert.equal(tipos.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ x => x.nombre === 'Informe').prefijo_codigo, 'INF');
             const column = (await s.cliente.query("SELECT is_nullable FROM information_schema.columns WHERE table_name='estantes' AND column_name='oficina_id'")).rows[0];
             assert.equal(column.is_nullable, 'NO');
             oficinas = (await call('/api/oficinas')).body.oficinas;
             roles = (await call('/api/roles')).body.roles;
-            otraOficina = oficinas.find(/** Selecciona las entradas de oficinas que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => o.nombre !== 'Dirección');
+            otraOficina = oficinas.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => o.nombre !== 'Dirección');
         });
         await t.test('registro, normalización, duplicados, detalles y edición de tipos', /** Verifica el caso «registro, normalización, duplicados, detalles y edición de tipos»; una aserción fallida invalida este resultado. */ async () => {
             let r = await call('/api/tipos-documentales', 'POST', { nombre: ` Tipo   QA ${tag} `, prefijo_codigo: 'QAZ' });
@@ -45,7 +45,7 @@ test('Tipos y ubicaciones: contratos y permisos sobre PostgreSQL real con ROLLBA
         });
         await t.test('protecciones institucionales, SíseVe y correlativos históricos', /** Verifica el caso «protecciones institucionales, SíseVe y correlativos históricos»; una aserción fallida invalida este resultado. */ async () => {
             for (const nombre of ['Informe', 'SíseVe']) {
-                const tipo = tipos.find(/** Selecciona las entradas de tipos que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ x => x.nombre === nombre);
+                const tipo = tipos.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ x => x.nombre === nombre);
                 assert.equal((await call(`/api/tipos-documentales/${tipo.id}`, 'PUT', { nombre: 'Renombrado', prefijo_codigo: 'ZZZ' })).status, 409);
             }
             await s.cliente.query('INSERT INTO correlativos_documentales(tipo_documental_id,anio,ultimo_numero) VALUES($1,2026,1)', [tipo.id]);
@@ -53,10 +53,10 @@ test('Tipos y ubicaciones: contratos y permisos sobre PostgreSQL real con ROLLBA
             assert.equal((await call(`/api/tipos-documentales/${tipo.id}`, 'PUT', { nombre: `Historia ${tag}`, prefijo_codigo: 'QAY' })).status, 200);
         });
         await t.test('cuentas transaccionales autenticadas con contraseñas reales', /** Verifica el caso «cuentas transaccionales autenticadas con contraseñas reales»; una aserción fallida invalida este resultado. */ async () => {
-            const direccion = oficinas.find(/** Selecciona las entradas de oficinas que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => o.nombre === 'Dirección');
+            const direccion = oficinas.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => o.nombre === 'Dirección');
             for (const [clave, rol, oficina] of [['a', 'Usuario', otraOficina], ['b', 'Usuario', otraOficina], ['c', 'Usuario', otraOficina], ['director', 'Director(a)', direccion]]) {
                 const password = `Clave-qa-${tag}`;
-                const r = await call('/api/usuarios', 'POST', { nombre: `QA ${clave}`, apellido: 'Ubicaciones', nombre_usuario: `qa_${clave}_${tag}`, email: null, telefono: null, rol_id: roles.find(/** Selecciona las entradas de roles que cumplen el criterio requerido por la comprobación. */ /** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ r => r.nombre === rol).id, oficina_id: oficina.id, contrasena: password });
+                const r = await call('/api/usuarios', 'POST', { nombre: `QA ${clave}`, apellido: 'Ubicaciones', nombre_usuario: `qa_${clave}_${tag}`, email: null, telefono: null, rol_id: roles.find(/** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ r => r.nombre === rol).id, oficina_id: oficina.id, contrasena: password });
                 assert.equal(r.status, 201);
                 const login = await call('/api/auth/login', 'POST', { identificador: r.body.usuario.nombre_usuario, contrasena: password }, '');
                 assert.equal(login.status, 200);
@@ -120,7 +120,7 @@ test('Tipos y ubicaciones: contratos y permisos sobre PostgreSQL real con ROLLBA
             assert.equal((await call(`/api/ubicaciones/archivadores/${archivador.id}`, 'PUT', { estante_id: estante.id, numero: 3 }, cuentas.director.token)).status, 403);
         });
         await t.test('oficina estable al trasladar cuenta; reasignación administrativa preserva IDs', /** Verifica el caso «oficina estable al trasladar cuenta; reasignación administrativa preserva IDs»; una aserción fallida invalida este resultado. */ async () => {
-            await s.cliente.query('UPDATE usuarios SET oficina_id=$2 WHERE id=$1', [cuentas.a.id, oficinas.find(/** Selecciona las entradas de oficinas que cumplen el criterio requerido por la comprobación. */ /** Obtiene o compara el identificador del fixture para verificar asociaciones sin perder la precisión bigint. */ o => o.id !== otraOficina.id).id]);
+            await s.cliente.query('UPDATE usuarios SET oficina_id=$2 WHERE id=$1', [cuentas.a.id, oficinas.find(/** Obtiene o compara el identificador del fixture para verificar asociaciones sin perder la precisión bigint. */ o => o.id !== otraOficina.id).id]);
             assert.equal((await call(`/api/ubicaciones/estantes/${estante.id}`)).body.estante.oficina_id, otraOficina.id);
             const datos = { codigo: estante.codigo, usuario_id: cuentas.c.id, oficina_id: otraOficina.id };
             assert.equal((await call(`/api/ubicaciones/estantes/${estante.id}`, 'PUT', { ...datos, usuario_id: cuentas.director.id })).status, 400);
@@ -144,7 +144,7 @@ test('Tipos y ubicaciones: contratos y permisos sobre PostgreSQL real con ROLLBA
             assert.deepEqual(opciones.responsables, []);
             assert.equal(opciones.oficinas.length, 1);
             const cambios = (await s.cliente.query("SELECT usuario_actor_id::text,campos_modificados FROM historial_modificaciones WHERE tabla='estantes' AND registro_id=$1 ORDER BY id", [estante.id])).rows;
-            assert.ok(cambios.some(/** Selecciona las entradas de cambios que cumplen el criterio requerido por la comprobación. */ /** Comprueba que la fila pertenezca al actor o al estado admitido por la bandeja del caso QA. */ c => c.usuario_actor_id === s.idInicial && c.campos_modificados.usuario_id));
+            assert.ok(cambios.some(/** Comprueba que la fila pertenezca al actor o al estado admitido por la bandeja del caso QA. */ c => c.usuario_actor_id === s.idInicial && c.campos_modificados.usuario_id));
             assert.equal((await call('/api/auth/me')).status, 200);
             assert.equal((await call('/api/roles')).status, 200);
             assert.equal((await call('/api/oficinas')).status, 200);

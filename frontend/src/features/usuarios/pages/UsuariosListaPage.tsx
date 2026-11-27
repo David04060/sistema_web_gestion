@@ -1,3 +1,5 @@
+/** Archivo: Lista las cuentas visibles para administración y enlaza su consulta y creación.
+ */
 import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { config } from '../../../api/documental';
@@ -55,9 +57,7 @@ export function UsuariosListaPage() {
               </tbody>
             </table>
           </div>
-          {!consulta.datos.usuarios.length && (
-            <p className={styles.vacio}>No hay cuentas registradas.</p>
-          )}
+          {!consulta.datos.usuarios.length && <p className={styles.vacio}>No hay cuentas registradas.</p>}
         </section>
       )}
     </main>

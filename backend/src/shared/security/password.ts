@@ -1,9 +1,11 @@
+/** Archivo: Genera y comprueba una huella de contraseña; nunca necesita guardar la contraseña original.
+ */
 import { scrypt, randomBytes, timingSafeEqual } from 'node:crypto';
 const N = 16384;
 const R = 8;
 const P = 1;
 const KEY_LENGTH = 64;
-/** Derivación asíncrona con los parámetros del formato scrypt ya almacenado en PostgreSQL. */
+/** Calcula la huella scrypt sin bloquear la atención de otras solicitudes. */
 function derivarClave(contrasena: string, sal: Buffer, longitud: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     scrypt(
@@ -27,13 +29,10 @@ function derivarClave(contrasena: string, sal: Buffer, longitud: number): Promis
   });
 }
 /**
- * Rechaza formatos/parámetros desconocidos antes de derivar; compara buffers de igual
- * longitud en tiempo constante. No adapta parámetros arbitrarios recibidos del hash.
+ * Comprueba que la huella guardada tiene el formato conocido y calcula la de la contraseña recibida.
+ * Compara ambas sin terminar antes al encontrar una diferencia, para no revelar dónde coinciden.
  */
-export async function verificarContrasena(
-  contrasena: string,
-  hashGuardado: string,
-): Promise<boolean> {
+export async function verificarContrasena(contrasena: string, hashGuardado: string): Promise<boolean> {
   const partes = hashGuardado.split('$');
   if (partes.length !== 6 || partes[0] !== 'scrypt') {
     return false;

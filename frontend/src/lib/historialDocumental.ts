@@ -1,7 +1,11 @@
+/** Archivo: Convierte los cambios permitidos del historial en campos y etiquetas legibles.
+ */
 import { etiquetas } from '../api/documental';
 
 const campos: Record<string, string> = {
   asunto: 'Asunto',
+  descripcion: 'Descripción de la acción',
+  pdf_nombre: 'PDF de la acción',
   remitente: 'Remitente',
   observaciones: 'Observaciones',
   situacion: 'Situación',
@@ -11,6 +15,8 @@ const campos: Record<string, string> = {
   ruta: 'Ubicación',
 };
 export const eventosDocumentales: Record<string, string> = {
+  ACCION_REGISTRADA: 'Acción realizada',
+  ACCION_CORREGIDA: 'Corrección de acción realizada',
   REGISTRO: 'Registro',
   CORRECCION: 'Corrección',
   ANULACION: 'Anulación',

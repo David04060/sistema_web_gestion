@@ -1,3 +1,5 @@
+/** Archivo: Muestra una cuenta y exige confirmación al cambiar su contraseña o actividad.
+ */
 import { useCallback, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { config } from '../../../api/documental';
@@ -39,11 +41,7 @@ export function UsuarioDetallePage() {
       setClave('');
       setMotivo('');
       setMensaje(
-        tipo === 'clave'
-          ? 'Contraseña actualizada.'
-          : u.activo
-            ? 'Cuenta desactivada.'
-            : 'Cuenta activada.',
+        tipo === 'clave' ? 'Contraseña actualizada.' : u.activo ? 'Cuenta desactivada.' : 'Cuenta activada.',
       );
       consulta.recargar();
     } catch (e) {

@@ -1,6 +1,8 @@
-import js from '@eslint/js'
-import { defineConfig } from 'eslint/config'
-import tseslint from 'typescript-eslint'
+/** Archivo: Define las comprobaciones del servidor y sus pruebas y omite dependencias y archivos generados.
+ */
+import js from '@eslint/js';
+import { defineConfig } from 'eslint/config';
+import tseslint from 'typescript-eslint';
 
 // Los parámetros HTTP con prefijo _ se conservan cuando Express requiere su posición.
 export default defineConfig([
@@ -19,4 +21,4 @@ export default defineConfig([
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
-])
+]);

@@ -1,3 +1,5 @@
+/** Archivo: Relaciona direcciones con pantallas y exige sesión y perfil antes de mostrarlas.
+ */
 import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth';
@@ -138,6 +140,9 @@ function NoEncontrada() {
     </main>
   );
 }
+/** Compone rutas con sesión verificada, perfil y carga diferida.
+ * Los límites de error/carga envuelven la navegación; las barreras visuales no conceden
+ * permisos de API. Los módulos históricos sin Route no son pantallas activas. */
 export function AppRoutes() {
   const location = useLocation();
   return (

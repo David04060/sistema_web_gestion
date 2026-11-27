@@ -1,3 +1,7 @@
+/**
+ * Archivo: Selecciona los datos del perfil que puede recibir el navegador, sin incluir la contraseña
+ * guardada.
+ */
 import type { UsuarioAuth, UsuarioPublico } from './auth.types.js';
 /** Lista explícita de campos públicos; evita exponer nuevas columnas internas por accidente. */
 export function usuarioPublico(usuario: UsuarioAuth): UsuarioPublico {

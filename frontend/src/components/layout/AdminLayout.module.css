@@ -1,3 +1,7 @@
+/** Archivo: Organiza barra lateral, cabecera de cuenta y menú móvil; conserva la prioridad de las reglas
+ * adaptables.
+ */
+/* Contenedor de sesión, barra lateral y marca institucional. */
 .sistema {
   min-height: 100svh;
   background: var(--fondo);
@@ -31,6 +35,7 @@
   font-weight: 750;
   font-size: 14px;
 }
+/* Navegación por perfil y estado de ruta activa. */
 .menu {
   display: flex;
   flex-direction: column;
@@ -73,6 +78,7 @@
   color: var(--texto-secundario);
   margin-top: 5px;
 }
+/* Área principal: cabecera, cuenta y contenido. */
 .area {
   min-width: 0;
 }
@@ -138,6 +144,7 @@
 .abrir {
   display: none;
 }
+/* Menú móvil y fondo modal. */
 .drawer {
   padding: 0;
   margin: 0;

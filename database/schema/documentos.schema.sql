@@ -3,6 +3,7 @@
 -- Name: aplicar_delegacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Tras insertar la constancia, cierra ubicación vigente, cambia situación y registra auditoría dentro de la misma transacción.
 CREATE FUNCTION public.aplicar_delegacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -26,6 +27,7 @@ END $$;
 -- Name: aplicar_ubicacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Tras ubicar, actualiza la situación documental y registra la ruta histórica; no transfiere autoría.
 CREATE FUNCTION public.aplicar_ubicacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -45,6 +47,7 @@ END $$;
 -- Name: asignar_codigo_documental(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Antes del alta, valida tipo y ámbito y reserva correlativo por año bajo bloqueo; devuelve NEW con código visible.
 CREATE FUNCTION public.asignar_codigo_documental() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -80,6 +83,7 @@ END $$;
 -- Name: auditar_documento(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Registra alta o cambios de contenido/situación con actor y motivo de la transacción, preservando antes y después.
 CREATE FUNCTION public.auditar_documento() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -109,6 +113,7 @@ END $$;
 -- Name: documentos_grupo(bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Recorre relaciones en ambos sentidos desde un documento y devuelve IDs del grupo. El llamador filtra cada ID por actor.
 CREATE FUNCTION public.documentos_grupo(doc bigint) RETURNS TABLE(id bigint)
     LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog', 'public'
@@ -126,47 +131,99 @@ $$;
 -- Name: validar_delegacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.validar_delegacion() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE d documentos%ROWTYPE; rol smallint; oficina bigint; nombre_persona text; titular bigint;
+-- Contrato: Antes de insertar, verifica actor, situación y destino compatible. No permite delegaciones sucesivas ni cambio de ámbito.
+CREATE FUNCTION public.validar_delegacion ()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+DECLARE
+  d documentos%ROWTYPE;
+  rol smallint;
+  oficina bigint;
+  nombre_persona text;
+  titular bigint;
 BEGIN
- SELECT * INTO d FROM documentos WHERE id=NEW.documento_id FOR UPDATE;
- IF d.id IS NULL OR d.situacion NOT IN ('PENDIENTE_DIRECCION','EN_MESA_DE_PARTES','PERSONAL','GUARDADO_DIRECCION') THEN
-   RAISE EXCEPTION 'Documento no delegable';
- END IF;
- SELECT rol_id INTO rol FROM usuarios WHERE id=NEW.delegado_por AND activo;
- SELECT l.propietario_id INTO titular FROM ubicaciones_documento u
- JOIN unidades_ubicacion l ON l.id=u.unidad_id
- WHERE u.documento_id=d.id AND u.vigente FOR UPDATE OF u FOR SHARE OF l;
- IF titular IS NOT NULL AND titular<>NEW.delegado_por THEN
-   RAISE EXCEPTION 'Ubicación vigente ajena';
- END IF;
- IF ((d.situacion IN ('PENDIENTE_DIRECCION','GUARDADO_DIRECCION') AND rol=3
-      AND (d.situacion<>'GUARDADO_DIRECCION' OR titular=NEW.delegado_por)
-      AND EXISTS (SELECT 1 FROM miembros_ambito m
-        WHERE m.usuario_id=NEW.delegado_por AND m.ambito_id=d.ambito_id)) OR
-     (d.situacion='EN_MESA_DE_PARTES' AND rol=4 AND d.registrado_por=NEW.delegado_por) OR
-     (d.situacion='PERSONAL' AND rol=5 AND d.registrado_por=NEW.delegado_por)) IS DISTINCT FROM TRUE THEN
-   RAISE EXCEPTION 'Actor sin permiso para delegar';
- END IF;
- IF NEW.usuario_indicado_id IS NOT NULL THEN
-   SELECT u.oficina_id,u.nombre||' '||u.apellido INTO oficina,nombre_persona
-     FROM usuarios u WHERE u.id=NEW.usuario_indicado_id AND u.activo;
-   IF nombre_persona IS NULL OR
-      (NEW.oficina_indicada_id IS NOT NULL AND oficina IS DISTINCT FROM NEW.oficina_indicada_id) OR
-      NEW.nombre_persona_guardado IS DISTINCT FROM nombre_persona THEN
-     RAISE EXCEPTION 'Persona u oficina indicada incompatible';
-   END IF;
- END IF;
- RETURN NEW;
-END $$;
+  SELECT
+    *
+  INTO
+    d
+  FROM
+    documentos
+  WHERE
+    id = NEW.documento_id
+  FOR UPDATE;
+  IF d.id IS NULL OR d.situacion NOT IN ('PENDIENTE_DIRECCION', 'EN_MESA_DE_PARTES', 'PERSONAL',
+    'GUARDADO_DIRECCION', 'DELEGADO') THEN
+    RAISE EXCEPTION 'Documento no delegable';
+  END IF;
+  SELECT
+    rol_id
+  INTO
+    rol
+  FROM
+    usuarios
+  WHERE
+    id = NEW.delegado_por
+    AND activo;
+  SELECT
+    l.propietario_id
+  INTO
+    titular
+  FROM
+    ubicaciones_documento u
+    JOIN unidades_ubicacion l ON l.id = u.unidad_id
+  WHERE
+    u.documento_id = d.id
+    AND u.vigente
+  FOR UPDATE
+    OF u FOR SHARE OF l;
+  IF titular IS NOT NULL AND titular <> NEW.delegado_por THEN
+    RAISE EXCEPTION 'Ubicación vigente ajena';
+  END IF;
+  IF ((d.situacion='DELEGADO' AND (d.registrado_por=NEW.delegado_por OR public.documento_delegado_por(NEW.delegado_por,d.id) IS NOT NULL)) OR (d.situacion IN ('PENDIENTE_DIRECCION', 'GUARDADO_DIRECCION') AND rol = 3 AND (d.situacion <>
+    'GUARDADO_DIRECCION' OR
+    titular = NEW.delegado_por) AND EXISTS (
+  SELECT
+    1
+  FROM
+    miembros_ambito m
+  WHERE
+    m.usuario_id = NEW.delegado_por
+      AND m.ambito_id = d.ambito_id)) OR (d.situacion = 'EN_MESA_DE_PARTES' AND rol = 4 AND d.registrado_por =
+	NEW.delegado_por) OR (d.situacion = 'PERSONAL' AND rol = 5 AND d.registrado_por =
+	NEW.delegado_por)) IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION 'Actor sin permiso para delegar';
+  END IF;
+  IF NEW.delegado_por IS DISTINCT FROM nullif(current_setting('app.actor_id',true),'')::bigint OR rol NOT IN (3,4,5) THEN
+    RAISE EXCEPTION 'Actor de delegación incompatible';
+  END IF;
+  IF NEW.usuario_indicado_id IS NOT NULL THEN
+    SELECT
+      u.oficina_id,
+      u.nombre || ' ' || u.apellido
+    INTO
+      oficina,
+      nombre_persona
+    FROM
+      usuarios u
+    WHERE
+      u.id = NEW.usuario_indicado_id
+      AND u.activo AND u.rol_id IN (3,4,5);
+    IF nombre_persona IS NULL OR (NEW.oficina_indicada_id IS NOT NULL AND oficina IS DISTINCT FROM
+      NEW.oficina_indicada_id) OR NEW.nombre_persona_guardado IS DISTINCT FROM nombre_persona THEN
+      RAISE EXCEPTION 'Persona u oficina indicada incompatible';
+    END IF;
+  END IF;
+  RETURN NEW;
+END
+$$;
 
 
 --
 -- Name: validar_documento_actualizacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Protege identidad y clasificación; exige permiso, motivo y transición válida y actualiza revisión/fecha.
 CREATE FUNCTION public.validar_documento_actualizacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -226,58 +283,128 @@ END $$;
 -- Name: validar_estado_final(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.validar_estado_final() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE actual text; n integer;
+-- Contrato: Trigger diferido: comprueba al confirmar que situación y hechos de delegación/ubicación sean coherentes.
+CREATE FUNCTION public.validar_estado_final ()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+DECLARE
+  actual text;
+  n integer;
 BEGIN
-  SELECT situacion INTO actual FROM documentos WHERE id=NEW.id;
-  IF actual='DELEGADO' THEN
-    SELECT count(*) INTO n FROM delegaciones_documento WHERE documento_id=NEW.id;
-    IF n<>1 THEN RAISE EXCEPTION 'Delegación sin hecho asociado'; END IF;
-  ELSIF actual='GUARDADO_DIRECCION' THEN
-    SELECT count(*) INTO n FROM ubicaciones_documento u
-      JOIN unidades_ubicacion lugar ON lugar.id=u.unidad_id
-      JOIN usuarios propietario ON propietario.id=lugar.propietario_id
-      WHERE u.documento_id=NEW.id AND u.vigente AND propietario.rol_id=3;
-    IF n<>1 THEN RAISE EXCEPTION 'Guardado en Dirección sin ubicación'; END IF;
+  SELECT
+    situacion
+  INTO
+    actual
+  FROM
+    documentos
+  WHERE
+    id = NEW.id;
+  IF actual = 'DELEGADO' THEN
+    SELECT
+      count(*)
+    INTO
+      n
+    FROM
+      delegaciones_documento
+    WHERE
+      documento_id = NEW.id;
+    IF n < 1 THEN
+      RAISE EXCEPTION 'Delegación sin hecho asociado';
+    END IF;
+  ELSIF actual = 'GUARDADO_DIRECCION' THEN
+    SELECT
+      count(*)
+    INTO
+      n
+    FROM
+      ubicaciones_documento u
+      JOIN unidades_ubicacion lugar ON lugar.id = u.unidad_id
+      JOIN usuarios propietario ON propietario.id = lugar.propietario_id
+    WHERE
+      u.documento_id = NEW.id
+      AND u.vigente
+      AND propietario.rol_id = 3;
+    IF n < 1 THEN
+      RAISE EXCEPTION 'Guardado en Dirección sin ubicación';
+    END IF;
   END IF;
   RETURN NULL;
-END $$;
+END
+$$;
 
 
 --
 -- Name: validar_relacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.validar_relacion() RETURNS trigger
-    LANGUAGE plpgsql
-    SET search_path TO 'pg_catalog', 'public'
-    AS $$
-DECLARE hijo public.documentos%ROWTYPE; actor bigint;
+-- Contrato: Valida origen y nuevo documento, acceso y ausencia de autorreferencias/ciclos antes de crear la relación.
+CREATE FUNCTION public.validar_relacion ()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  SET search_path TO 'pg_catalog', 'public'
+  AS $$
+DECLARE
+  hijo public.documentos%ROWTYPE;
+  actor bigint;
 BEGIN
- actor:=nullif(current_setting('app.actor_id',true),'')::bigint;
- SELECT * INTO hijo FROM public.documentos WHERE id=NEW.documento_id FOR SHARE;
- PERFORM 1 FROM public.documentos WHERE id=NEW.origen_id FOR SHARE;
- IF hijo.id IS NULL OR actor IS DISTINCT FROM NEW.creado_por OR hijo.registrado_por IS DISTINCT FROM actor
-  OR hijo.situacion='ANULADO' OR public.documento_periodo_cerrado(hijo.id)
-  OR NOT public.documento_consultable(actor,NEW.origen_id)
-  OR EXISTS(SELECT 1 FROM public.documentos WHERE id=NEW.origen_id AND situacion='ANULADO') THEN
-  RAISE EXCEPTION 'Origen no consultable o autor incompatible';
- END IF;
- IF NEW.documento_id=NEW.origen_id OR EXISTS(
-  WITH RECURSIVE cadena(id) AS (
-   SELECT NEW.origen_id UNION SELECT r.origen_id FROM public.documentos_relaciones r JOIN cadena c ON r.documento_id=c.id
-  ) SELECT 1 FROM cadena WHERE id=NEW.documento_id
- ) THEN RAISE EXCEPTION 'Ciclo documental'; END IF;
- RETURN NEW;
-END $$;
+  actor := nullif (current_setting('app.actor_id', true), '')::bigint;
+  SELECT
+    *
+  INTO
+    hijo
+  FROM
+    public.documentos
+  WHERE
+    id = NEW.documento_id FOR SHARE;
+  PERFORM
+    1
+  FROM
+    public.documentos
+  WHERE
+    id = NEW.origen_id FOR SHARE;
+  IF hijo.id IS NULL OR actor IS DISTINCT FROM NEW.creado_por OR hijo.registrado_por IS DISTINCT FROM actor
+    OR hijo.situacion = 'ANULADO' OR public.documento_periodo_cerrado (hijo.id) OR NOT
+    (EXISTS(SELECT 1 FROM documentos origen WHERE origen.id=NEW.origen_id AND origen.registrado_por=actor) OR public.documento_delegado_por(actor,NEW.origen_id) IS NOT NULL) OR EXISTS (
+    SELECT
+      1
+    FROM
+      public.documentos
+    WHERE
+      id = NEW.origen_id
+      AND situacion = 'ANULADO') THEN
+    RAISE EXCEPTION 'Origen no consultable o autor incompatible';
+  END IF;
+  IF NEW.documento_id = NEW.origen_id OR EXISTS ( WITH RECURSIVE cadena (
+      id
+    ) AS (
+    SELECT
+      NEW.origen_id
+    UNION
+    SELECT
+      r.origen_id
+    FROM
+      public.documentos_relaciones r
+      JOIN cadena c ON r.documento_id = c.id
+    )
+    SELECT
+      1
+    FROM
+      cadena
+    WHERE
+      id = NEW.documento_id) THEN
+    RAISE EXCEPTION 'Ciclo documental';
+  END IF;
+  RETURN NEW;
+END
+$$;
 
 
 --
 -- Name: validar_ubicacion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Verifica propietario, oficina, estado y jerarquía elegibles antes de registrar una ubicación histórica.
 CREATE FUNCTION public.validar_ubicacion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -316,6 +443,7 @@ END $$;
 -- Name: correlativos_documentales; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Contadores transaccionales por ámbito, tipo y año.
 CREATE TABLE public.correlativos_documentales (
     ambito_id bigint NOT NULL,
     tipo_id bigint NOT NULL,
@@ -330,7 +458,9 @@ CREATE TABLE public.correlativos_documentales (
 -- Name: delegaciones_documento; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Constancia única de destino por documento; no modifica autor ni ámbito.
 CREATE TABLE public.delegaciones_documento (
+    id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
     documento_id bigint NOT NULL,
     oficina_indicada_id bigint,
     usuario_indicado_id bigint,
@@ -347,6 +477,7 @@ CREATE TABLE public.delegaciones_documento (
 -- Name: documentos; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Registro central con clasificación, situación, autor y revisión de concurrencia.
 CREATE TABLE public.documentos (
     id bigint NOT NULL,
     ambito_id bigint NOT NULL,
@@ -420,6 +551,7 @@ ALTER TABLE public.documentos ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 -- Name: documentos_oficina; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Relación entre documento y periodo institucional de su alta.
 CREATE TABLE public.documentos_oficina (
     documento_id bigint NOT NULL,
     periodo_id bigint NOT NULL
@@ -457,6 +589,7 @@ CREATE VIEW public.documentos_ordinarios AS
 -- Name: documentos_relaciones; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Vínculo del documento nuevo con su origen; base del recorrido de grupos.
 CREATE TABLE public.documentos_relaciones (
     documento_id bigint NOT NULL,
     origen_id bigint NOT NULL,
@@ -470,6 +603,7 @@ CREATE TABLE public.documentos_relaciones (
 -- Name: ubicaciones_documento; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Ubicación física con ruta guardada, actor y vigencia histórica.
 CREATE TABLE public.ubicaciones_documento (
     id bigint NOT NULL,
     documento_id bigint NOT NULL,
@@ -509,7 +643,7 @@ ALTER TABLE ONLY public.correlativos_documentales
 --
 
 ALTER TABLE ONLY public.delegaciones_documento
-    ADD CONSTRAINT delegaciones_documento_pkey PRIMARY KEY (documento_id);
+    ADD CONSTRAINT delegaciones_documento_pkey PRIMARY KEY (id);
 
 
 --

@@ -1,3 +1,5 @@
+/** Archivo: Permite cambiar el nombre visible de un rol sin modificar sus permisos.
+ */
 import { useCallback, useState } from 'react';
 import { config } from '../../../api/documental';
 import styles from '../../../components/ui/Admin.module.css';
@@ -41,22 +43,44 @@ export function RolesActualesPage() {
                   <form onSubmit={guardar}>
                     <label className={styles.campo}>
                       Nombre visible
-                      <input required maxLength={250} value={edicion.nombre} disabled={ocupado}
-                        onChange={e => setEdicion({ id: r.id, nombre: e.target.value })} />
+                      <input
+                        required
+                        maxLength={250}
+                        value={edicion.nombre}
+                        disabled={ocupado}
+                        onChange={(e) => setEdicion({ id: r.id, nombre: e.target.value })}
+                      />
                     </label>
                     {error && <p role="alert">{error}</p>}
                     <div className={styles.acciones}>
-                      <button className={styles.boton} disabled={ocupado || !edicion.nombre.trim()}>Guardar nombre</button>
-                      <button className={styles.secundario} type="button" disabled={ocupado}
-                        onClick={() => setEdicion(undefined)}>Cancelar</button>
+                      <button className={styles.boton} disabled={ocupado || !edicion.nombre.trim()}>
+                        Guardar nombre
+                      </button>
+                      <button
+                        className={styles.secundario}
+                        type="button"
+                        disabled={ocupado}
+                        onClick={() => setEdicion(undefined)}
+                      >
+                        Cancelar
+                      </button>
                     </div>
                   </form>
                 ) : (
                   <div className={styles.acciones}>
                     <span>{r.nombre}</span>
-                    <button className={styles.secundario} type="button" disabled={ocupado}
+                    <button
+                      className={styles.secundario}
+                      type="button"
+                      disabled={ocupado}
                       aria-label={'Editar nombre de ' + r.nombre}
-                      onClick={() => { setError(''); setEdicion({ id: r.id, nombre: r.nombre }); }}>Editar nombre</button>
+                      onClick={() => {
+                        setError('');
+                        setEdicion({ id: r.id, nombre: r.nombre });
+                      }}
+                    >
+                      Editar nombre
+                    </button>
                   </div>
                 )}
               </li>

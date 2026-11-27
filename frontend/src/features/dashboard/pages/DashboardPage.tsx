@@ -1,3 +1,5 @@
+/** Archivo: Consulta el resumen autorizado del perfil y presenta cifras, gráficos y documentos recientes.
+ */
 import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api, etiquetas } from '../../../api/documental';
@@ -89,9 +91,7 @@ export function DashboardPage(_props: { usuario?: Usuario } = {}) {
               </article>
             </section>
           )}
-          {datos.alcance === 'institucional' && (
-            <h2 className={panel.titulo}>Documentos consultables</h2>
-          )}
+          {datos.alcance === 'institucional' && <h2 className={panel.titulo}>Documentos consultables</h2>}
           {('estados' in datos || 'documentos' in datos) && (
             <section aria-label="Resumen documental">
               {estados.length ? (
@@ -114,9 +114,7 @@ export function DashboardPage(_props: { usuario?: Usuario } = {}) {
               )}
             </section>
           )}
-          {datos.estadisticas && (
-            <GraficosDashboard estadisticas={datos.estadisticas} rol={usuario.rol} />
-          )}
+          {datos.estadisticas && <GraficosDashboard estadisticas={datos.estadisticas} rol={usuario.rol} />}
           {'recientes' in datos && (
             <section className={styles.tarjeta}>
               <h2>Documentos recientes</h2>

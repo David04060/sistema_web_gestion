@@ -1,3 +1,5 @@
+/** Archivo: Valida nombre, tamaño, tipo y revisión del PDF antes de preparar una carga.
+ */
 import { z } from 'zod';
 export const MAX_PDF = 15 * 1024 * 1024;
 export const revisionSchema = z.uuid().nullable();
@@ -10,8 +12,7 @@ export const iniciarSchema = z
       .max(200)
       .regex(/\.pdf$/i)
       .refine(
-        (v) =>
-          ![...v].some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127 || '/\\'.includes(c)),
+        (v) => ![...v].some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127 || '/\\'.includes(c)),
         'Nombre inválido',
       ),
     tamano: z.number().int().min(1).max(MAX_PDF),

@@ -1,0 +1,96 @@
+/* Recorrido vertical: etiquetas y texto complementan el color en ambos temas. */
+.recorrido {
+  list-style: none;
+  padding: 0 0 0 1.25rem;
+  margin: 1.5rem 0;
+  border-left: 2px solid var(--borde-control);
+}
+.evento {
+  position: relative;
+  margin: 0 0 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--info);
+  border-radius: var(--radio-control);
+  background: var(--superficie);
+  overflow-wrap: anywhere;
+}
+.evento::before {
+  content: '';
+  position: absolute;
+  left: -2rem;
+  top: 1.5rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: var(--info);
+  border: 3px solid var(--superficie);
+}
+.evento[data-tipo='DELEGACION'] {
+  border-left-color: var(--advertencia);
+}
+.evento[data-tipo='ACCION'] {
+  border-left-color: var(--exito);
+}
+.evento[data-tipo='CORRECCION'] {
+  border-left-color: var(--texto-secundario);
+  border-left-style: dashed;
+}
+.cabecera {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  color: var(--texto-secundario);
+  font-size: 0.9rem;
+}
+.tipo {
+  font-weight: 600;
+  color: var(--texto);
+}
+.texto,
+.cambios dd {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.meta {
+  color: var(--texto-secundario);
+}
+.accion {
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-control);
+  padding: 1rem;
+}
+.accion h3,
+.evento h3 {
+  margin: 0.5rem 0;
+}
+.formulario {
+  border: 1px solid var(--borde);
+  padding: 1rem;
+  margin-top: 1rem;
+  border-radius: var(--radio-control);
+  min-width: 0;
+}
+.cambios {
+  background: var(--superficie-secundaria);
+  padding: 1rem;
+  border-radius: var(--radio-control);
+}
+.cambios dt {
+  font-weight: 600;
+}
+.cambios dd {
+  margin: 0 0 0.75rem;
+}
+@media (max-width: 600px) {
+  .evento {
+    padding: 0.85rem;
+  }
+  .recorrido {
+    padding-left: 0.85rem;
+  }
+  .evento::before {
+    left: -1.6rem;
+  }
+}

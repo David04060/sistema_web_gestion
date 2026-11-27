@@ -3,6 +3,7 @@
 -- Name: validar_miembro_ambito(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Impide pertenencias incompatibles con rol y titularidad: ámbito compartido institucional o personal del usuario.
 CREATE FUNCTION public.validar_miembro_ambito() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -22,6 +23,7 @@ END $$;
 -- Name: validar_usuario_oficina(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Exige oficina compatible con rol y actividad; permite conservar asignación anterior a una oficina inactiva.
 CREATE FUNCTION public.validar_usuario_oficina() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -55,6 +57,7 @@ SET default_table_access_method = heap;
 -- Name: ambitos_registro; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Alcance compartido institucional o personal de una cuenta.
 CREATE TABLE public.ambitos_registro (
     id bigint NOT NULL,
     clase text NOT NULL,
@@ -83,6 +86,7 @@ ALTER TABLE public.ambitos_registro ALTER COLUMN id ADD GENERATED ALWAYS AS IDEN
 -- Name: miembros_ambito; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Pertenencia de cada cuenta a su ámbito; clave compuesta protege autor/ámbito.
 CREATE TABLE public.miembros_ambito (
     usuario_id bigint NOT NULL,
     ambito_id bigint NOT NULL
@@ -93,6 +97,7 @@ CREATE TABLE public.miembros_ambito (
 -- Name: oficinas; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Catálogo de oficinas, con actividad y nombres institucionales reservados.
 CREATE TABLE public.oficinas (
     id bigint NOT NULL,
     nombre text NOT NULL,
@@ -120,6 +125,7 @@ ALTER TABLE public.oficinas ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 -- Name: roles; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Códigos fijos de autorización; nombre visible editable sin cambiar semántica.
 CREATE TABLE public.roles (
     id smallint NOT NULL,
     codigo text NOT NULL,
@@ -133,6 +139,7 @@ CREATE TABLE public.roles (
 -- Name: usuarios; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Identidad, hash scrypt, actividad, rol y versión de autenticación; sin filas iniciales.
 CREATE TABLE public.usuarios (
     id bigint NOT NULL,
     rol_id smallint NOT NULL,

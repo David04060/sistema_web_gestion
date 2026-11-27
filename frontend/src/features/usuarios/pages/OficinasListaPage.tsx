@@ -1,3 +1,5 @@
+/** Archivo: Presenta oficinas activas e inactivas y enlaza sus detalles.
+ */
 import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { config } from '../../../api/documental';

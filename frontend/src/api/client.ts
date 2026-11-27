@@ -1,3 +1,5 @@
+/** Archivo: Envía solicitudes autenticadas, comprueba respuestas y presenta mensajes de error seguros.
+ */
 import { z } from 'zod';
 import { solicitar } from './conectividad';
 // Vite sustituye esta URL pública al compilar; vacío conserva /api y el proxy local.
@@ -14,10 +16,10 @@ export function suscribirNoAutorizado(listener: (token: string) => void): () => 
 export class ApiError extends Error {
   public readonly status: number;
   /**
-   * Crea un error de transporte con estado HTTP; el valor cero representa un fallo previo a recibir la respuesta.
+   * Crea un error de transporte con estado HTTP; el valor cero representa un fallo previo a recibir la
+   * respuesta.
    * @param status - Estado HTTP o cero si no se recibió una respuesta.
    * @param mensaje - Mensaje público que acompaña la transición.
-   * @throws ApiError si el transporte, el estado HTTP o el contrato de respuesta no son válidos.
    */
   constructor(status: number, mensaje: string) {
     super(mensaje);
@@ -28,7 +30,7 @@ export class ApiError extends Error {
 /**
  * Asocia el estado HTTP con un mensaje público seguro cuando no puede utilizarse el cuerpo del servidor.
  * @param status - Estado HTTP o cero si no se recibió una respuesta.
- * @throws ApiError si el transporte, el estado HTTP o el contrato de respuesta no son válidos.
+ * @returns Mensaje de reserva; esta función no lanza excepciones ni lee el cuerpo HTTP.
  */
 function mensajeHttp(status: number): string {
   switch (status) {
@@ -64,8 +66,7 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const headers = new Headers(opciones.headers);
   headers.set('Accept', 'application/json');
-  if (opciones.body && !headers.has('Content-Type'))
-    headers.set('Content-Type', 'application/json');
+  if (opciones.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   if (token) headers.set('Authorization', `Bearer ${token}`);
   let respuesta: Response;
   let texto: string;
@@ -74,7 +75,8 @@ export async function apiRequest<T>(
   } catch {
     throw new ApiError(
       0,
-      'No se pudo conectar con el servidor. Puede estar iniciándose o haber un problema de red. Vuelve a intentarlo.',
+      'No se pudo conectar con el servidor. Puede estar iniciándose o haber un problema de ' +
+        'red. Vuelve a intentarlo.',
     );
   }
   // El estado HTTP prevalece incluso cuando un proxy devuelve HTML en lugar de JSON.
@@ -85,9 +87,7 @@ export async function apiRequest<T>(
     // Nunca trasladar al usuario cuerpos de proxies o detalles de un error interno 5xx.
     if ([400, 404, 409, 422].includes(respuesta.status)) {
       try {
-        const datosError = z
-          .object({ error: z.string().min(1).max(1500) })
-          .safeParse(JSON.parse(texto));
+        const datosError = z.object({ error: z.string().min(1).max(1500) }).safeParse(JSON.parse(texto));
         if (datosError.success) mensaje = datosError.data.error;
       } catch {
         /* Conservar el mensaje por estado si el cuerpo no es JSON. */
@@ -103,10 +103,7 @@ export async function apiRequest<T>(
   }
   const validacion = schema.safeParse(datos);
   if (!validacion.success) {
-    throw new ApiError(
-      respuesta.status,
-      'La respuesta del servidor no cumple el formato esperado.',
-    );
+    throw new ApiError(respuesta.status, 'La respuesta del servidor no cumple el formato esperado.');
   }
   return validacion.data;
 }
@@ -125,19 +122,14 @@ export async function apiArchivo(
     respuesta = await fetch(apiBase + ruta, { method: 'GET', headers, cache: 'no-store', signal });
   } catch (error) {
     if (signal.aborted) throw error;
-    throw new ApiError(
-      0,
-      'No se pudo generar el archivo. Comprueba la conexión y vuelve a intentarlo.',
-    );
+    throw new ApiError(0, 'No se pudo generar el archivo. Comprueba la conexión y vuelve a intentarlo.');
   }
   if (!respuesta.ok) {
     if (respuesta.status === 401) listeners401.forEach((listener) => listener(token));
     let mensaje = mensajeHttp(respuesta.status);
     if ([400, 404, 409, 422, 429].includes(respuesta.status)) {
       try {
-        const datos = z
-          .object({ error: z.string().min(1).max(1500) })
-          .safeParse(await respuesta.json());
+        const datos = z.object({ error: z.string().min(1).max(1500) }).safeParse(await respuesta.json());
         if (datos.success) mensaje = datos.data.error;
       } catch {
         /* Mensaje público por estado. */

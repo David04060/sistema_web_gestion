@@ -1,3 +1,5 @@
+/** Archivo: Define qué campos acepta el login y rechaza valores incompletos o adicionales.
+ */
 import { z } from 'zod';
 /** Contraseña literal, identificador recortado y rechazo de campos adicionales. */
 export const loginSchema = z

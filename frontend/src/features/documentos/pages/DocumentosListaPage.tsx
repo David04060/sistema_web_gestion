@@ -1,3 +1,5 @@
+/** Archivo: Presenta documentos autorizados con filtros en la URL, paginación y exportación mensual.
+ */
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { api, etiquetas, situacionCuenta } from '../../../api/documental';
@@ -8,7 +10,10 @@ import { TextoExpandible } from '../../../components/ui/TextoExpandible';
 import { fechaLocal } from '../../../lib/fechas';
 import styles from '../../../components/ui/Admin.module.css';
 import { ExportarDocumentos } from '../components/ExportarDocumentos';
-/** La URL conserva los filtros al navegar y volver; los resultados siempre proceden del alcance del servidor. */
+/**
+ * La URL conserva filtros y página al volver al listado. El servidor limita resultados y totales;
+ * cambiar cuenta o filtros invalida respuestas anteriores.
+ */
 export function DocumentosListaPage() {
   const { token, usuario } = useAuth().sesion!,
     [url, setParams] = useSearchParams();
@@ -32,28 +37,26 @@ export function DocumentosListaPage() {
   const [busqueda, setBusqueda] = useState(params.get('q') ?? '');
   const [fecha, setFecha] = useState(params.get('fecha') ?? ''),
     [precision, setPrecision] = useState(
-      params.get('fecha')?.length === 4
-        ? 'anio'
-        : params.get('fecha')?.length === 7
-          ? 'mes'
-          : 'dia',
+      params.get('fecha')?.length === 4 ? 'anio' : params.get('fecha')?.length === 7 ? 'mes' : 'dia',
     );
   const busquedaUrl = params.get('q') ?? '',
     fechaUrl = params.get('fecha') ?? '';
   useEffect(() => {
     setBusqueda(busquedaUrl);
     setFecha(fechaUrl);
-    if (fechaUrl)
-      setPrecision(fechaUrl.length === 4 ? 'anio' : fechaUrl.length === 7 ? 'mes' : 'dia');
+    if (fechaUrl) setPrecision(fechaUrl.length === 4 ? 'anio' : fechaUrl.length === 7 ? 'mes' : 'dia');
   }, [busquedaUrl, fechaUrl]);
   const criterios = [
     params.get('q') ? 'Código o asunto: ' + params.get('q') : null,
-    relacionados || params.get('situacion') ? 'Situación: ' + (relacionados ? 'Documentos relacionados' : etiquetas[params.get('situacion')!]) : null,
+    relacionados || params.get('situacion')
+      ? 'Situación: ' + (relacionados ? 'Documentos relacionados' : etiquetas[params.get('situacion')!])
+      : null,
     params.get('clasificacion')
       ? 'Clasificación: ' + (params.get('clasificacion') === 'RECIBIDO' ? 'Recibido' : 'Emitido')
       : null,
     params.get('fecha') ? 'Registro: ' + params.get('fecha') + ' (hora de Perú)' : null,
   ].filter(Boolean);
+  // Confirmar una búsqueda vuelve a la primera página y conserva los demás filtros.
   function buscar(e: React.FormEvent) {
     e.preventDefault();
     const p = new URLSearchParams(params);
@@ -72,11 +75,10 @@ export function DocumentosListaPage() {
     setFecha('');
     setParams({});
   }
-  const consulta = useConsulta(
-    useCallback(() => api.lista(token, consultaUrl), [token, consultaUrl]),
-  );
+  const consulta = useConsulta(useCallback(() => api.lista(token, consultaUrl), [token, consultaUrl]));
   const mensajeRuta = (useLocation().state as { mensaje?: unknown } | null)?.mensaje;
   const registrar = ['Usuario', 'Director(a)', 'Secretaria de Dirección'].includes(usuario.rol);
+  // «Relacionados» ocupa el selector de situación, pero se envía como un filtro independiente.
   function filtro(nombre: string, valor: string) {
     const p = new URLSearchParams(params);
     if (nombre === 'situacion') {
@@ -108,7 +110,9 @@ export function DocumentosListaPage() {
         )}
         {['Usuario', 'Director(a)', 'Secretaria de Dirección', 'Superadministrador'].includes(
           usuario.rol,
-        ) && <ExportarDocumentos key={token} token={token} rol={usuario.rol} conRelacionados={relacionados} />}
+        ) && (
+          <ExportarDocumentos key={token} token={token} rol={usuario.rol} conRelacionados={relacionados} />
+        )}
       </div>
       <section className={styles.tarjeta}>
         <form onSubmit={buscar} className={styles.filtrosDocumentos}>
@@ -124,17 +128,18 @@ export function DocumentosListaPage() {
           <label className={styles.campo}>
             Situación
             <select
-              value={relacionados ? 'RELACIONADOS' : params.get('situacion') ?? ''}
+              value={relacionados ? 'RELACIONADOS' : (params.get('situacion') ?? '')}
               onChange={(e) => filtro('situacion', e.target.value)}
             >
-              <option value="">{usuario.rol === 'Usuario' ? 'Todos mis documentos' : 'Documentos ordinarios'}</option>
+              <option value="">
+                {usuario.rol === 'Usuario' ? 'Todos mis documentos' : 'Documentos ordinarios'}
+              </option>
               <option value="RELACIONADOS">Documentos relacionados</option>
-              {situaciones
-                .map((s) => (
-                  <option key={s} value={s}>
-                    {etiquetas[s]}
-                  </option>
-                ))}
+              {situaciones.map((s) => (
+                <option key={s} value={s}>
+                  {etiquetas[s]}
+                </option>
+              ))}
             </select>
           </label>
           <label className={styles.campo}>
@@ -171,9 +176,7 @@ export function DocumentosListaPage() {
                   aria-label="Periodo de registro"
                   type={precision === 'dia' ? 'date' : precision === 'mes' ? 'month' : 'number'}
                   min={precision === 'dia' ? '0001-01-01' : precision === 'mes' ? '0001-01' : '1'}
-                  max={
-                    precision === 'dia' ? '9999-12-31' : precision === 'mes' ? '9999-12' : '9999'
-                  }
+                  max={precision === 'dia' ? '9999-12-31' : precision === 'mes' ? '9999-12' : '9999'}
                   step={precision === 'anio' ? 1 : undefined}
                   value={fecha}
                   onChange={(e) => setFecha(e.target.value)}
@@ -283,9 +286,7 @@ export function DocumentosListaPage() {
             <span>Página {pagina}</span>
             <button
               className={styles.secundario}
-              disabled={
-                pagina * consulta.datos.limite >= consulta.datos.total || consulta.actualizando
-              }
+              disabled={pagina * consulta.datos.limite >= consulta.datos.total || consulta.actualizando}
               onClick={() => {
                 const p = new URLSearchParams(params);
                 p.set('pagina', String(pagina + 1));

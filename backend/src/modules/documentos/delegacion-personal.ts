@@ -32,6 +32,6 @@ export async function listarDelegacionesPersonales(actor:ActorDocumental,f:{docu
  return (await conexionDocumental().query(`WITH visibles AS (
  SELECT p.documento_id::text,d.codigo,d.asunto,p.destinatario,p.oficina_nombre,p.persona_nombre,p.actor_nombre,to_jsonb(p.registrada_en)#>>'{}' fecha
  FROM delegaciones_personales p JOIN documentos d ON d.id=p.documento_id JOIN tipos_documentales td ON td.id=d.tipo_documental_id
- WHERE d.registrado_por_id=$1 AND p.actor_id=$1 AND NOT td.requiere_clave AND lower(btrim(td.nombre))<>'síseve' AND ($2::bigint IS NULL OR d.id=$2))
+ WHERE d.registrado_por_id=$1 AND p.actor_id=$1 AND NOT td.requiere_clave AND ($2::bigint IS NULL OR d.id=$2))
  SELECT (SELECT count(*)::int FROM visibles) total,coalesce((SELECT jsonb_agg(to_jsonb(v)) FROM (SELECT * FROM visibles ORDER BY fecha DESC,documento_id DESC LIMIT $3 OFFSET $4) v),'[]'::jsonb) delegaciones`,[actor.id,f.documento_id??null,f.limite,(f.pagina-1)*f.limite])).rows[0] as {total:number;delegaciones:unknown[]};
 }

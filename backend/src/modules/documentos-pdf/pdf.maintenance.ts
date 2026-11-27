@@ -1,3 +1,5 @@
+/** Archivo: Programa la limpieza de PDF al arrancar y cada cinco minutos; evita ejecuciones simultáneas.
+ */
 import { pdfActual } from './pdf.documental.js';
 
 /** Reintentos alojados en el backend, al arrancar y cada cinco minutos mientras está activo. */

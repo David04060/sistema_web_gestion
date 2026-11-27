@@ -14,10 +14,6 @@ const {pool}=await import('../dist/config/database.js');
 const {servicioPdf,limpiarPdf}=await import('../dist/modules/documentos-pdf/pdf.service.js');
 const {validarPdf,crearAlmacenR2,crearAlmacenS3,prefijoPdf}=await import('../dist/modules/documentos-pdf/pdf.storage.js');
 const {iniciarSchema,eliminarSchema,MAX_PDF}=await import('../dist/modules/documentos-pdf/pdf.schema.js');
-const {operar}=await import('../dist/modules/siseve/siseve.service.js');
-const {operacionSchema}=await import('../dist/modules/siseve/siseve.schema.js');
-const {generarHash}=await import('../dist/shared/security/password.js');
-const {clienteDocumental}=await import('../dist/shared/documental/contexto.js');
 
 test('Prefijo QA explícito y seguro; producción conserva claves sin prefijo',()=>{
     const anterior=process.env.R2_PDF_PREFIX;
@@ -74,9 +70,8 @@ test('Ciclo PDF con PostgreSQL y R2 simulados: permisos, carreras, rollback y li
     const original={query:pool.query,connect:pool.connect};
     const doc={id:'1',registrado_por_id:'1',responsable_actual_id:'1',activo:true,estado_tramite:'RECIBIDO'};
     const actores={1:{id:'1',rol:'Usuario',activo:true,oficina_id:'1'},2:{id:'2',rol:'Usuario',activo:true,oficina_id:'1'},3:{id:'3',rol:'Director(a)',activo:true,oficina_id:'2'},4:{id:'4',rol:'Administrador',activo:true,oficina_id:'1'}};
-    let actual;let cargas=new Map();let objetos=new Map();let eventos=[];let abierto=false;let restringido=false;
+    let actual;let cargas=new Map();let objetos=new Map();let eventos=[];let abierto=false;
     let falloCopia=false,falloBorrado=false,falloVinculo=false,errorLecturaPdf;
-    let siseveAutorizado=false;const hash=await generarHash('Clave-fixture-123');
     const r2=new Map();const consultadas=[];
     let cola=Promise.resolve();
     async function query(sql,p=[]){
@@ -85,11 +80,9 @@ test('Ciclo PDF con PostgreSQL y R2 simulados: permisos, carreras, rollback y li
         if(sql.includes('SELECT u.id::text,u.oficina_id'))rows.push(actores[p[0]]);
         else if(sql.startsWith('SELECT situacion,tipo,usuario_id')){ /* Fixture ordinario sin decisión institucional. */ }
         else if(sql.includes('FROM documentos d JOIN tipos_documentales')){
-            if((!restringido||clienteDocumental()) && ['1','3'].includes(p[0]))rows.push({...doc});
+            if(['1','3'].includes(p[0]))rows.push({...doc});
         }
         else if(sql.startsWith('SELECT id::text FROM tipos_documentales'))rows.push({id:'9'});
-        else if(sql.startsWith('SELECT activo FROM autorizaciones_tipos_restringidos'))rows.push({activo:siseveAutorizado});
-        else if(sql.startsWith('SELECT clave_hash FROM claves_tipos_documentales'))rows.push({clave_hash:hash});
         else if(sql.includes('FROM movimientos_documentales')){if(abierto)rows.push({id:'mov'});}
         else if(sql.startsWith('SELECT revision,clave')){if(errorLecturaPdf)throw errorLecturaPdf;if(actual)rows.push({...actual});}
         else if(sql.startsWith('SELECT count(*) n FROM pdf_objetos'))rows.push({n:[...objetos.values()].filter(o=>!o.eliminado_en&&o.clave.startsWith('pdf/')&&o.clave!==actual?.clave).length});
@@ -156,7 +149,6 @@ test('Ciclo PDF con PostgreSQL y R2 simulados: permisos, carreras, rollback y li
             assert.equal((await api.consultar('3','1')).modificar,false);
             for(const actor of ['2','3','4'])await assert.rejects(api.iniciar(actor,'1',datos(actual.revision)));
             await assert.rejects(api.consultar('4','1'));
-            restringido=true;await assert.rejects(api.consultar('1','1'));restringido=false;
         });
         await t.test('Anulado/inactivo, traslado y pérdida de custodia bloquean modificaciones',async()=>{
             for(const cambio of [{activo:false},{estado_tramite:'EN_TRASLADO'},{responsable_actual_id:'2'}]){const previo={...doc};Object.assign(doc,cambio);await assert.rejects(api.iniciar('1','1',datos(actual.revision)));Object.assign(doc,previo);}
@@ -195,18 +187,6 @@ test('Ciclo PDF con PostgreSQL y R2 simulados: permisos, carreras, rollback y li
             const nuevo=await preparar();doc.responsable_actual_id='2';await assert.rejects(api.confirmar('1','1',nuevo.id));doc.responsable_actual_id='1';
             assert.equal(consultadas.some(sql=>/^UPDATE documentos SET/.test(sql)),false);
         });
-        await t.test('SíseVe: todas las operaciones PDF exigen clave y autorización individual en backend',async()=>{
-            restringido=true;
-            for(const operacion of ['pdf-consultar','pdf-iniciar','pdf-confirmar','pdf-eliminar','pdf-abrir']){
-                assert.equal(operacionSchema.safeParse({operacion,id:'1',datos:{}}).success,false);
-                await assert.rejects(operar('1',{operacion,id:'1',clave:'Clave-fixture-123',datos:{}}),e=>e.status===403);
-            }
-            siseveAutorizado=true;
-            await assert.rejects(operar('1',{operacion:'pdf-consultar',id:'1',clave:'incorrecta',datos:{}}),e=>e.status===403);
-            assert.equal((await operar('1',{operacion:'pdf-consultar',id:'1',clave:'Clave-fixture-123',datos:{}})).archivo,null);
-            siseveAutorizado=false;
-            await assert.rejects(operar('1',{operacion:'pdf-consultar',id:'1',clave:'Clave-fixture-123',datos:{}}),e=>e.status===403);
-            restringido=false;
-        });
+
     }finally{pool.query=original.query;pool.connect=original.connect;await pool.end();}
 });

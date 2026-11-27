@@ -1,10 +1,7 @@
+/** Archivo: Dibuja una página del PDF en un lienzo y cancela la tarea al cambiar de archivo o página.
+ */
 import { useEffect, useRef, useState } from 'react';
-import {
-  GlobalWorkerOptions,
-  getDocument,
-  type PDFDocumentProxy,
-  type RenderTask,
-} from 'pdfjs-dist';
+import { GlobalWorkerOptions, getDocument, type PDFDocumentProxy, type RenderTask } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import styles from './ArchivoPdf.module.css';
 GlobalWorkerOptions.workerSrc = workerUrl;

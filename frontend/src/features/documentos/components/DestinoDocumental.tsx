@@ -1,3 +1,5 @@
+/** Archivo: Busca destinatarios registrados o recoge un nombre manual y entrega los datos de delegación.
+ */
 import { useEffect, useId, useState } from 'react';
 import { api } from '../../../api/documental';
 import type { OpcionesActuales } from '../../../api/documental';
@@ -48,16 +50,23 @@ export function DestinoDocumental({
   useEffect(() => {
     if (!activa) return;
     const control = new AbortController();
-    const espera = setTimeout(() => {
-      void api.destinatarios(token, consulta, v.oficina, control.signal).then(
-        (datos) => { if (!control.signal.aborted) setResultado({ clave, datos }); },
-        () => {
-          if (!control.signal.aborted)
-            setResultado({ clave, error: 'No se pudo buscar destinatarios.' });
-        },
-      );
-    }, consulta ? 250 : 0);
-    return () => { clearTimeout(espera); control.abort(); };
+    const espera = setTimeout(
+      () => {
+        void api.destinatarios(token, consulta, v.oficina, control.signal).then(
+          (datos) => {
+            if (!control.signal.aborted) setResultado({ clave, datos });
+          },
+          () => {
+            if (!control.signal.aborted) setResultado({ clave, error: 'No se pudo buscar destinatarios.' });
+          },
+        );
+      },
+      consulta ? 250 : 0,
+    );
+    return () => {
+      clearTimeout(espera);
+      control.abort();
+    };
   }, [activa, clave, token, consulta, v.oficina]);
   const actual = activa && resultado?.clave === clave ? resultado : undefined;
   const cambio = (p: Partial<Destino>) => cambiar({ ...v, ...p });
@@ -77,7 +86,10 @@ export function DestinoDocumental({
         Persona destinataria
         <select
           value={v.modo}
-          onChange={(e) => { setTexto(''); cambio({ modo: e.target.value, oficina: '', usuario: '', etiqueta: '', nombre: '' }); }}
+          onChange={(e) => {
+            setTexto('');
+            cambio({ modo: e.target.value, oficina: '', usuario: '', etiqueta: '', nombre: '' });
+          }}
         >
           <option value="usuario">Usuario registrado</option>
           <option value="manual">Persona sin cuenta</option>
@@ -89,7 +101,10 @@ export function DestinoDocumental({
             Oficina opcional
             <select
               value={v.oficina}
-              onChange={(e) => { setIndice(-1); cambio({ oficina: e.target.value, usuario: '', etiqueta: '' }); }}
+              onChange={(e) => {
+                setIndice(-1);
+                cambio({ oficina: e.target.value, usuario: '', etiqueta: '' });
+              }}
             >
               <option value="">Todas las oficinas</option>
               {opciones.oficinas
@@ -114,8 +129,14 @@ export function DestinoDocumental({
                 maxLength={100}
                 placeholder="Elige o escribe un nombre"
                 value={v.usuario ? v.etiqueta : texto}
-                onFocus={(e) => { setAbierto(true); if (v.usuario) e.currentTarget.select(); }}
-                onClick={() => { setAbierto(true); if (resultado?.clave === clave && resultado.error) setIntento((n) => n + 1); }}
+                onFocus={(e) => {
+                  setAbierto(true);
+                  if (v.usuario) e.currentTarget.select();
+                }}
+                onClick={() => {
+                  setAbierto(true);
+                  if (resultado?.clave === clave && resultado.error) setIntento((n) => n + 1);
+                }}
                 onBlur={() => setAbierto(false)}
                 onChange={(e) => {
                   setTexto(e.target.value);
@@ -131,9 +152,13 @@ export function DestinoDocumental({
                     e.preventDefault();
                     setAbierto(true);
                     if (personas.length)
-                      setIndice((i) => e.key === 'ArrowDown'
-                        ? Math.min(i + 1, personas.length - 1)
-                        : i < 0 ? personas.length - 1 : Math.max(i - 1, 0));
+                      setIndice((i) =>
+                        e.key === 'ArrowDown'
+                          ? Math.min(i + 1, personas.length - 1)
+                          : i < 0
+                            ? personas.length - 1
+                            : Math.max(i - 1, 0),
+                      );
                   } else if (e.key === 'Enter' && abierto) {
                     e.preventDefault();
                     if (personas[indice]) elegir(personas[indice]);
@@ -163,7 +188,9 @@ export function DestinoDocumental({
                   <p role="alert">{actual.error} Vuelve a escribir o abre el selector de nuevo.</p>
                 )}
                 {actual?.datos?.personas.length === 0 && <p role="status">No se encontraron personas.</p>}
-                {actual?.datos?.hay_mas && <p role="status">Hay más personas. Escribe para acotar la búsqueda.</p>}
+                {actual?.datos?.hay_mas && (
+                  <p role="status">Hay más personas. Escribe para acotar la búsqueda.</p>
+                )}
               </div>
             )}
           </div>
@@ -180,7 +207,7 @@ export function DestinoDocumental({
         </label>
       )}
       <label className={styles.campo}>
-        Observaciones opcionales
+        Indicaciones (opcional)
         <textarea
           maxLength={20000}
           value={v.observaciones}

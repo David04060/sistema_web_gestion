@@ -33,7 +33,7 @@ export async function probarOperaciones({ base, usuarios, tipos, archivo, archiv
     let { movimiento: m } = await request('secretaria', '/api/movimientos', { documento_id: d.id, usuario_destino_id: usuarios.destino.id, motivo: 'Salida fisica QA' }, 201);
     await request('secretaria', '/api/movimientos', { documento_id: d.id, usuario_destino_id: usuarios.destino.id, motivo: 'Salida duplicada' }, 409);
     const entrada = await request('destino', '/api/movimientos?bandeja=entrada', undefined, 200, 'GET');
-    assert.ok(entrada.movimientos.some(/** Selecciona las entradas de entrada.movimientos que cumplen el criterio requerido por la comprobación. */ /** Obtiene o compara el identificador del fixture para verificar asociaciones sin perder la precisión bigint. */ f => f.id === m.id));
+    assert.ok(entrada.movimientos.some(/** Obtiene o compara el identificador del fixture para verificar asociaciones sin perder la precisión bigint. */ f => f.id === m.id));
     assert.ok(entrada.movimientos.every(/** Exige que todas las filas cumplan el alcance del escenario. */  f => f.usuario_destino_id === usuarios.destino.id && f.estado === 'EN_TRASLADO'));
     await request('otro', `/api/movimientos/${m.id}/recibir`, { archivador_id: null }, 404);
     await request('destino', `/api/movimientos/${m.id}/recibir`, { archivador_id: archivo }, 400);

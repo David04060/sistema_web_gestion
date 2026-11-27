@@ -24,6 +24,7 @@ SET row_security = off;
 -- Name: documento_consultable(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Recibe actor y documento; devuelve lectura ordinaria por perfil, ámbito y periodos de oficina. Secretaría no tiene consulta personal general.
 CREATE FUNCTION public.documento_consultable(actor bigint, doc bigint) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -41,6 +42,7 @@ $$;
 -- Name: documento_consultable_con_delegacion(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Amplía la lectura ordinaria con el destinatario registrado. El resultado booleano no concede escritura.
 CREATE FUNCTION public.documento_consultable_con_delegacion(actor bigint, doc bigint) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -54,17 +56,31 @@ $$;
 -- Name: documento_delegado_por(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.documento_delegado_por(actor bigint, doc bigint) RETURNS text
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'pg_catalog', 'public'
-    AS $$
- SELECT concat_ws(' ', emisor.nombre, emisor.apellido)
- FROM public.delegaciones_documento e
- JOIN public.documentos d ON d.id=e.documento_id AND d.situacion='DELEGADO'
- JOIN public.usuarios u ON u.id=e.usuario_indicado_id AND u.activo
- JOIN public.usuarios emisor ON emisor.id=e.delegado_por
- WHERE e.documento_id=doc AND u.id=actor AND u.id<>d.registrado_por
- AND (u.rol_id=5 OR (u.rol_id IN (3,4) AND u.oficina_id IS NOT NULL))
+-- Contrato: Devuelve el nombre del emisor para una cuenta destinataria elegible; NULL significa que no hay acceso por esta delegación.
+CREATE FUNCTION public.documento_delegado_por (actor bigint, doc bigint)
+  RETURNS text
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path TO 'pg_catalog', 'public'
+  AS $$
+  SELECT
+    concat_ws(' ', emisor.nombre, emisor.apellido)
+  FROM
+    public.delegaciones_documento e
+    JOIN public.documentos d ON d.id = e.documento_id
+      AND d.situacion = 'DELEGADO'
+    JOIN public.usuarios u ON u.id = e.usuario_indicado_id
+      AND u.activo
+    JOIN public.usuarios emisor ON emisor.id = e.delegado_por
+  WHERE
+    e.documento_id = doc
+    AND u.id = actor
+    AND u.id <> d.registrado_por
+    AND (u.rol_id = 5
+      OR (u.rol_id IN (3, 4)
+        AND u.oficina_id IS NOT NULL))
+  ORDER BY e.delegado_en DESC,e.id DESC LIMIT 1
 $$;
 
 
@@ -72,6 +88,7 @@ $$;
 -- Name: documento_periodo_cerrado(bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Indica si el documento pertenece a un periodo institucional cerrado, utilizado para impedir mutaciones históricas.
 CREATE FUNCTION public.documento_periodo_cerrado(doc bigint) RETURNS boolean
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -84,6 +101,7 @@ $$;
 -- Name: documento_tiene_relacion_consultable(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Indica si existe otro documento consultable en el grupo, incluida lectura por delegación. Lo usan filtros de listado y exportación.
 CREATE FUNCTION public.documento_tiene_relacion_consultable(actor bigint, doc bigint) RETURNS boolean
     LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog', 'public'
@@ -97,6 +115,7 @@ $$;
 -- Name: documento_tiene_relacion_visible(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Versión anterior del filtro de relaciones, basada en lectura ordinaria. Se conserva en el catálogo; no amplía permisos por delegación.
 CREATE FUNCTION public.documento_tiene_relacion_visible(actor bigint, doc bigint) RETURNS boolean
     LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog', 'public'
@@ -110,6 +129,7 @@ $$;
 -- Name: es_finalizacion_retencion(bigint, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Reconoce el contexto interno de finalización de una revisión PDF; evita confundir mantenimiento con edición documental.
 CREATE FUNCTION public.es_finalizacion_retencion(doc bigint, rev uuid, clave text) RETURNS boolean
     LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog', 'public'
@@ -126,6 +146,7 @@ $$;
 -- Name: exigir_oficina_autor(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Valida al insertar que el autor documental cumple la oficina exigida para su rol.
 CREATE FUNCTION public.exigir_oficina_autor() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog', 'public'
@@ -140,6 +161,7 @@ END $$;
 -- Name: finalizar_retencion_pdf(bigint, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Finaliza una retención identificada por documento y revisión después de la eliminación externa; registra su evento técnico.
 CREATE FUNCTION public.finalizar_retencion_pdf(doc bigint, rev uuid) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -165,6 +187,7 @@ END $$;
 -- Name: impedir_borrado_documento(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Rechaza DELETE de documentos: la operación de negocio es anular y conservar historial.
 CREATE FUNCTION public.impedir_borrado_documento() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -175,6 +198,7 @@ BEGIN RAISE EXCEPTION 'Documento inmutable; usar anulación lógica'; END $$;
 -- Name: impedir_cambio_historico(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Rechaza UPDATE/DELETE de hechos y auditorías inmutables.
 CREATE FUNCTION public.impedir_cambio_historico() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -185,6 +209,7 @@ BEGIN RAISE EXCEPTION 'Registro histórico inmutable'; END $$;
 -- Name: impedir_truncado(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Rechaza TRUNCATE de tablas documentales e históricas protegidas.
 CREATE FUNCTION public.impedir_truncado() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -195,6 +220,7 @@ BEGIN RAISE EXCEPTION 'TRUNCATE de hechos prohibido'; END $$;
 -- Name: programar_retencion_pdf_anulado(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Al anular, registra revisión y clave con su vencimiento de retención; no borra inmediatamente R2.
 CREATE FUNCTION public.programar_retencion_pdf_anulado() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -215,6 +241,7 @@ END $$;
 -- Name: proteger_anulacion_decidida_por_direccion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Impide anulación por Secretaría después de decisión de Dirección; valida actor transaccional y situación previa.
 CREATE FUNCTION public.proteger_anulacion_decidida_por_direccion() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog', 'public'
@@ -243,6 +270,7 @@ END $$;
 -- Name: proteger_documento_historico(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Rechaza cambios documentales/PDF sobre periodos cerrados, salvo la finalización interna de retención autorizada.
 CREATE FUNCTION public.proteger_documento_historico() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog', 'public'
@@ -273,6 +301,7 @@ END $$;
 -- Name: registrar_oficina_documento(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Vincula el alta al periodo de oficina vigente del autor para permitir consulta histórica tras relevo.
 CREATE FUNCTION public.registrar_oficina_documento() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -288,6 +317,7 @@ END $$;
 -- Name: registrar_oficina_tipo(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Conserva la oficina de origen de un tipo documental para mapear tipos en relevos posteriores.
 CREATE FUNCTION public.registrar_oficina_tipo() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -302,6 +332,7 @@ END $$;
 -- Name: sincronizar_periodo_oficina(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Al cambiar actividad u oficina, cierra el periodo anterior y abre el vigente; conserva trazabilidad de titularidad.
 CREATE FUNCTION public.sincronizar_periodo_oficina() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
@@ -325,6 +356,7 @@ END $$;
 -- Name: validar_mapeo_tipo_relevo(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Valida que origen, destino y ámbito del tipo correspondan al relevo; evita asociaciones ajenas.
 CREATE FUNCTION public.validar_mapeo_tipo_relevo() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog', 'public'
@@ -345,6 +377,7 @@ END $$;
 -- Name: oficina_periodos; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Responsables de una oficina a lo largo del tiempo; fin NULL identifica vigencia.
 CREATE TABLE public.oficina_periodos (
     id bigint NOT NULL,
     oficina_id bigint NOT NULL,
@@ -373,6 +406,7 @@ ALTER TABLE public.oficina_periodos ALTER COLUMN id ADD GENERATED ALWAYS AS IDEN
 -- Name: pdf_retenciones_anulacion; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Retención por anulación, con revisión, clave, vencimiento y confirmación de eliminación.
 CREATE TABLE public.pdf_retenciones_anulacion (
     documento_id bigint NOT NULL,
     revision uuid NOT NULL,
@@ -391,6 +425,7 @@ CREATE TABLE public.pdf_retenciones_anulacion (
 -- Name: tipos_oficina; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Oficina histórica de origen de cada tipo documental.
 CREATE TABLE public.tipos_oficina (
     tipo_id bigint NOT NULL,
     oficina_id bigint NOT NULL
@@ -401,6 +436,7 @@ CREATE TABLE public.tipos_oficina (
 -- Name: tipos_relevo; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Correspondencia de tipos entre ámbito saliente y entrante, sin mover documentos.
 CREATE TABLE public.tipos_relevo (
     origen_id bigint NOT NULL,
     destino_ambito_id bigint NOT NULL,

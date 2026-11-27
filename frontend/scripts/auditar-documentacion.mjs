@@ -6,7 +6,7 @@ const raiz = fileURLToPath(new URL('../../', import.meta.url));
 const directorios = ['frontend/src', 'backend/src', 'frontend/tests', 'backend/tests', 'frontend/scripts', 'backend/scripts'];
 /** Recorre únicamente código propio; no incorpora dependencias, compilados ni archivos privados. */
 function archivos(directorio) {
-    return fs.readdirSync(directorio, { withFileTypes: true }).flatMap(/** Transforma cada entrada de fs.readdirSync(directorio, { withFileTypes: true }) para construir los datos que comprueba este escenario. */ /** Reúne las rutas de código propio que debe inspeccionar el inventario. */ entrada => {
+    return fs.readdirSync(directorio, { withFileTypes: true }).flatMap(entrada => {
         const ruta = path.join(directorio, entrada.name);
         return entrada.isDirectory() ? archivos(ruta) : /\.(?:tsx?|mjs)$/.test(ruta) ? [ruta] : [];
     });
@@ -30,10 +30,10 @@ function inspeccionar(ruta) {
             const dueno = propietario(nodo);
             const comentarios = ts.getLeadingCommentRanges(contenido, dueno.getFullStart()) ?? [];
             const propios = ts.getLeadingCommentRanges(contenido, nodo.getFullStart()) ?? [];
-            const documentada = ts.getJSDocCommentsAndTags(nodo).length > 0 || [...comentarios, ...propios].some(/** Selecciona las entradas de [...comentarios, ...propios] que cumplen el criterio requerido por la comprobación. */ /** Reúne las rutas de código propio que debe inspeccionar el inventario. */ c => contenido.slice(c.pos, c.end).startsWith('/**'));
+            const documentada = ts.getJSDocCommentsAndTags(nodo).length > 0 || [...comentarios, ...propios].some(c => contenido.slice(c.pos, c.end).startsWith('/**'));
             const nombre = ts.isConstructorDeclaration(nodo) ? 'constructor' : nodo.name?.getText(fuente) ?? (ts.isVariableDeclaration(nodo.parent) || ts.isPropertyAssignment(nodo.parent) || ts.isPropertyDeclaration(nodo.parent) ? nodo.parent.name.getText(fuente) : null);
             funciones.push({ nombre, linea: fuente.getLineAndCharacterOfPosition(nodo.getStart()).line + 1,
-                parametros: nodo.parameters.map(/** Transforma cada entrada de nodo.parameters para construir los datos que comprueba este escenario. */ /** Reúne las rutas de código propio que debe inspeccionar el inventario. */ p => p.name.getText(fuente)), documentada,
+                parametros: nodo.parameters.map(p => p.name.getText(fuente)), documentada,
                 clase: nombre ? 'declarada' : 'callback', caracteres: nodo.end - nodo.getStart() });
         }
         ts.forEachChild(nodo, visitar);
@@ -42,11 +42,11 @@ function inspeccionar(ruta) {
     return { archivo: path.relative(raiz, ruta).replaceAll('\\', '/'), funciones };
 }
 const detalle = directorios.flatMap(/** Reúne las rutas de los directorios de aplicación y soporte incluidos en el alcance. */  d => archivos(path.join(raiz, d))).map(inspeccionar);
-const funciones = detalle.flatMap(/** Transforma cada entrada de detalle para construir los datos que comprueba este escenario. */ /** Reúne las implementaciones de todos los archivos incluidos en el inventario. */ d => d.funciones);
+const funciones = detalle.flatMap(/** Reúne las implementaciones de todos los archivos incluidos en el inventario. */ d => d.funciones);
 const informe = { archivos: detalle.length, funciones: funciones.length,
-    documentadas: funciones.filter(/** Selecciona las entradas de funciones que cumplen el criterio requerido por la comprobación. */ /** Selecciona las implementaciones cuya documentación fue localizada por el análisis sintáctico. */ f => f.documentada).length,
-    declaradas: funciones.filter(/** Selecciona las entradas de funciones que cumplen el criterio requerido por la comprobación. */ /** Selecciona la categoría de función para distinguir declaraciones y callbacks en el informe. */ f => f.clase === 'declarada').length,
-    callbacks: funciones.filter(/** Selecciona las entradas de funciones que cumplen el criterio requerido por la comprobación. */ /** Selecciona la categoría de función para distinguir declaraciones y callbacks en el informe. */ f => f.clase === 'callback').length, detalle };
+    documentadas: funciones.filter(/** Selecciona las implementaciones cuya documentación fue localizada por el análisis sintáctico. */ f => f.documentada).length,
+    declaradas: funciones.filter(/** Selecciona la categoría de función para distinguir declaraciones y callbacks en el informe. */ f => f.clase === 'declarada').length,
+    callbacks: funciones.filter(/** Selecciona la categoría de función para distinguir declaraciones y callbacks en el informe. */ f => f.clase === 'callback').length, detalle };
 const destino = process.argv[2];
 if (destino && destino !== '--check')
     fs.writeFileSync(path.resolve(destino), JSON.stringify(informe, null, 2) + '\n');

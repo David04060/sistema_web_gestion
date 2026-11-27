@@ -1,3 +1,5 @@
+/** Archivo: Firma y verifica el comprobante de sesión, con cuenta, versión y vencimiento.
+ */
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'node:crypto';
 import { env } from '../../config/env.js';

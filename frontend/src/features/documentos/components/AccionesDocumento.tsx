@@ -1,3 +1,5 @@
+/** Archivo: Permite delegar, ubicar o anular con los permisos y la revisión recibidos del servidor.
+ */
 import { useCallback, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, type DocumentoActual, type UbicacionElegible } from '../../../api/documental';
@@ -71,9 +73,7 @@ export function AccionesDocumento({
     } catch (e) {
       const detalle = e instanceof Error ? e.message : 'No se pudo completar la operación';
       const estado = e instanceof ApiError && e.status > 0 ? ' (HTTP ' + e.status + ')' : '';
-      setError(
-        detalle + estado + (tipo === 'delegar' ? ' La selección se conserva para reintentar.' : ''),
-      );
+      setError(detalle + estado + (tipo === 'delegar' ? ' La selección se conserva para reintentar.' : ''));
       enviando.current = false;
     } finally {
       if (tipo !== 'delegar') enviando.current = false;
@@ -112,7 +112,12 @@ export function AccionesDocumento({
       )}
       {necesitaOpciones && <EstadoCarga {...opciones} reintentar={opciones.recargar} />}
       {d.permisos.delegar && opciones.datos && (
-        <details name={grupoAcciones} onToggle={(e) => { if (!e.currentTarget.open) setConfirmacion(null); }}>
+        <details
+          name={grupoAcciones}
+          onToggle={(e) => {
+            if (!e.currentTarget.open) setConfirmacion(null);
+          }}
+        >
           <summary>Delegar documento</summary>
           <form
             onSubmit={(e) => {
@@ -121,7 +126,12 @@ export function AccionesDocumento({
             }}
           >
             <fieldset className={styles.grupoDestino} disabled={ocupado || confirmacion !== null}>
-              <DestinoDocumental token={token} valor={destino} cambiar={setDestino} opciones={opciones.datos} />
+              <DestinoDocumental
+                token={token}
+                valor={destino}
+                cambiar={setDestino}
+                opciones={opciones.datos}
+              />
             </fieldset>
             <button className={styles.boton} disabled={ocupado}>
               {ocupado ? 'Procesando…' : 'Confirmar delegación'}
@@ -130,7 +140,12 @@ export function AccionesDocumento({
         </details>
       )}
       {d.permisos.ubicar && (
-        <details name={grupoAcciones} onToggle={(e) => { if (!e.currentTarget.open) setConfirmacion(null); }}>
+        <details
+          name={grupoAcciones}
+          onToggle={(e) => {
+            if (!e.currentTarget.open) setConfirmacion(null);
+          }}
+        >
           <summary>{d.ubicacion ? 'Actualizar ubicación' : 'Guardar en una ubicación propia'}</summary>
           <form
             onSubmit={(e) => {
@@ -138,12 +153,7 @@ export function AccionesDocumento({
               void ejecutar('ubicar');
             }}
           >
-            <SelectorUbicacion
-              token={token}
-              valor={unidad}
-              cambiar={setUnidad}
-              deshabilitado={ocupado}
-            />
+            <SelectorUbicacion token={token} valor={unidad} cambiar={setUnidad} deshabilitado={ocupado} />
             <button className={styles.boton} disabled={ocupado || !unidad}>
               Guardar ubicación
             </button>
@@ -151,7 +161,12 @@ export function AccionesDocumento({
         </details>
       )}
       {d.permisos.anular && (
-        <details name={grupoAcciones} onToggle={(e) => { if (!e.currentTarget.open) setConfirmacion(null); }}>
+        <details
+          name={grupoAcciones}
+          onToggle={(e) => {
+            if (!e.currentTarget.open) setConfirmacion(null);
+          }}
+        >
           <summary>Anular registro</summary>
           <form
             onSubmit={(e) => {

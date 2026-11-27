@@ -1,3 +1,5 @@
+/** Archivo: Entrega el Excel solicitado y limpia el archivo temporal al terminar o cancelar la descarga.
+ */
 import type { Response, NextFunction } from 'express';
 import type { RequestAutenticada } from '../../middlewares/auth.middleware.js';
 import { validar } from '../../shared/http/validar.js';
@@ -15,16 +17,11 @@ export async function descargarExcel(q: RequestAutenticada, r: Response, next: N
       await archivo.limpiar();
       return;
     }
-    r.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    );
+    r.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     r.setHeader('X-Export-Total', String(archivo.total));
     r.setHeader('X-Export-Generated-At', archivo.actualizado);
     r.download(archivo.ruta, archivo.nombre, (error) => {
-      void archivo
-        .limpiar()
-        .catch(() => console.error('No se pudo limpiar el archivo temporal de Excel'));
+      void archivo.limpiar().catch(() => console.error('No se pudo limpiar el archivo temporal de Excel'));
       if (error && !r.headersSent && !control.signal.aborted) next(error);
     });
   } catch (error) {

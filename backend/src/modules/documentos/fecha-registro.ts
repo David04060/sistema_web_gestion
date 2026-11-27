@@ -1,3 +1,5 @@
+/** Archivo: Valida fechas de búsqueda y obtiene el intervalo correspondiente en el calendario de Perú.
+ */
 import { z } from 'zod';
 
 /** Calendario gregoriano, sin normalizar silenciosamente fechas imposibles. */
@@ -12,8 +14,7 @@ export const fechaRegistro = z
     const bisiesto = anio % 4 === 0 && (anio % 100 !== 0 || anio % 400 === 0);
     return (
       dia === undefined ||
-      (dia >= 1 &&
-        dia <= [31, bisiesto ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mes - 1]!)
+      (dia >= 1 && dia <= [31, bisiesto ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mes - 1]!)
     );
   }, 'Fecha de registro inválida; use un año entre 1 y 9999');
 

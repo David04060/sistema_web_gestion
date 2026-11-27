@@ -1,3 +1,5 @@
+/** Archivo: Prepara, sube y confirma PDF y comprueba que la cuenta y el documento siguen vigentes.
+ */
 import { z } from 'zod';
 import { apiRequest } from '../../../api/client';
 export const MAX_PDF = 15 * 1024 * 1024;
@@ -43,8 +45,7 @@ export async function obtenerContenidoPdf(
     throw new Error('El PDF supera el tamaño permitido.');
   const contenido = new Uint8Array(await response.arrayBuffer());
   if (!vigente()) throw new Error('La operación PDF perdió su contexto; consulte nuevamente.');
-  if (!contenido.length || contenido.length > MAX_PDF)
-    throw new Error('El PDF tiene un tamaño inválido.');
+  if (!contenido.length || contenido.length > MAX_PDF) throw new Error('El PDF tiene un tamaño inválido.');
   return contenido;
 }
 /** Revalida el contexto en cada fase; no utiliza el circuito restringido retirado. */
@@ -70,12 +71,7 @@ export function clientePdf(
 }
 /** Validación orientativa; el servidor vuelve a comprobar bytes, tamaño, tipo y estructura. */
 export function comprobarSeleccion(file: File) {
-  if (
-    !/\.pdf$/i.test(file.name) ||
-    file.type !== 'application/pdf' ||
-    !file.size ||
-    file.size > MAX_PDF
-  )
+  if (!/\.pdf$/i.test(file.name) || file.type !== 'application/pdf' || !file.size || file.size > MAX_PDF)
     throw new Error('Seleccione un PDF válido de hasta 15 MB.');
 }
 /** La confirmación es independiente del registro; un fallo nunca vuelve a crear el documento. */
@@ -98,9 +94,5 @@ export async function subirPdf(pedir: PeticionPdf, file: File, revision: string 
     referrerPolicy: 'no-referrer',
   });
   if (!r.ok) throw new Error('No se pudo subir el PDF. El adjunto anterior se conserva.');
-  await pedir(
-    'confirmar',
-    { carga: carga.carga },
-    z.object({ confirmado: z.boolean() }).or(estadoPdfSchema),
-  );
+  await pedir('confirmar', { carga: carga.carga }, z.object({ confirmado: z.boolean() }).or(estadoPdfSchema));
 }

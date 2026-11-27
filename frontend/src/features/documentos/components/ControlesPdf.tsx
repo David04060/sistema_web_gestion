@@ -1,3 +1,5 @@
+/** Archivo: Muestra el resumen del adjunto y los botones permitidos para consultarlo o modificarlo.
+ */
 import type { EstadoPdf } from '../api/pdf.api';
 import styles from './ArchivoPdf.module.css';
 /** Solo presenta capacidades devueltas por GET /pdf; el servidor autoriza cada operación. */
@@ -60,9 +62,11 @@ export function HerramientasPdf({
           <button type="button" disabled={ocupado} onClick={seleccionar}>
             Actualizar/Reemplazar PDF
           </button>
-          {puedeEliminar && <button className={styles.peligro} type="button" disabled={ocupado} onClick={eliminar}>
-            Eliminar PDF
-          </button>}
+          {puedeEliminar && (
+            <button className={styles.peligro} type="button" disabled={ocupado} onClick={eliminar}>
+              Eliminar PDF
+            </button>
+          )}
         </>
       )}
     </div>

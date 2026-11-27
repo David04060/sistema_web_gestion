@@ -40,7 +40,7 @@ export async function documental(c: PoolClient, actor: ActorDocumental) {
       FROM documentos d JOIN tipos_documentales td ON td.id=d.tipo_documental_id
       LEFT JOIN entregas_secretaria f ON f.documento_id=d.id
       LEFT JOIN delegaciones_personales p ON p.documento_id=d.id
-      WHERE NOT td.requiere_clave AND lower(btrim(td.nombre))<>'síseve' AND ${contenidoAutorizadoSQL()}
+      WHERE NOT td.requiere_clave AND ${contenidoAutorizadoSQL()}
     ), tareas AS (
       SELECT * FROM contenido WHERE activo AND (
         ($3::boolean AND situacion='PENDIENTE_DECISION') OR ($4::boolean AND situacion='DELEGADO'))

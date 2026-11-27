@@ -1,3 +1,5 @@
+/** Archivo: Presenta fechas, autores, motivos y cambios legibles del historial recibido.
+ */
 import { cambioLegible, eventosDocumentales } from '../../../lib/historialDocumental';
 import { fechaLocal } from '../../../lib/fechas';
 import type { z } from 'zod';

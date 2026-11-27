@@ -1,3 +1,5 @@
+/** Archivo: Inicia React y proporciona navegación y sesión al resto de la interfaz.
+ */
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';

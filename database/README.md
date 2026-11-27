@@ -1,117 +1,116 @@
-# Base documental local instalada
+# Base de datos documental
 
-Destino autorizado: `sistema_web_documental_final`, PostgreSQL local `localhost:5432`
-(conexión observada `::1/128`), OID `98367`, esquema `public`.
-La base anterior `sistema_web_final`, OID `62150`, se conserva sin escritura.
+[Inicio](../README.md) · [Cuentas iniciales](CUENTAS_MANUALES.md) · [Despliegue manual](../documentacion-publica/DESPLIEGUE_MANUAL.md)
 
-## Archivos y ejecución
+## Organización y orden
 
-- `sistema_documental_instalacion.sql`: definición completa exportada **del catálogo
-  instalado**, incluidos los ajustes incrementales y los catálogos iniciales.
-  Es un instalador para otra base nueva vacía, **no se ejecutó ni debe ejecutarse
-  de nuevo en la base actual**. Se generó con pg_dump 18, sin propietarios ni secretos.
-- `changes/001-ajustes-integracion-local.sql`: primer incremental aplicado en esta
-  adaptación. Transacción sobre la base nueva; agrega `pdf_cargas.revision_esperada`,
-  permite anulación de guardados aún no delegados, acelera limpieza de PDF reemplazados
-  y cierra el caso de actor inexistente al renombrar campos. No crea cuentas.
-- `changes/002-corregir-ambiguedad-delegacion-local.sql`: corrección local aplicada
-  a `validar_delegacion()`: califica las columnas de usuarios y renombra la variable
-  que colisionaba con `nombre`. No cambia permisos, autoría, ámbito ni registros.
-- `changes/003-oficinas-y-rutas-local.sql`: reserva Dirección y Mesa de Partes a
-  sus roles correspondientes también en PostgreSQL y genera rutas legibles para
-  nuevas ubicaciones documentales. No añade columnas ni modifica datos anteriores.
-- `changes/004-oficinas-inactivas-local.sql`: aplicado localmente durante la revisión
-  integral. Rechaza nuevas asignaciones a oficinas inactivas, conservando las
-  asignaciones anteriores. Modifica únicamente `validar_usuario_oficina()`; las
-  huellas de las 21 tablas coincidieron antes y después de la transacción.
-- `schema/*.schema.sql`: documentación agrupada del esquema instalado. **No son
-  migraciones**, ni instrucciones para crear objetos sobre la base instalada.
-- `schema/INVENTARIO.md`: lista real de todas las tablas, funciones, claves y triggers.
-
-Para volver a exportar documentación, desde `backend`: `npm run schema:documentar`.
-La herramienta es de lectura PostgreSQL y también compara la huella de la base anterior.
-No usar los scripts antiguos de migración, Neon, QA ni circulación con este esquema.
-
-## Tablas y relaciones
-
-| Tabla | Responsabilidad |
+| Ruta | Finalidad |
 |---|---|
-| roles | Cinco códigos fijos; el índice parcial de usuarios limita el Superadministrador a una cuenta |
-| oficinas | Oficinas administradas; Dirección y Mesa de Partes son iniciales |
-| usuarios | Hash scrypt, rol, oficina opcional, actividad y versión de autenticación |
-| ambitos_registro | Ámbito compartido único y un ámbito personal por Usuario |
-| miembros_ambito | Una pertenencia por cuenta; FK compuesta usada por documentos |
-| tipos_documentales | Nombre y prefijo únicos dentro de cada ámbito |
-| unidades_ubicacion | Árbol opcional propio de cada cuenta con oficina; clase y nombre libres |
-| correlativos_documentales | Contador bloqueado transaccionalmente por ámbito, tipo y año |
-| documentos | Identidad global; código visible dentro del ámbito; clasificación, situación y revisión |
-| delegaciones_documento | Una constancia de destino; no transfiere ámbito ni acceso |
-| ubicaciones_documento | Unidad seleccionada y ruta histórica; una ubicación vigente |
-| documentos_relaciones | Documento nuevo con origen en el mismo ámbito; sin autorreferencia/ciclos |
-| documentos_pdf | Una revisión PDF vigente; referencia privada a R2, nunca contenido binario |
-| pdf_cargas | Preparación, actor, vencimiento y revisión PDF esperada |
-| pdf_objetos_pendientes | Limpieza durable de temporales y objetos desvinculados; sin versiones descargables |
-| pdf_eventos | Auditoría técnica inmutable de carga, sustitución, borrado y limpieza |
-| auditoria_documental | Registro, corrección, anulación, delegación, ubicación y PDF |
-| auditoria_configuracion | Cambios administrativos auditados; sin hashes ni contraseñas en las respuestas |
+| `instalar.sql` | Instalador completo y transaccional para PostgreSQL 18, exclusivamente en una base vacía |
+| `instalacion/funciones/` | Una función por archivo; reglas de acceso, validación e historial |
+| `instalacion/tablas/` | Tablas y secuencias agrupadas por finalidad |
+| `instalacion/{claves,indices,triggers,relaciones,vistas,catalogos}.sql` | Restricciones, índices, disparadores, relaciones, vistas y catálogos mínimos |
+| `sistema_documental_instalacion.sql` | Instalador completo en un solo archivo, como alternativa al dividido |
+| `schema/*.schema.sql` | Definiciones agrupadas para consultar el modelo; no son scripts de instalación |
+| `schema/INVENTARIO.md` | Lista de tablas, columnas, funciones, restricciones e índices |
+| `changes/001-*.sql` a `016-*.sql` | Cambios de estructura para instalaciones anteriores; no se añaden a una instalación vacía actual |
+| `CUENTAS_MANUALES.md` | Preparación de la primera cuenta y explicación de sus pertenencias |
 
-## Triggers e integridad
+El instalador incluye **25 tablas, 37 funciones y 45 triggers**, dos vistas, secuencias, claves,
+restricciones e índices. Un trigger o disparador es una regla que PostgreSQL ejecuta al insertar,
+actualizar o eliminar datos. El punto de entrada recomendado es `instalar.sql`; sus instrucciones
+`\ir` cargan cada bloque en el orden necesario. No ejecutar fragmentos por separado.
 
-Los 36 triggers y las 21 funciones se enumeran con su definición en INVENTARIO.
-Los de cuenta/oficina y miembro/ámbito validan sus relaciones. Los de tipo y código
-asignan código y correlativo sin consumirlos si la transacción revierte. Los de
-documento protegen autoría, ámbito, código y clasificación, exigen motivo para
-corregir/anular y registran antes/después. Los de delegación y ubicación insertan
-sus hechos y actualizan situación en la misma transacción. La comprobación
-diferida impide situaciones sin el hecho correspondiente. Los de unidades evitan
-padres ajenos/cíclicos.
-Los de PDF verifican actor, permiso, tamaño y metadatos, agregan auditoría y
-programan limpieza. Los históricos prohíben actualización/borrado, y los triggers
-de truncado protegen registros y auditorías.
+En este repositorio no existen las carpetas `chunks/` ni `esquema/`. Los fragmentos ejecutables
+están en `instalacion/` y la referencia de estructura está en `schema/` (esquema en inglés).
 
-El backend revalida JWT/cuenta y abre transacción con `app.actor_id` y `app.motivo`.
-Usa un bloqueo transaccional compartido entre configuración y operaciones para
-evitar cambios concurrentes de pertenencia, jerarquía o documento. Las escrituras
-documentales bloquean la fila y comparan `revision`. Una delegación nunca altera
-`registrado_por` ni `ambito_id`. No existen recepción, entrega ni transferencia.
+Solo inserta catálogos técnicos: cinco códigos de rol, Dirección, Mesa de Partes y el ámbito compartido. No contiene filas de usuarios, documentos, auditorías, contraseñas, hashes de cuentas ni objetos R2 reales. Las sentencias de escritura dentro de funciones son definiciones de comportamiento, no datos iniciales.
 
-## Acceso
+## Crear una base local vacía
 
-- Superadministrador: administración y lectura global; es el único que consulta
-  detalles anulados o filtra `situacion=ANULADO`. Su lectura no concede escritura documental.
-- Administrador: configuración; sin detalle, PDF ni conteos documentales.
-- Dirección/Secretaría: lectura de ordinarios institucionales y personales;
-  mutación solo conforme a su ámbito compartido. PDF compartido incluso delegado.
-- Usuario: lectura de su ámbito, nunca por compartir oficina o aparecer como
-  destinatario. Tras delegar pierde corrección, anulación y gestión PDF.
-- La consulta se aplica antes del detalle, historial, relacionados y URL PDF.
-  Listados y dashboard calculan totales SQL con el mismo alcance.
+Instalar PostgreSQL 18 con sus herramientas de cliente. Desde la raíz del repositorio, usando una cuenta de mantenimiento con permiso de creación:
 
-No se crearon cuentas iniciales mediante la adaptación. El propietario ya registró
-las cuentas y se ejecutaron pruebas autenticadas; sus resultados y los datos de
-prueba conservados figuran en [la revisión integral local](../docs/REVISION_INTEGRAL_SISTEMA_NUEVO_LOCAL.md).
-La configuración privada local reutiliza actualmente la conexión de mantenimiento
-existente (`postgres`); no es una recomendación para producción. El esquema
-entregado no incluye un rol de conexión limitado. Este backend no se publica
-ni conecta a Neon en esta etapa.
+```sh
+createdb -h localhost -p 5432 -U postgres -W -E UTF8 sistema_web_documental_final
+psql -X -h localhost -p 5432 -U postgres -W -d sistema_web_documental_final -v ON_ERROR_STOP=1 -f database/instalar.sql
+```
 
-## Instalación actual y limpieza 014
+`-W` solicita la contraseña sin incluirla en el comando; `-X` evita configuración personal de psql y `ON_ERROR_STOP=1` detiene la instalación ante errores. El archivo ya contiene `BEGIN` y `COMMIT`. Sus directivas `\ir` se ejecutan con psql, no pegando el contenido en un editor web. Se requiere PostgreSQL 18.
 
-El instalador completo se regeneró desde el catálogo local depurado: 23 tablas,
-35 funciones y 41 disparadores. Incluye el esquema funcional de 007–013 y la
-retirada 014. Para una base NUEVA vacía se ejecuta únicamente el instalador;
-no se vuelven a aplicar los incrementales históricos sobre esa instantánea.
-El runner de pruebas aisladas usa también ese instalador completo. En esta tarea
-no se ejecutó ese runner ni se creó una base o clúster.
+El backend local exige el nombre `sistema_web_documental_final`, host loopback, puerto coincidente y esquema `public`. Si esa base ya existe, no ejecutar el instalador encima ni eliminarla para probar. `npm test` desde backend crea otra instancia PostgreSQL temporal con ese mismo nombre y puerto independiente.
 
-Para una instalación existente anterior a esta limpieza se aplica solamente
-`changes/014-retirar-campos-opcionales.sql`, después de inventariar dependencias
-y verificar un respaldo. Retira las tres tablas y funciones exclusivas, elimina
-solo auditoría de entidad `CAMPO_OPCIONAL`, conserva las protecciones generales
-y conserva `documentos_relaciones_origen` como índice de búsqueda de origen.
-No utiliza CASCADE ni cambia funciones de permisos. Las migraciones 001–013
-se conservan como historial y no deben reejecutarse para recuperar objetos retirados.
+Después, crear la primera cuenta según [Cuentas iniciales](CUENTAS_MANUALES.md). Para Render, crear la base en Neon e instalar con el propietario; configurar el rol de conexión `sistema_web_app` como indica [Despliegue manual](../documentacion-publica/DESPLIEGUE_MANUAL.md).
 
-La alineación de las dos funciones locales de permisos con las definiciones
-productivas comprobadas se realizó por separado; no forma parte del DDL de 014.
-Véase el informe de retirada para las pruebas y límites.
+## Modelo por dominio
+
+| Dominio | Tablas y propósito |
+|---|---|
+| Identidad | `roles`, `usuarios`, `oficinas`, `ambitos_registro`, `miembros_ambito`: cuenta, perfil, oficina y alcance |
+| Catálogos | `tipos_documentales`, `unidades_ubicacion`: tipos por ámbito y árbol personal sin ciclos |
+| Registro | `documentos`, `correlativos_documentales`: identidad, clasificación, situación y numeración transaccional |
+| Hechos | `delegaciones_documento`, `ubicaciones_documento`, `documentos_relaciones`: destino, ubicación y grupos |
+| Relevo | `oficina_periodos`, `documentos_oficina`, `tipos_oficina`, `tipos_relevo`: periodos y trazabilidad institucional |
+| PDF | `documentos_pdf`, `pdf_cargas`, `pdf_objetos_pendientes`, `pdf_eventos`, `pdf_retenciones_anulacion`: metadatos, cargas y limpieza durable |
+| Auditoría | `auditoria_documental`, `auditoria_configuracion`: cambios y motivos inmutables |
+
+`documentos_ordinarios` y `documentos_anulados` son vistas de situación. No sustituyen la autorización por actor. Las funciones `documento_consultable*` y `documento_delegado_por` implementan el alcance; `documentos_grupo` recorre relaciones. Los triggers validan autor, pertenencia, oficina, clasificación, revisión, ubicación, delegación, PDF y estado final, y bloquean cambios de historia y truncado.
+
+Las operaciones backend fijan `app.actor_id` y `app.motivo` dentro de la transacción. El bloqueo asesor de configuración coordina cambios de cuentas y operaciones documentales. `FOR UPDATE` y `revision` protegen de escrituras concurrentes. Las secuencias se crean vacías: no se exportan valores de cuentas o documentos de trabajo.
+
+## Verificación después de instalar
+
+Conectar a la base recién creada y ejecutar:
+
+```sql
+SELECT current_database(), current_user, current_schema();
+SELECT count(*) AS tablas FROM pg_tables WHERE schemaname = 'public';
+SELECT count(*) AS funciones FROM pg_proc WHERE pronamespace = 'public'::regnamespace;
+SELECT count(*) AS triggers FROM pg_trigger
+WHERE NOT tgisinternal AND tgrelid IN
+  (SELECT oid FROM pg_class WHERE relnamespace = 'public'::regnamespace);
+SELECT count(*) AS usuarios FROM public.usuarios;
+SELECT count(*) AS documentos FROM public.documentos;
+SELECT id, codigo FROM public.roles ORDER BY id;
+```
+
+Antes de crear cuentas deben resultar 23 tablas, 35 funciones, 41 triggers, cero usuarios, cero documentos y cinco roles. La [estructura pública](../documentacion-publica/ESTRUCTURA.md) describe cada archivo SQL.
+
+## Orden y diferencias entre los archivos SQL
+
+`instalar.sql` abre una transacción, configura la sesión y define las funciones.
+Después crea tablas y secuencias, vistas, claves, índices, triggers y relaciones.
+Termina con los tres catálogos mínimos y confirma la transacción. Las funciones
+se crean con `check_function_bodies=false` porque algunas utilizan tablas y funciones
+que se definen después; al ejecutar la aplicación ya existen todos sus objetos.
+
+El archivo único `sistema_documental_instalacion.sql` y el conjunto que carga `instalar.sql`
+contienen las mismas definiciones de funciones, tablas, vistas, secuencias, restricciones,
+índices y disparadores, además de los mismos catálogos mínimos. Cambian la presentación
+y las instrucciones de sesión: el archivo único incluye controles propios de una exportación
+de PostgreSQL; el dividido usa inclusiones relativas. Son alternativas: ejecutar **solo uno**.
+El orden recomendado para una base vacía es crear la base, ejecutar `instalar.sql`, comprobar
+los catálogos, crear la primera cuenta y configurar el backend.
+
+Los seis archivos de `schema/` repiten las definiciones para facilitar su lectura por temas:
+identidad, configuración, documentos, PDF, auditoría e integridad. Su encabezado indica que
+son documentación. No incluyen el proceso completo de instalación ni los catálogos iniciales;
+no se ejecutan después del instalador. Por ejemplo, el relevo se consulta en
+`integridad.schema.sql` y `documentos.schema.sql`, mientras el instalador lo agrupa en
+`instalacion/tablas/relevo.sql`. Los nombres de carpeta no representan bases distintas.
+
+`changes/` contiene migraciones: scripts que adaptan estructuras existentes y que pueden
+actualizar datos además de definir objetos. La instalación actual ya incorpora sus reglas
+hasta `015-retirar-consulta-general-secretaria.sql`. No ejecutar la serie 001–015 después
+de instalar desde cero. No aplicar el instalador sobre una base con registros.
+
+Para verificar automáticamente la instalación vacía, ejecutar `npm test` desde backend.
+El ejecutor crea una instancia PostgreSQL independiente, comprueba su identidad,
+instala estos mismos archivos y carga únicamente datos sintéticos de prueba.
+
+## Atención documental — 26/11/2026
+
+En bases existentes se aplica una sola vez `changes/016-atencion-seguimiento.sql`, previa copia de seguridad. Conserva filas, relaciones y referencias PDF. No ejecutar el instalador sobre una base existente.
+
+La instalación vacía incluye las acciones, las intenciones PDF y delegaciones sucesivas. El instalador modular y el monolítico se comprobaron en PostgreSQL temporal. `schema/atencion.schema.sql` es referencia, no otro paso de migración.
+
+Para la base local configurada, `backend/scripts/aplicar-atencion-local.mjs` verifica host, puerto y nombre, exige respaldo mediante `pg_dump` y aplica la migración. No admite perfiles remotos. El procedimiento de producción requiere autorización posterior y está en [el informe](../docs/ATENCION_SEGUIMIENTO_DOCUMENTAL_20261126.md).

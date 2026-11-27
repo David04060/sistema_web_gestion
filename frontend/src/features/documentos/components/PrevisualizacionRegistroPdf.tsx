@@ -1,3 +1,5 @@
+/** Archivo: Muestra nombre, tamaño y vista previa del PDF seleccionado antes de enviarlo.
+ */
 import { lazy, Suspense } from 'react';
 import styles from '../../../components/ui/Admin.module.css';
 import pdfStyles from './ArchivoPdf.module.css';
@@ -38,8 +40,7 @@ export function PrevisualizacionRegistroPdf({
         </button>
       </section>
       <p className={styles.aviso} role="status">
-        <strong>Aún no enviado.</strong> El archivo se enviará cuando confirmes el registro del
-        documento.
+        <strong>Aún no enviado.</strong> El archivo se enviará cuando confirmes el registro del documento.
       </p>
       <section className={styles.bloqueVisorPdf} aria-label="Previsualización local del PDF">
         <h3>Previsualización del PDF</h3>

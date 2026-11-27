@@ -1,3 +1,6 @@
+/** Archivo: Define los perfiles que ven cada enlace de navegación; los permisos efectivos se validan en el
+ * servidor.
+ */
 export const perfiles = [
   'Superadministrador',
   'Administrador',
@@ -5,12 +8,7 @@ export const perfiles = [
   'Secretaria de Dirección',
   'Usuario',
 ] as const;
-export const rolesDocumentales = [
-  'Superadministrador',
-  'Director(a)',
-  'Secretaria de Dirección',
-  'Usuario',
-];
+export const rolesDocumentales = ['Superadministrador', 'Director(a)', 'Secretaria de Dirección', 'Usuario'];
 export const rolesRegistro = ['Director(a)', 'Secretaria de Dirección', 'Usuario'];
 export const rolesAdministracion = ['Superadministrador', 'Administrador'];
 export function esAdministracion(rol: string) {

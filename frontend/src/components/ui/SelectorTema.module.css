@@ -1,3 +1,6 @@
+/** Archivo: Distingue la apariencia seleccionada y ajusta los botones a pantallas y controles táctiles.
+ */
+/* Preferencia de apariencia: botones, selección y objetivos táctiles. */
 .selector {
   display: inline-flex;
   gap: 4px;

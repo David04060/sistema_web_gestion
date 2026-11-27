@@ -1,6 +1,8 @@
-import js from '@eslint/js'
-import { defineConfig } from 'eslint/config'
-import tseslint from 'typescript-eslint'
+/** Archivo: Define las comprobaciones de código de React, Vite y herramientas JavaScript.
+ */
+import js from '@eslint/js';
+import { defineConfig } from 'eslint/config';
+import tseslint from 'typescript-eslint';
 
 // El código generado y las dependencias no forman parte del análisis del proyecto.
 export default defineConfig([
@@ -9,7 +11,14 @@ export default defineConfig([
     files: ['tests/**/*.mjs', 'scripts/**/*.mjs', 'eslint.config.js'],
     extends: [js.configs.recommended],
     languageOptions: {
-      globals: { process: 'readonly', console: 'readonly', Buffer: 'readonly', Response: 'readonly', Headers: 'readonly', setImmediate: 'readonly' },
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+        Response: 'readonly',
+        Headers: 'readonly',
+        setImmediate: 'readonly',
+      },
     },
   },
   {
@@ -19,5 +28,4 @@ export default defineConfig([
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
-])
-
+]);

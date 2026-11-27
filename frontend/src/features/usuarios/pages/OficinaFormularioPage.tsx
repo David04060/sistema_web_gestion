@@ -1,3 +1,5 @@
+/** Archivo: Crea una oficina o cambia su nombre con motivo; conserva los nombres institucionales.
+ */
 import { useCallback, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { config } from '../../../api/documental';
@@ -61,12 +63,7 @@ function Formulario({ token, inicial }: { token: string; inicial: Oficina | null
           <div className={styles.formularioDosColumnas}>
             <label className={styles.campo}>
               Nombre de la oficina
-              <input
-                required
-                maxLength={250}
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-              />
+              <input required maxLength={250} value={nombre} onChange={(e) => setNombre(e.target.value)} />
             </label>
             {inicial && (
               <label className={styles.campo}>
@@ -85,10 +82,7 @@ function Formulario({ token, inicial }: { token: string; inicial: Oficina | null
           </button>
         </fieldset>
         <div className={styles.acciones}>
-          <Link
-            className={styles.secundario}
-            to={inicial ? '/oficinas/' + inicial.id : '/oficinas'}
-          >
+          <Link className={styles.secundario} to={inicial ? '/oficinas/' + inicial.id : '/oficinas'}>
             Cancelar
           </Link>
         </div>

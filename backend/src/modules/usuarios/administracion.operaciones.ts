@@ -1,11 +1,9 @@
+/** Archivo: Administra cuentas, roles y contraseñas y conserva la historia al cambiar su actividad o
+ * pertenencia.
+ */
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
-import {
-  usuarioAlta,
-  usuarioEdicion,
-  actividad,
-  filtrosUsuarios,
-} from './administracion.schema.js';
+import { usuarioAlta, usuarioEdicion, actividad, filtrosUsuarios } from './administracion.schema.js';
 export {
   usuarioAlta,
   usuarioEdicion,
@@ -30,7 +28,10 @@ import { generarHash } from '../../shared/security/password.js';
 import { HttpError } from '../../shared/http/HttpError.js';
 import { nombresRolSQL } from '../../shared/security/roles.js';
 
-/** Permite conservar una oficina inactiva ya asignada; los cambios exigen una oficina activa y compatible con el rol. */
+/**
+ * Permite conservar una oficina inactiva ya asignada; los cambios exigen una oficina activa y
+ * compatible con el rol.
+ */
 async function validarOficina(
   cliente: PoolClient,
   rol: number,
@@ -38,8 +39,7 @@ async function validarOficina(
   oficinaActual: string | null = null,
 ) {
   const o = oficina
-    ? (await cliente.query('SELECT nombre,activa FROM oficinas WHERE id=$1 FOR SHARE', [oficina]))
-        .rows[0]
+    ? (await cliente.query('SELECT nombre,activa FROM oficinas WHERE id=$1 FOR SHARE', [oficina])).rows[0]
     : null;
   if (oficina && !o) throw new HttpError(400, 'Oficina inexistente');
   if (o && !o.activa && oficina !== oficinaActual)
@@ -53,11 +53,7 @@ async function validarOficina(
 }
 
 /** Conserva activo al Superadministrador único y revoca sesiones cuando cambia la actividad. */
-export async function cambiarActividad(
-  actor: string,
-  usuario: string,
-  datos: z.infer<typeof actividad>,
-) {
+export async function cambiarActividad(actor: string, usuario: string, datos: z.infer<typeof actividad>) {
   return operacion(actor, datos.motivo, async (cliente, identidad) => {
     exigirAdministracion(identidad);
     const u = (
@@ -94,10 +90,9 @@ async function miembros(cliente: PoolClient, usuario: string, rol: number) {
   await cliente.query('DELETE FROM miembros_ambito WHERE usuario_id=$1', [usuario]);
   if (rol === 5) {
     let ambito = (
-      await cliente.query(
-        "SELECT id::text FROM ambitos_registro WHERE clase='PERSONAL' AND titular_id=$1",
-        [usuario],
-      )
+      await cliente.query("SELECT id::text FROM ambitos_registro WHERE clase='PERSONAL' AND titular_id=$1", [
+        usuario,
+      ])
     ).rows[0];
     if (!ambito)
       ambito = (
@@ -113,7 +108,14 @@ async function miembros(cliente: PoolClient, usuario: string, rol: number) {
   }
   if ([3, 4].includes(rol))
     await cliente.query(
-      "INSERT INTO miembros_ambito(usuario_id,ambito_id) SELECT $1,id FROM ambitos_registro WHERE clase='COMPARTIDO_DIRECCION'",
+      `INSERT INTO miembros_ambito (usuario_id, ambito_id)
+SELECT
+  $1,
+  id
+FROM
+  ambitos_registro
+WHERE
+  clase = 'COMPARTIDO_DIRECCION'`,
       [usuario],
     );
 }
@@ -187,16 +189,23 @@ export async function crearUsuario(actor: string, datos: z.infer<typeof usuarioA
   });
 }
 /** Bloquea la cuenta, conserva su ámbito si tiene documentos y revoca sesiones al editar. */
-export async function editarUsuario(
-  actor: string,
-  usuario: string,
-  datos: z.infer<typeof usuarioEdicion>,
-) {
+export async function editarUsuario(actor: string, usuario: string, datos: z.infer<typeof usuarioEdicion>) {
   return operacion(actor, datos.motivo, async (cliente, identidad) => {
     exigirAdministracion(identidad);
     const previo = (
       await cliente.query(
-        'SELECT id::text,rol_id,oficina_id::text,activo FROM usuarios WHERE id=$1 AND ($2::smallint=1 OR rol_id<>1) FOR UPDATE',
+        `SELECT
+  id::text,
+  rol_id,
+  oficina_id::text,
+  activo
+FROM
+  usuarios
+WHERE
+  id = $1
+  AND ($2::smallint = 1
+    OR rol_id <> 1)
+FOR UPDATE`,
         [usuario, identidad.rol_id],
       )
     ).rows[0];
@@ -208,8 +217,7 @@ export async function editarUsuario(
       throw new HttpError(409, 'Se conserva el Superadministrador único activo');
     if (
       previo.rol_id !== datos.rol_id &&
-      (await cliente.query('SELECT 1 FROM documentos WHERE registrado_por=$1 LIMIT 1', [usuario]))
-        .rowCount
+      (await cliente.query('SELECT 1 FROM documentos WHERE registrado_por=$1 LIMIT 1', [usuario])).rowCount
     )
       throw new HttpError(409, 'La cuenta tiene registros históricos; no puede cambiar de ámbito');
     await validarOficina(cliente, datos.rol_id, datos.oficina_id, previo.oficina_id);

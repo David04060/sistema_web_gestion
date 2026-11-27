@@ -1,5 +1,0 @@
-.aviso { border:1px solid #d0e1dd; border-left:3px solid var(--primario); padding:15px 18px; background:#eff6f4; border-radius:9px; line-height:1.8; color:#315c56!important; }
-.modulo { overflow-wrap:anywhere; }
-.formulario textarea { min-width:0; width:100%; min-height:100px; resize:vertical; }
-.modulo table { min-width:42rem; }
-.modulo table td:first-child,.modulo table button { white-space:nowrap; }

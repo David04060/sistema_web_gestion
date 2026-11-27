@@ -1,3 +1,5 @@
+/** Archivo: Permite solicitudes del navegador solo desde los sitios configurados para esta API.
+ */
 import type { RequestHandler } from 'express';
 import { env } from '../config/env.js';
 

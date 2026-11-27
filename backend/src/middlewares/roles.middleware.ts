@@ -1,3 +1,5 @@
+/** Archivo: Comprueba un rol después de autenticar y distingue falta de sesión de falta de permiso.
+ */
 import type { Response, NextFunction } from 'express';
 import type { RequestAutenticada } from './auth.middleware.js';
 /** Autoriza por rol después de requiereAuth. No sustituye la autenticación. */

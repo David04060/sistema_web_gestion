@@ -1,7 +1,13 @@
+/** Archivo: Avisa cuando una solicitud tarda más de lo habitual sin atribuirle una causa no comprobada.
+ */
 import { useSyncExternalStore } from 'react';
 import { estadoConectividad, suscribirConectividad } from '../../api/conectividad';
 /** No identifica la causa con certeza: Render puede estar despertando o existir demora de red. */
 export function EstadoConectividad() {
-    const lenta = useSyncExternalStore(suscribirConectividad, estadoConectividad, () => false);
-    return lenta ? <p role="status" aria-live="polite">La consulta está tardando más de lo habitual. Espera un momento.</p> : null;
+  const lenta = useSyncExternalStore(suscribirConectividad, estadoConectividad, () => false);
+  return lenta ? (
+    <p role="status" aria-live="polite">
+      La consulta está tardando más de lo habitual. Espera un momento.
+    </p>
+  ) : null;
 }

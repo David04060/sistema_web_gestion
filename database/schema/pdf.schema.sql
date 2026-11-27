@@ -3,6 +3,7 @@
 -- Name: auditar_pdf(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Registra eventos y auditoría PDF y encola objetos sustituidos para limpieza; no almacena binarios.
 CREATE FUNCTION public.auditar_pdf() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -32,6 +33,7 @@ END $$;
 -- Name: validar_pdf_permiso(); Type: FUNCTION; Schema: public; Owner: -
 --
 
+-- Contrato: Comprueba actor, alcance y situación en INSERT/UPDATE/DELETE de metadatos PDF, incluida la excepción de mantenimiento.
 CREATE FUNCTION public.validar_pdf_permiso() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -67,6 +69,7 @@ END $$;
 -- Name: documentos_pdf; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Metadatos y referencia privada del único PDF vigente de cada documento.
 CREATE TABLE public.documentos_pdf (
     documento_id bigint NOT NULL,
     revision uuid NOT NULL,
@@ -86,6 +89,7 @@ CREATE TABLE public.documentos_pdf (
 -- Name: pdf_cargas; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Intenciones de carga con actor, vencimiento y revisión esperada.
 CREATE TABLE public.pdf_cargas (
     id uuid NOT NULL,
     documento_id bigint NOT NULL,
@@ -106,6 +110,7 @@ CREATE TABLE public.pdf_cargas (
 -- Name: pdf_eventos; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Auditoría técnica inmutable de las revisiones PDF.
 CREATE TABLE public.pdf_eventos (
     id bigint NOT NULL,
     documento_id bigint NOT NULL,
@@ -135,6 +140,7 @@ ALTER TABLE public.pdf_eventos ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 -- Name: pdf_objetos_pendientes; Type: TABLE; Schema: public; Owner: -
 --
 
+-- Modelo: Cola durable de objetos R2 desvinculados y reintentos de eliminación.
 CREATE TABLE public.pdf_objetos_pendientes (
     clave_r2 text NOT NULL,
     documento_id bigint NOT NULL,

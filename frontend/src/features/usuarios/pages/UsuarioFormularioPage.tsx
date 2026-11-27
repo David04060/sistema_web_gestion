@@ -1,3 +1,5 @@
+/** Archivo: Crea o edita cuentas y ofrece oficinas compatibles con el rol elegido.
+ */
 import { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { config, type Cuenta } from '../../../api/documental';
@@ -31,9 +33,7 @@ export function UsuarioFormularioPage() {
             token={token}
             id={id}
             inicial={consulta.datos.cuenta}
-            roles={consulta.datos.roles.filter(
-              (r) => r.id !== 1 || consulta.datos?.cuenta?.rol_id === 1,
-            )}
+            roles={consulta.datos.roles.filter((r) => r.id !== 1 || consulta.datos?.cuenta?.rol_id === 1)}
             oficinas={consulta.datos.oficinas}
           />
         ))}
@@ -74,8 +74,8 @@ export function Formulario({
     }),
     [error, setError] = useState(''),
     [ocupado, setOcupado] = useState(false);
-  const cambio = (k: keyof typeof v, valor: string | boolean) =>
-    setV((v) => ({ ...v, [k]: valor }));
+  const cambio = (k: keyof typeof v, valor: string | boolean) => setV((v) => ({ ...v, [k]: valor }));
+  // El alta envía contraseña; la edición envía motivo y deja el cambio de clave a su acción específica.
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
     setOcupado(true);
@@ -103,6 +103,7 @@ export function Formulario({
       setOcupado(false);
     }
   }
+  // Dirección y Secretaría usan sus oficinas institucionales. La asignación inactiva actual sigue visible.
   const opciones = oficinas.filter((o) =>
     v.rol === '3'
       ? o.nombre === 'Dirección'
@@ -149,11 +150,7 @@ export function Formulario({
           </label>
           <label className={styles.campo}>
             Teléfono opcional
-            <input
-              maxLength={50}
-              value={v.telefono}
-              onChange={(e) => cambio('telefono', e.target.value)}
-            />
+            <input maxLength={50} value={v.telefono} onChange={(e) => cambio('telefono', e.target.value)} />
           </label>
           <label className={styles.campo}>
             Rol
@@ -175,10 +172,7 @@ export function Formulario({
           {!['1', '2'].includes(v.rol) && (
             <label className={styles.campo}>
               Oficina opcional
-              <select
-                value={v.oficina}
-                onChange={(e) => cambio('oficina', e.target.value)}
-              >
+              <select value={v.oficina} onChange={(e) => cambio('oficina', e.target.value)}>
                 <option value="">Sin asignar</option>
                 {opciones.map((o) => (
                   <option key={o.id} value={o.id}>

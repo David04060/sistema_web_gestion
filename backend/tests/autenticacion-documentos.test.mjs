@@ -1,29 +1,40 @@
+/** Archivo: Comprueba una autenticación SQL por petición y las barreras de consulta y escritura del
+ * destinatario.
+ */
 import './helpers/exigir-aislamiento.mjs';
 import assert from 'node:assert/strict';
-import {test} from 'node:test';
-import {performance} from 'node:perf_hooks';
+import { test } from 'node:test';
+import { performance } from 'node:perf_hooks';
 import pg from 'pg';
-import {leerFixtures} from './helpers/entorno-prueba.mjs';
-import {app} from '../dist/app.js';
-import {pool} from '../dist/config/database.js';
-import {generarToken} from '../dist/shared/security/jwt.js';
+import { leerFixtures } from './helpers/entorno-prueba.mjs';
+import { app } from '../dist/app.js';
+import { pool } from '../dist/config/database.js';
+import { generarToken } from '../dist/shared/security/jwt.js';
 
 test('Documentos y PDF: una autenticación SQL por petición con JWT verificable', async () => {
-  const {cuentas, documentos} = leerFixtures();
+  const { cuentas, documentos } = leerFixtures();
   const original = pg.Client.prototype.query;
   const server = app.listen(0, '127.0.0.1');
-  await new Promise(resolve => server.once('listening', resolve));
+  await new Promise((resolve) => server.once('listening', resolve));
   const base = 'http://127.0.0.1:' + server.address().port + '/api/documentos';
   let consultas;
   pg.Client.prototype.query = function (...args) {
-    const sql = typeof args[0] === 'string' ? args[0] : args[0]?.text ?? '';
-    const registro = {auth: sql.includes('WHERE u.id = $1::bigint') && sql.includes('u.version_autenticacion'), ms: 0};
+    const sql = typeof args[0] === 'string' ? args[0] : (args[0]?.text ?? '');
+    const registro = {
+      auth: sql.includes('WHERE u.id = $1::bigint') && sql.includes('u.version_autenticacion'),
+      ms: 0,
+    };
     consultas?.push(registro);
     const inicio = performance.now();
-    const medir = () => { registro.ms = performance.now() - inicio; };
+    const medir = () => {
+      registro.ms = performance.now() - inicio;
+    };
     if (typeof args.at(-1) === 'function') {
       const callback = args.pop();
-      args.push((...valores) => { medir(); callback(...valores); });
+      args.push((...valores) => {
+        medir();
+        callback(...valores);
+      });
       return original.apply(this, args);
     }
     return original.apply(this, args).finally(medir);
@@ -33,16 +44,21 @@ test('Documentos y PDF: una autenticación SQL por petición con JWT verificable
   async function pedir(ruta, jwt, status, esperadas = 1, cache = 'no-store, private') {
     consultas = [];
     const inicio = performance.now();
-    const respuesta = await fetch(base + ruta, {headers: jwt ? {Authorization: 'Bearer ' + jwt} : {}});
+    const respuesta = await fetch(base + ruta, { headers: jwt ? { Authorization: 'Bearer ' + jwt } : {} });
     const datos = await respuesta.json();
     const apiMs = performance.now() - inicio;
     assert.equal(respuesta.status, status, ruta);
     assert.equal(respuesta.headers.get('cache-control'), cache, ruta);
-    const auth = consultas.filter(q => q.auth);
-    if (auth.length !== esperadas) diferencias.push({ruta, status, esperadas, observadas: auth.length});
-    return {datos, apiMs, authN: auth.length, sqlN: consultas.length,
+    const auth = consultas.filter((q) => q.auth);
+    if (auth.length !== esperadas) diferencias.push({ ruta, status, esperadas, observadas: auth.length });
+    return {
+      datos,
+      apiMs,
+      authN: auth.length,
+      sqlN: consultas.length,
       authMs: auth.reduce((s, q) => s + q.ms, 0),
-      sqlMs: consultas.reduce((s, q) => s + q.ms, 0)};
+      sqlMs: consultas.reduce((s, q) => s + q.ms, 0),
+    };
   }
   try {
     const direccion = token(cuentas.director);
@@ -50,14 +66,16 @@ test('Documentos y PDF: una autenticación SQL por petición con JWT verificable
       for (let i = 0; i < 15; i++) await pedir('', direccion, 200);
       const muestras = [];
       for (let i = 0; i < 120; i++) {
-        const {datos, ...medicion} = await pedir('', direccion, 200);
+        const { datos, ...medicion } = await pedir('', direccion, 200);
         assert.ok(datos.total > 0);
         muestras.push(medicion);
       }
-      const resumen = Object.fromEntries(Object.keys(muestras[0]).map(campo => {
-        const v = muestras.map(m => m[campo]).sort((a, b) => a - b);
-        return [campo, {mediana: (v[59] + v[60]) / 2, p95: v[113]}];
-      }));
+      const resumen = Object.fromEntries(
+        Object.keys(muestras[0]).map((campo) => {
+          const v = muestras.map((m) => m[campo]).sort((a, b) => a - b);
+          return [campo, { mediana: (v[59] + v[60]) / 2, p95: v[113] }];
+        }),
+      );
       console.log('MEDICION_AUTH_DOCUMENTOS', JSON.stringify(resumen));
     }
 
@@ -70,7 +88,10 @@ test('Documentos y PDF: una autenticación SQL por petición con JWT verificable
       await pedir('/' + id, jwt, lectura);
       for (const ruta of ['/historial', '/auditoria']) await pedir('/' + id + ruta, jwt, lectura);
       const lista = await pedir('', jwt, 200);
-      assert.equal(lista.datos.documentos.some(d => d.id === id), lectura === 200);
+      assert.equal(
+        lista.datos.documentos.some((d) => d.id === id),
+        lectura === 200,
+      );
       if (rol === 'secretaria') {
         for (const propio of [documentos.secretaria, documentos.pendiente, documentos.delegado])
           await pedir('/' + propio.id, jwt, 200);
@@ -90,7 +111,7 @@ test('Documentos y PDF: una autenticación SQL por petición con JWT verificable
     const receptor = token(cuentas.sinOficina);
     const { datos } = await pedir(recibido, receptor, 200);
     assert.equal(datos.documento.delegado_por_nombre, 'Fixture director');
-    assert.ok(Object.values(datos.documento.permisos).every(v => !v));
+    assert.ok(Object.values(datos.documento.permisos).every((v) => !v));
     assert.deepEqual((await pedir(recibido + '/historial', receptor, 200)).datos, { historial: [] });
     await pedir(recibido, token(cuentas.usuario), 404);
     const revision = datos.documento.revision;
@@ -121,7 +142,7 @@ test('Documentos y PDF: una autenticación SQL por petición con JWT verificable
     assert.deepEqual(diferencias.slice(0, 8), [], 'Consultas SQL de autenticación por petición');
   } finally {
     pg.Client.prototype.query = original;
-    await new Promise(resolve => server.close(resolve));
+    await new Promise((resolve) => server.close(resolve));
     await pool.end();
   }
 });

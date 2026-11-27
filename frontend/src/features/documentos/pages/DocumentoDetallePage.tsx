@@ -1,7 +1,11 @@
+/** Archivo: Muestra un documento, sus acciones autorizadas, PDF y relaciones; conserva la revisión confirmada
+ * más reciente.
+ */
+import { AtencionDocumento } from '../components/AtencionDocumento';
 import { GrupoDocumental } from '../components/GrupoDocumental';
-import { useCallback,useState } from 'react';
-import { Link,useLocation,useParams } from 'react-router-dom';
-import { api,etiquetas,type DocumentoActual } from '../../../api/documental';
+import { useCallback, useState } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { api, etiquetas, type DocumentoActual } from '../../../api/documental';
 import styles from '../../../components/ui/Admin.module.css';
 import { EstadoCarga } from '../../../components/ui/EstadoCarga';
 import { useConsulta } from '../../../hooks/useConsulta';
@@ -12,22 +16,21 @@ import { ArchivoPdf } from '../components/ArchivoPdf';
 import { AuditoriaDocumento } from '../components/AuditoriaDocumento';
 import { HistorialDocumento } from '../components/HistorialDocumento';
 /** Una respuesta anterior nunca reemplaza una mutación confirmada de revisión más reciente. */
+/**
+ * Consulta documento, permisos e historia para la cuenta activa. Solo presenta acciones
+ * autorizadas; después de una escritura vuelve a consultar la revisión vigente.
+ */
 export function DocumentoDetallePage() {
   const { id = '' } = useParams(),
     { token } = useAuth().sesion!;
   const navegacion = useLocation(),
     mensajeRuta = (navegacion.state as { mensaje?: unknown } | null)?.mensaje;
   const consulta = useConsulta(
-    useCallback(
-      async () => {
-        const detalle = await api.detalle(token, id);
-        const historial = detalle.documento.delegado_por_nombre
-          ? undefined
-          : await api.historial(token, id);
-        return { detalle, historial };
-      },
-      [token, id],
-    ),
+    useCallback(async () => {
+      const detalle = await api.detalle(token, id);
+      const historial = detalle.documento.delegado_por_nombre ? undefined : await api.historial(token, id);
+      return { detalle, historial };
+    }, [token, id]),
   );
   const [confirmado, setConfirmado] = useState<{
     contexto: string;
@@ -39,9 +42,7 @@ export function DocumentoDetallePage() {
   const base = consulta.datos?.detalle.documento;
   const vigente = confirmado?.contexto === contexto ? confirmado : undefined;
   const d =
-    base && vigente && BigInt(vigente.documento.revision) >= BigInt(base.revision)
-      ? vigente.documento
-      : base;
+    base && vigente && BigInt(vigente.documento.revision) >= BigInt(base.revision) ? vigente.documento : base;
   function actualizar(documento: DocumentoActual, mensaje: string) {
     setConfirmado({ contexto, documento, mensaje });
     consulta.recargar();
@@ -64,7 +65,12 @@ export function DocumentoDetallePage() {
         <>
           <section className={styles.tarjeta}>
             <h2>{d.codigo_visible}</h2>
-            {d.historico_solo_lectura && <p className={styles.aviso}>Archivo de un periodo anterior: consulta de solo lectura. Se conservan su registrador, ubicación e historial originales.</p>}
+            {d.historico_solo_lectura && (
+              <p className={styles.aviso}>
+                Archivo de un periodo anterior: consulta de solo lectura. Se conservan su registrador,
+                ubicación e historial originales.
+              </p>
+            )}
             <dl className={`${styles.datos} ${styles.datosDocumento}`}>
               <div className={styles.datoCompleto}>
                 <dt>Asunto</dt>
@@ -109,17 +115,41 @@ export function DocumentoDetallePage() {
                 <dd>
                   {d.ubicacion ? (
                     <>
-                      <span className={styles.lineaUbicacion}><strong>Oficina:</strong> {d.ubicacion.oficina_nombre_guardado}</span>
-                      {d.ubicacion.ruta_catalogo && d.ubicacion.ruta_catalogo !== d.ubicacion.ruta_ubicacion_guardada && (
-                        <span className={styles.lineaUbicacion}><strong>Ruta registrada:</strong> {d.ubicacion.ruta_ubicacion_guardada} (el catálogo cambió después del registro)</span>
-                      )}
-                      {d.ubicacion.partes?.length ? d.ubicacion.partes.map((parte, indice) => (
-                        <span key={parte.id} className={styles.lineaUbicacion}>
-                          <strong>{indice === 0 ? (parte.clase === 'Estante' ? 'Estante' : parte.clase) : parte.clase === 'Archivador' ? 'Archivador del estante' : parte.clase}:</strong> {parte.nombre}
+                      <span className={styles.lineaUbicacion}>
+                        <strong>Oficina:</strong> {d.ubicacion.oficina_nombre_guardado}
+                      </span>
+                      {d.ubicacion.ruta_catalogo &&
+                        d.ubicacion.ruta_catalogo !== d.ubicacion.ruta_ubicacion_guardada && (
+                          <span className={styles.lineaUbicacion}>
+                            <strong>Ruta registrada:</strong> {d.ubicacion.ruta_ubicacion_guardada} (el
+                            catálogo cambió después del registro)
+                          </span>
+                        )}
+                      {d.ubicacion.partes?.length ? (
+                        d.ubicacion.partes.map((parte, indice) => (
+                          <span key={parte.id} className={styles.lineaUbicacion}>
+                            <strong>
+                              {indice === 0
+                                ? parte.clase === 'Estante'
+                                  ? 'Estante'
+                                  : parte.clase
+                                : parte.clase === 'Archivador'
+                                  ? 'Archivador del estante'
+                                  : parte.clase}
+                              :
+                            </strong>{' '}
+                            {parte.nombre}
+                          </span>
+                        ))
+                      ) : (
+                        <span className={styles.lineaUbicacion}>
+                          <strong>Ruta:</strong> {d.ubicacion.ruta_ubicacion_guardada}
                         </span>
-                      )) : <span className={styles.lineaUbicacion}><strong>Ruta:</strong> {d.ubicacion.ruta_ubicacion_guardada}</span>}
+                      )}
                     </>
-                  ) : 'Sin ubicación registrada'}
+                  ) : (
+                    'Sin ubicación registrada'
+                  )}
                 </dd>
               </div>
               {d.delegacion && (
@@ -138,7 +168,7 @@ export function DocumentoDetallePage() {
                   </div>
                   {d.delegacion.observaciones && (
                     <div className={styles.datoCompleto}>
-                      <dt>Observaciones de delegación</dt>
+                      <dt>Indicaciones de la delegación recibida</dt>
                       <dd>{d.delegacion.observaciones}</dd>
                     </div>
                   )}
@@ -178,14 +208,29 @@ export function DocumentoDetallePage() {
               actualizar={actualizar}
             />
           )}
+          {d.permisos.recorrido && (
+            <AtencionDocumento
+              key={'atencion-' + token + ':' + d.id + ':' + d.revision}
+              token={token}
+              id={d.id}
+              alCambiar={() => {
+                setRevisionAuditoria((v) => v + 1);
+                consulta.recargar();
+              }}
+            />
+          )}
           <GrupoDocumental documento={d} />
-          {!d.delegado_por_nombre && <HistorialDocumento historial={consulta.datos?.historial?.historial ?? []} />}
-          {!d.delegado_por_nombre && <AuditoriaDocumento
-            key={'auditoria-' + d.id}
-            token={token}
-            id={d.id}
-            revision={d.revision + ':' + revisionAuditoria}
-          />}
+          {!d.delegado_por_nombre && (
+            <HistorialDocumento historial={consulta.datos?.historial?.historial ?? []} />
+          )}
+          {!d.delegado_por_nombre && (
+            <AuditoriaDocumento
+              key={'auditoria-' + d.id}
+              token={token}
+              id={d.id}
+              revision={d.revision + ':' + revisionAuditoria}
+            />
+          )}
         </>
       )}
     </main>

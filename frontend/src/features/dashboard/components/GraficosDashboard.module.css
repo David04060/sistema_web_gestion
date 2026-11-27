@@ -1,3 +1,6 @@
+/** Archivo: Distribuye gráficos, leyendas y tablas con ajustes para pantallas pequeñas.
+ */
+/* Dashboard: agrupación de gráficos y acceso al listado. */
 .grupo {
   margin-bottom: 32px;
   min-width: 0;
@@ -50,6 +53,7 @@
 .amplio {
   grid-column: 1/-1;
 }
+/* Distribuciones: anillos, centro y leyendas. */
 .distribucion {
   display: flex;
   gap: 16px;
@@ -115,6 +119,7 @@
   color: var(--texto-secundario);
   font-weight: 400;
 }
+/* Serie temporal y selección de periodo. */
 .grafico,
 .graficoTemporal {
   width: 100%;
@@ -156,6 +161,7 @@
   font-size: 0.8125rem;
   margin: 12px 0 0;
 }
+/* Tabla textual alternativa a la representación gráfica. */
 .tablaDatos {
   margin-top: 16px;
   min-width: 0;

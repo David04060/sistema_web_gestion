@@ -35,3 +35,39 @@ docs/*APLICAD*.json
 
 # Capturas y resultados QA con datos locales; se conservan en disco.
 docs/qa-*/
+
+# Seguimiento local existente: insumos académicos e informes fuera de la entrega.
+# Se conservan en disco; las guías públicas están en documentacion-publica/.
+/docs/guia-oficial-insumos-20261120/
+/docs/insumos-uml-20261120/
+/docs/AUDITORIA_Y_UI_LOCAL_20261118.md
+/docs/ENTREGA_RELEVO_RELACIONADOS_20261106.md
+/docs/ENTREGA_RETENCION_PDF_20261105.md
+/docs/EXPERIMENTO_REGIONAL_20261105.md
+/docs/INFORME_SITUACION_PERSONAL_Y_DELEGACIONES_20261118.md
+/docs/REVISION_SIETE_COMMITS_20261117.md
+/docs/superpowers/plans/2026-11-18-paneles-ubicacion-autorizados.md
+/docs/superpowers/plans/2026-11-18-situacion-personal.md
+/docs/superpowers/specs/2026-11-05-eliminacion-definitiva-design.md
+
+# Herramientas particulares no incluidas en las suites portables de package.json.
+/backend/scripts/auditar-interfaz-local.mjs
+/backend/scripts/experimento-regional.cjs
+/backend/tests/ubicacion-lectura.base-local.test.mjs
+/frontend/tests/acciones-ubicacion.browser.mjs
+/frontend/tests/etiquetas-archivador.browser.mjs
+
+# Material interno conservado localmente; la entrega usa una lista explícita de archivos.
+/docs/
+/design-system/
+.agents/
+.codex/
+.aws/
+.vscode/
+coverage/
+.cache/
+playwright-report/
+test-results/
+*.sqlite
+*.sqlite3
+*.db

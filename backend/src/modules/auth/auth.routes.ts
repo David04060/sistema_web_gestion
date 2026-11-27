@@ -1,3 +1,5 @@
+/** Archivo: Publica login y perfil y limita los intentos de acceso repetidos desde una dirección IP.
+ */
 import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { login, me } from './auth.controller.js';

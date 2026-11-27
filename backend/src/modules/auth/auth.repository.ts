@@ -1,3 +1,5 @@
+/** Archivo: Busca las cuentas necesarias para autenticar; entrega datos internos solo al servicio de acceso.
+ */
 import { nombresRolSQL } from '../../shared/security/roles.js';
 import { pool } from '../../config/database.js';
 import type { UsuarioAuth } from './auth.types.js';

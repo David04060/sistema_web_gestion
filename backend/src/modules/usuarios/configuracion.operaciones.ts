@@ -1,3 +1,8 @@
+/**
+ * Archivo: Gestiona roles visibles, oficinas, tipos documentales y ubicaciones dentro de los permisos
+ * de cada
+ * cuenta.
+ */
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 import {
@@ -27,7 +32,9 @@ export async function catalogos(actor: string) {
     exigirAdministracion(identidad);
     return {
       roles: (
-        await cliente.query(`SELECT ${columnasRol} FROM roles r WHERE ${rolVisibleSQL} ORDER BY id`, [identidad.rol_id])
+        await cliente.query(`SELECT ${columnasRol} FROM roles r WHERE ${rolVisibleSQL} ORDER BY id`, [
+          identidad.rol_id,
+        ])
       ).rows,
     };
   });
@@ -35,10 +42,12 @@ export async function catalogos(actor: string) {
 export async function detalleRol(actor: string, id: string) {
   return operacion(actor, 'Consulta de rol', async (cliente, identidad) => {
     exigirAdministracion(identidad);
-    const rol = (await cliente.query(
-      `SELECT ${columnasRol} FROM roles r WHERE ${rolVisibleSQL} AND r.id=$2::bigint`,
-      [identidad.rol_id, id],
-    )).rows[0];
+    const rol = (
+      await cliente.query(`SELECT ${columnasRol} FROM roles r WHERE ${rolVisibleSQL} AND r.id=$2::bigint`, [
+        identidad.rol_id,
+        id,
+      ])
+    ).rows[0];
     if (!rol) throw new HttpError(404, 'Rol inexistente');
     return { rol };
   });
@@ -47,15 +56,24 @@ export async function detalleRol(actor: string, id: string) {
 export async function editarRol(actor: string, id: string, datos: z.infer<typeof nombre>) {
   return operacion(actor, 'Cambiar nombre visible de rol', async (cliente, identidad) => {
     exigirAdministracion(identidad);
-    const anterior = (await cliente.query(
-      `SELECT ${columnasRol} FROM roles r WHERE ${rolVisibleSQL} AND r.id=$2::bigint FOR UPDATE`,
-      [identidad.rol_id, id],
-    )).rows[0];
+    const anterior = (
+      await cliente.query(
+        `SELECT ${columnasRol} FROM roles r WHERE ${rolVisibleSQL} AND r.id=$2::bigint FOR UPDATE`,
+        [identidad.rol_id, id],
+      )
+    ).rows[0];
     if (!anterior) throw new HttpError(404, 'Rol inexistente');
     if (anterior.nombre !== datos.nombre) {
       await cliente.query('UPDATE roles SET nombre_visible=$2 WHERE id=$1', [id, datos.nombre]);
-      await auditarConfiguracion(cliente, identidad, 'ROL', id, 'EDITAR',
-        { nombre: anterior.nombre }, { nombre: datos.nombre });
+      await auditarConfiguracion(
+        cliente,
+        identidad,
+        'ROL',
+        id,
+        'EDITAR',
+        { nombre: anterior.nombre },
+        { nombre: datos.nombre },
+      );
     }
     return { actualizado: true };
   });
@@ -66,8 +84,7 @@ export async function oficinas(actor: string) {
   return operacion(actor, 'Oficinas', async (cliente, identidad) => {
     exigirAdministracion(identidad);
     return {
-      oficinas: (await cliente.query('SELECT id::text,nombre,activa FROM oficinas ORDER BY nombre'))
-        .rows,
+      oficinas: (await cliente.query('SELECT id::text,nombre,activa FROM oficinas ORDER BY nombre')).rows,
     };
   });
 }
@@ -76,36 +93,22 @@ export async function crearOficina(actor: string, datos: z.infer<typeof nombre>)
   return operacion(actor, 'Crear oficina', async (cliente, identidad) => {
     exigirAdministracion(identidad);
     const u = (
-      await cliente.query('INSERT INTO oficinas(nombre) VALUES($1) RETURNING id::text', [
-        datos.nombre,
-      ])
+      await cliente.query('INSERT INTO oficinas(nombre) VALUES($1) RETURNING id::text', [datos.nombre])
     ).rows[0];
     await auditarConfiguracion(cliente, identidad, 'OFICINA', u.id, 'CREAR', null, datos);
     return u;
   });
 }
 /** Conserva los nombres de Dirección y Mesa de Partes que exige el esquema. */
-export async function editarOficina(
-  actor: string,
-  oficina: string,
-  datos: z.infer<typeof oficinaEdicion>,
-) {
+export async function editarOficina(actor: string, oficina: string, datos: z.infer<typeof oficinaEdicion>) {
   return operacion(actor, datos.motivo, async (cliente, identidad) => {
     exigirAdministracion(identidad);
     const anterior = (
-      await cliente.query('SELECT id::text,nombre,activa FROM oficinas WHERE id=$1 FOR UPDATE', [
-        oficina,
-      ])
+      await cliente.query('SELECT id::text,nombre,activa FROM oficinas WHERE id=$1 FOR UPDATE', [oficina])
     ).rows[0];
     if (!anterior) throw new HttpError(404, 'Oficina inexistente');
-    if (
-      ['Dirección', 'Mesa de Partes'].includes(anterior.nombre) &&
-      datos.nombre !== anterior.nombre
-    )
-      throw new HttpError(
-        409,
-        'Se conservan las oficinas institucionales requeridas por el esquema',
-      );
+    if (['Dirección', 'Mesa de Partes'].includes(anterior.nombre) && datos.nombre !== anterior.nombre)
+      throw new HttpError(409, 'Se conservan las oficinas institucionales requeridas por el esquema');
     await cliente.query('UPDATE oficinas SET nombre=$2 WHERE id=$1', [oficina, datos.nombre]);
     await auditarConfiguracion(cliente, identidad, 'OFICINA', oficina, 'EDITAR', anterior, datos);
     return { actualizado: true };
@@ -134,7 +137,8 @@ export async function crearTipo(actor: string, datos: z.infer<typeof tipo>) {
     const ambito = exigirAmbito(identidad);
     const t = (
       await cliente.query(
-        'INSERT INTO tipos_documentales(ambito_id,nombre,prefijo,creado_por) VALUES($1,$2,$3,$4) RETURNING id::text',
+        'INSERT INTO tipos_documentales(ambito_id,nombre,prefijo,creado_por) ' +
+          'VALUES($1,$2,$3,$4) RETURNING id::text',
         [ambito, datos.nombre, datos.prefijo, identidad.id],
       )
     ).rows[0];
@@ -145,10 +149,23 @@ export async function crearTipo(actor: string, datos: z.infer<typeof tipo>) {
 /** Revalida ámbito y creador; compartir catálogo no autoriza a editar tipos de otra cuenta. */
 async function tipoPropio(cliente: PoolClient, identidad: Actor, id: string) {
   const ambito = exigirAmbito(identidad);
-  const t = (await cliente.query(
-    'SELECT id::text,nombre,prefijo,activo,creado_por::text FROM tipos_documentales WHERE id=$1 AND ambito_id=$2 FOR UPDATE',
-    [id, ambito],
-  )).rows[0];
+  const t = (
+    await cliente.query(
+      `SELECT
+  id::text,
+  nombre,
+  prefijo,
+  activo,
+  creado_por::text
+FROM
+  tipos_documentales
+WHERE
+  id = $1
+  AND ambito_id = $2
+FOR UPDATE`,
+      [id, ambito],
+    )
+  ).rows[0];
   if (!t) throw new HttpError(404, 'Tipo documental inexistente');
   if (t.creado_por !== identidad.id)
     throw new HttpError(403, 'Solo quien creó el tipo documental puede modificarlo');
@@ -158,11 +175,20 @@ async function tipoPropio(cliente: PoolClient, identidad: Actor, id: string) {
 export async function editarTipo(actor: string, id: string, datos: z.infer<typeof tipoEdicion>) {
   return operacion(actor, datos.motivo, async (cliente, identidad) => {
     const anterior = await tipoPropio(cliente, identidad, id);
-    if (datos.prefijo !== anterior.prefijo &&
-      (await cliente.query('SELECT 1 FROM documentos WHERE tipo_id=$1 LIMIT 1', [id])).rowCount)
-      throw new HttpError(409, 'El prefijo ya tiene documentos; puedes cambiar el nombre o desactivar el tipo');
-    await cliente.query('UPDATE tipos_documentales SET nombre=$2,prefijo=$3,activo=$4 WHERE id=$1',
-      [id, datos.nombre, datos.prefijo, datos.activo]);
+    if (
+      datos.prefijo !== anterior.prefijo &&
+      (await cliente.query('SELECT 1 FROM documentos WHERE tipo_id=$1 LIMIT 1', [id])).rowCount
+    )
+      throw new HttpError(
+        409,
+        'El prefijo ya tiene documentos; puedes cambiar el nombre o desactivar el tipo',
+      );
+    await cliente.query('UPDATE tipos_documentales SET nombre=$2,prefijo=$3,activo=$4 WHERE id=$1', [
+      id,
+      datos.nombre,
+      datos.prefijo,
+      datos.activo,
+    ]);
     await auditarConfiguracion(cliente, identidad, 'TIPO_DOCUMENTAL', id, 'EDITAR', anterior, datos);
     return { actualizado: true };
   });
@@ -171,10 +197,20 @@ export async function editarTipo(actor: string, id: string, datos: z.infer<typeo
 export async function eliminarTipo(actor: string, id: string, datos: z.infer<typeof motivoTipo>) {
   return operacion(actor, datos.motivo, async (cliente, identidad) => {
     const anterior = await tipoPropio(cliente, identidad, id);
-    if ((await cliente.query(`SELECT 1 FROM documentos WHERE tipo_id=$1
+    if (
+      (
+        await cliente.query(
+          `SELECT 1 FROM documentos WHERE tipo_id=$1
       UNION ALL SELECT 1 FROM correlativos_documentales WHERE tipo_id=$1
-      UNION ALL SELECT 1 FROM tipos_relevo WHERE origen_id=$1 OR tipo_id=$1 LIMIT 1`, [id])).rowCount)
-      throw new HttpError(409, 'El tipo tiene documentos o numeración reservada; desactívalo para conservar el historial');
+      UNION ALL SELECT 1 FROM tipos_relevo WHERE origen_id=$1 OR tipo_id=$1 LIMIT 1`,
+          [id],
+        )
+      ).rowCount
+    )
+      throw new HttpError(
+        409,
+        'El tipo tiene documentos o numeración reservada; desactívalo para conservar el historial',
+      );
     await cliente.query('DELETE FROM tipos_documentales WHERE id=$1', [id]);
     await auditarConfiguracion(cliente, identidad, 'TIPO_DOCUMENTAL', id, 'ELIMINAR', anterior, null);
     return { actualizado: true };
@@ -211,16 +247,17 @@ export async function crearUnidad(actor: string, datos: z.infer<typeof unidad>) 
   return operacion(actor, 'Crear ubicación', async (cliente, identidad) => {
     const titular = await propietario(cliente, identidad, datos.propietario_id),
       u = (
-        await cliente.query(
-          'SELECT oficina_id::text FROM usuarios WHERE id=$1 AND activo FOR SHARE',
-          [titular],
-        )
+        await cliente.query('SELECT oficina_id::text FROM usuarios WHERE id=$1 AND activo FOR SHARE', [
+          titular,
+        ])
       ).rows[0];
-    if (!u?.oficina_id)
-      throw new HttpError(409, 'La cuenta necesita oficina para tener ubicaciones');
+    if (!u?.oficina_id) throw new HttpError(409, 'La cuenta necesita oficina para tener ubicaciones');
     const t = (
       await cliente.query(
-        'INSERT INTO unidades_ubicacion(propietario_id,oficina_id,clase,nombre,padre_id) VALUES($1,$2,$3,$4,$5) RETURNING id::text',
+        `INSERT INTO unidades_ubicacion (propietario_id, oficina_id, clase, nombre, padre_id)
+  VALUES ($1, $2, $3, $4, $5)
+RETURNING
+  id::text`,
         [titular, u.oficina_id, datos.clase, datos.nombre, datos.padre_id],
       )
     ).rows[0];
@@ -233,7 +270,17 @@ export async function editarUnidad(actor: string, unidadId: string, datos: z.inf
   return operacion(actor, 'Editar ubicación', async (cliente, identidad) => {
     const u = (
       await cliente.query(
-        'SELECT id::text,propietario_id::text,clase,nombre,padre_id::text FROM unidades_ubicacion WHERE id=$1 FOR UPDATE',
+        `SELECT
+  id::text,
+  propietario_id::text,
+  clase,
+  nombre,
+  padre_id::text
+FROM
+  unidades_ubicacion
+WHERE
+  id = $1
+FOR UPDATE`,
         [unidadId],
       )
     ).rows[0];
@@ -241,10 +288,12 @@ export async function editarUnidad(actor: string, unidadId: string, datos: z.inf
     if (u.propietario_id !== identidad.id) exigirAdministracion(identidad);
     if (datos.propietario_id && datos.propietario_id !== u.propietario_id)
       throw new HttpError(400, 'No se transfiere la ubicación');
-    await cliente.query(
-      'UPDATE unidades_ubicacion SET clase=$2,nombre=$3,padre_id=$4 WHERE id=$1',
-      [unidadId, datos.clase, datos.nombre, datos.padre_id],
-    );
+    await cliente.query('UPDATE unidades_ubicacion SET clase=$2,nombre=$3,padre_id=$4 WHERE id=$1', [
+      unidadId,
+      datos.clase,
+      datos.nombre,
+      datos.padre_id,
+    ]);
     await auditarConfiguracion(cliente, identidad, 'UBICACION', unidadId, 'EDITAR', u, datos);
     return { actualizado: true };
   });
@@ -253,9 +302,8 @@ export async function editarUnidad(actor: string, unidadId: string, datos: z.inf
 export async function detalleOficina(actor: string, oficina: string) {
   return operacion(actor, 'Consulta de oficina', async (cliente, identidad) => {
     exigirAdministracion(identidad);
-    const o = (
-      await cliente.query('SELECT id::text,nombre,activa FROM oficinas WHERE id=$1', [oficina])
-    ).rows[0];
+    const o = (await cliente.query('SELECT id::text,nombre,activa FROM oficinas WHERE id=$1', [oficina]))
+      .rows[0];
     if (!o) throw new HttpError(404, 'Oficina inexistente');
     return { oficina: o };
   });
@@ -269,9 +317,7 @@ export async function cambiarActividadOficina(
   return operacion(actor, datos.motivo, async (cliente, identidad) => {
     exigirAdministracion(identidad);
     const o = (
-      await cliente.query('SELECT id::text,nombre,activa FROM oficinas WHERE id=$1 FOR UPDATE', [
-        oficina,
-      ])
+      await cliente.query('SELECT id::text,nombre,activa FROM oficinas WHERE id=$1 FOR UPDATE', [oficina])
     ).rows[0];
     if (!o) throw new HttpError(404, 'Oficina inexistente');
     if (['Dirección', 'Mesa de Partes'].includes(o.nombre) && !datos.activa)

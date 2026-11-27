@@ -1,3 +1,5 @@
+/** Archivo: Comprueba una entrada con su esquema y comunica qué campo no cumple las reglas.
+ */
 import type { ZodType } from 'zod';
 import { HttpError } from './HttpError.js';
 /** Valida sin devolver valores privados del cuerpo; informa rutas de campos y mensajes del esquema. */

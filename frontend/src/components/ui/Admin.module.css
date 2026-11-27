@@ -1,3 +1,6 @@
+/** Archivo: Reúne estilos compartidos de páginas, tablas, formularios, historial y selectores documentales.
+ */
+/* Estructura común de páginas y tarjetas administrativas/documentales. */
 .pagina {
   width: 100%;
   margin: auto;
@@ -38,6 +41,7 @@
   color: var(--texto-secundario);
   font-size: 0.9375rem;
 }
+/* Botones principales, secundarios y de acciones que requieren atención. */
 .boton,
 .secundario,
 .peligro {
@@ -116,6 +120,7 @@
   overflow-wrap: anywhere;
   text-align: center;
 }
+/* Dashboard: indicadores y actividad reciente. */
 .indicadores {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
@@ -171,6 +176,7 @@
   flex: 1 1 160px;
   min-width: 0;
 }
+/* Listado documental: búsqueda y filtros. */
 .filtrosDocumentos {
   display: grid;
   align-items: start;
@@ -225,6 +231,7 @@
   color: var(--texto-secundario);
   font-size: 0.75rem;
 }
+/* Formulario documental y listado de oficinas. */
 .grupoDestino {
   border: 0;
   margin: 0;
@@ -261,6 +268,7 @@
   gap: 12px;
   overflow-wrap: break-word;
 }
+/* Adjunto y previsualización durante el registro. */
 .seccionPdf {
   margin: 24px 0;
   padding-top: 24px;
@@ -310,6 +318,7 @@
   min-width: 0;
   width: 100%;
 }
+/* Tabla documental; en pantallas pequeñas cada registro se convierte en una tarjeta. */
 .paginaAmplia {
   width: 100%;
 }
@@ -401,6 +410,7 @@
     width: 100%;
   }
 }
+/* Árbol de ubicaciones y encabezado de auditoría. */
 .tituloAuditoria {
   margin-top: 24px !important;
 }
@@ -424,6 +434,7 @@
     padding-left: 12px;
   }
 }
+/* Fechas, actores y valores anteriores y posteriores del historial. */
 .historial {
   list-style: none;
   padding: 0;
@@ -464,6 +475,7 @@
   line-height: 1.7;
   white-space: pre-wrap;
 }
+/* Ajustes del listado y sus acciones para tabletas y teléfonos. */
 @media (max-width: 1050px) {
   .filtrosDocumentos {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -500,6 +512,7 @@
     overscroll-behavior-x: contain;
   }
 }
+/* Tablas compartidas: desplazamiento, cabeceras y estados de interacción. */
 .tabla {
   overflow-x: auto;
   max-width: 100%;
@@ -550,6 +563,7 @@
   border-radius: 9px;
   font-size: 0.9375rem;
 }
+/* Campos y acciones comunes de los formularios. */
 .campo {
   display: grid;
   min-width: 0;
@@ -1093,15 +1107,48 @@
 }
 
 /* Catálogo editable: acciones visibles con espacio táctil y ajuste natural en móvil. */
-.listaTipos { list-style: none; padding: 0; }
-.listaTipos li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; }
-.listaTipos li > div { min-width: 0; overflow-wrap: anywhere; }
-.listaTipos li p { color: var(--texto-secundario); margin: 6px 0 0; }
-.formularioTipo { border: 0; margin: 0; padding: 0; min-width: 0; }
-.formularioTipo legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.formularioTipo > label { margin: 16px 0; }
+.listaTipos {
+  list-style: none;
+  padding: 0;
+}
+.listaTipos li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+}
+.listaTipos li > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.listaTipos li p {
+  color: var(--texto-secundario);
+  margin: 6px 0 0;
+}
+.formularioTipo {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.formularioTipo legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.formularioTipo > label {
+  margin: 16px 0;
+}
 
-.selectorPersona { position: relative; min-width: 0; }
+/* Selectores accesibles de destinatario y ubicación. */
+.selectorPersona {
+  position: relative;
+  min-width: 0;
+}
 .resumenUbicaciones {
   display: flex;
   flex-wrap: wrap;
@@ -1120,13 +1167,19 @@
   border: 1px solid var(--borde-control);
   border-radius: var(--radio-control);
 }
-.coincidenciasPersona p, .coincidenciasPersona [role='option'] {
+.coincidenciasPersona p,
+.coincidenciasPersona [role='option'] {
   padding: 0.65rem;
   overflow-wrap: anywhere;
 }
-.coincidenciasPersona [role='option'] { cursor: pointer; min-height: 44px; }
+.coincidenciasPersona [role='option'] {
+  cursor: pointer;
+  min-height: 44px;
+}
 .coincidenciasPersona [role='option']:hover,
-.coincidenciasPersona [aria-selected='true'] { background: var(--superficie-secundaria); }
+.coincidenciasPersona [aria-selected='true'] {
+  background: var(--superficie-secundaria);
+}
 
 .modalidadRegistro {
   margin-block: 1rem;

@@ -1,3 +1,6 @@
+/** Archivo: Presenta el diálogo de confirmación y el fondo que separa el contenido de la página.
+ */
+/* Confirmación modal: contenido, acciones y fondo de bloqueo. */
 .dialogo {
   width: min(480px, calc(100% - 32px));
   border: 1px solid var(--borde);

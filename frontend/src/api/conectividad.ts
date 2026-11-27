@@ -1,3 +1,5 @@
+/** Archivo: Detecta solicitudes lentas y reintenta lecturas permitidas sin repetir escrituras.
+ */
 let lentas = 0;
 const listeners = new Set<() => void>();
 export const estadoConectividad = () => lentas > 0;
@@ -23,7 +25,7 @@ function observarDemora() {
     }
   };
 }
-/** A lo sumo dos intentos GET: 15 s y 50 s. Nunca repite escrituras, login ni operaciones restringidas. */
+/** A lo sumo dos intentos GET: 15 s y 50 s. Nunca repite escrituras, login ni solicitudes con señal explícita. */
 export async function solicitar(
   url: string,
   opciones: RequestInit,
@@ -32,8 +34,7 @@ export async function solicitar(
   const lectura =
     (opciones.method ?? 'GET').toUpperCase() === 'GET' &&
     !opciones.body &&
-    !opciones.signal &&
-    (!ruta.startsWith('/api/siseve') || ruta === '/api/siseve/acceso');
+    !opciones.signal;
   const terminar = observarDemora();
   try {
     for (let intento = 0; intento < (lectura ? 2 : 1); intento++) {

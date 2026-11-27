@@ -1,3 +1,5 @@
+/** Archivo: Identifica la cuenta de una petición protegida o responde que la sesión no es válida.
+ */
 import type { Request, Response, NextFunction } from 'express';
 import { autenticarToken } from '../modules/auth/auth.service.js';
 import type { UsuarioAuth } from '../modules/auth/auth.types.js';

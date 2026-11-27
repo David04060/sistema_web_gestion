@@ -1,17 +1,18 @@
+/** Archivo: Recibe solicitudes de configuración, valida sus campos y llama a las operaciones autorizadas.
+ */
 import { Router } from 'express';
 import { z } from 'zod';
 import { requiereAuth, type RequestAutenticada } from '../../middlewares/auth.middleware.js';
 import { validar } from '../../shared/http/validar.js';
 import { idSchema as id } from '../../shared/admin/admin.schema.js';
 import * as operaciones from './administracion.operaciones.js';
-import {opcionesRelevo,relevarOficina,relevoSchema} from './relevo.operaciones.js';
+import { opcionesRelevo, relevarOficina, relevoSchema } from './relevo.operaciones.js';
+/** Atiende solo los prefijos de configuración y deja pasar el resto de /api.
+ * Autentica antes de consultar; cada operación exige el perfil y alcance correspondientes.
+ * Los resultados excluyen hashes y las escrituras registran auditoría transaccional. */
 export const administracionRouter = Router();
 administracionRouter.use((req, _r, next) => {
-  if (
-    !/^\/(usuarios|roles|oficinas|tipos-documentales|ubicaciones)(\/|$)/.test(
-      req.path,
-    )
-  )
+  if (!/^\/(usuarios|roles|oficinas|tipos-documentales|ubicaciones)(\/|$)/.test(req.path))
     return next('router');
   next();
 });
@@ -20,8 +21,12 @@ administracionRouter.use(requiereAuth, (_q, res, next) => {
   next();
 });
 const actor = (req: RequestAutenticada) => req.usuario!.id;
-administracionRouter.get('/oficinas/:id/relevo',async(req:RequestAutenticada,res)=>res.json(await opcionesRelevo(actor(req),validar(id,req.params.id))));
-administracionRouter.post('/oficinas/:id/relevo',async(req:RequestAutenticada,res)=>res.json(await relevarOficina(actor(req),validar(id,req.params.id),validar(relevoSchema,req.body))));
+administracionRouter.get('/oficinas/:id/relevo', async (req: RequestAutenticada, res) =>
+  res.json(await opcionesRelevo(actor(req), validar(id, req.params.id))),
+);
+administracionRouter.post('/oficinas/:id/relevo', async (req: RequestAutenticada, res) =>
+  res.json(await relevarOficina(actor(req), validar(id, req.params.id), validar(relevoSchema, req.body))),
+);
 administracionRouter.get('/usuarios', async (req: RequestAutenticada, res) =>
   res.json(await operaciones.usuarios(actor(req), validar(operaciones.filtrosUsuarios, req.query))),
 );
@@ -72,9 +77,13 @@ administracionRouter.get('/roles/:id', async (req: RequestAutenticada, res) =>
   res.json(await operaciones.detalleRol(actor(req), validar(id, req.params.id))),
 );
 administracionRouter.put('/roles/:id', async (req: RequestAutenticada, res) =>
-  res.json(await operaciones.editarRol(
-    actor(req), validar(id, req.params.id), validar(operaciones.nombre, req.body),
-  )),
+  res.json(
+    await operaciones.editarRol(
+      actor(req),
+      validar(id, req.params.id),
+      validar(operaciones.nombre, req.body),
+    ),
+  ),
 );
 administracionRouter.get('/oficinas', async (req: RequestAutenticada, res) =>
   res.json(await operaciones.oficinas(actor(req))),
@@ -83,9 +92,7 @@ administracionRouter.get('/oficinas/:id', async (req: RequestAutenticada, res) =
   res.json(await operaciones.detalleOficina(actor(req), validar(id, req.params.id))),
 );
 administracionRouter.post('/oficinas', async (req: RequestAutenticada, res) =>
-  res
-    .status(201)
-    .json(await operaciones.crearOficina(actor(req), validar(operaciones.nombre, req.body))),
+  res.status(201).json(await operaciones.crearOficina(actor(req), validar(operaciones.nombre, req.body))),
 );
 administracionRouter.put('/oficinas/:id', async (req: RequestAutenticada, res) =>
   res.json(
@@ -109,17 +116,25 @@ administracionRouter.get('/tipos-documentales', async (req: RequestAutenticada, 
   res.json(await operaciones.tipos(actor(req))),
 );
 administracionRouter.post('/tipos-documentales', async (req: RequestAutenticada, res) =>
-  res
-    .status(201)
-    .json(await operaciones.crearTipo(actor(req), validar(operaciones.tipo, req.body))),
+  res.status(201).json(await operaciones.crearTipo(actor(req), validar(operaciones.tipo, req.body))),
 );
 administracionRouter.put('/tipos-documentales/:id', async (req: RequestAutenticada, res) =>
-  res.json(await operaciones.editarTipo(actor(req), validar(id, req.params.id),
-    validar(operaciones.tipoEdicion, req.body))),
+  res.json(
+    await operaciones.editarTipo(
+      actor(req),
+      validar(id, req.params.id),
+      validar(operaciones.tipoEdicion, req.body),
+    ),
+  ),
 );
 administracionRouter.delete('/tipos-documentales/:id', async (req: RequestAutenticada, res) =>
-  res.json(await operaciones.eliminarTipo(actor(req), validar(id, req.params.id),
-    validar(operaciones.motivoTipo, req.body))),
+  res.json(
+    await operaciones.eliminarTipo(
+      actor(req),
+      validar(id, req.params.id),
+      validar(operaciones.motivoTipo, req.body),
+    ),
+  ),
 );
 administracionRouter.get('/ubicaciones', async (req: RequestAutenticada, res) =>
   res.json(
@@ -130,9 +145,7 @@ administracionRouter.get('/ubicaciones', async (req: RequestAutenticada, res) =>
   ),
 );
 administracionRouter.post('/ubicaciones', async (req: RequestAutenticada, res) =>
-  res
-    .status(201)
-    .json(await operaciones.crearUnidad(actor(req), validar(operaciones.unidad, req.body))),
+  res.status(201).json(await operaciones.crearUnidad(actor(req), validar(operaciones.unidad, req.body))),
 );
 administracionRouter.put('/ubicaciones/:id', async (req: RequestAutenticada, res) =>
   res.json(

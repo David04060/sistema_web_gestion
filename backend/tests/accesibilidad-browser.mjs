@@ -8,14 +8,14 @@ export async function revisarContraste(page) {
             return n && n.length >= 3 ? n : null;
         };
         /** Convierte los canales sRGB a luminancia relativa para calcular la relación de contraste. */
-        const luminancia = c => c.slice(0, 3).map(/** Transforma cada entrada de c.slice(0, 3) para construir los datos que comprueba este escenario. */ /** Linealiza un canal sRGB para que su contribución a la luminancia sea proporcional a la luz. */ n => {
+        const luminancia = c => c.slice(0, 3).map(/** Linealiza un canal sRGB para que su contribución a la luminancia sea proporcional a la luz. */ n => {
             const x = n / 255;
             return x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4;
         }).reduce(/** Pondera los canales lineales con los coeficientes de luminancia relativa usados por el cálculo de contraste. */ (s, x, i) => s + x * [.2126, .7152, .0722][i], 0);
         const fallos = [];
         let comprobados = 0;
         for (const e of document.querySelectorAll('main h1,main h2,main h3,main p,main label,main button,main a,main td,main th,main dt,main dd,main small,main span,header button,nav a')) {
-            if (!e.getClientRects().length || e.closest('[disabled]') || !Array.from(e.childNodes).some(/** Selecciona las entradas de Array.from(e.childNodes) que cumplen el criterio requerido por la comprobación. */ /** Reconoce texto propio visible para excluir contenedores sin contenido textual de la medición de contraste. */ n => n.nodeType === Node.TEXT_NODE && n.textContent.trim()))
+            if (!e.getClientRects().length || e.closest('[disabled]') || !Array.from(e.childNodes).some(/** Reconoce texto propio visible para excluir contenedores sin contenido textual de la medición de contraste. */ n => n.nodeType === Node.TEXT_NODE && n.textContent.trim()))
                 continue;
             const css = getComputedStyle(e);
             const color = rgb(css.color);

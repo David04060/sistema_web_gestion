@@ -1,3 +1,6 @@
+/** Archivo: Da forma al acceso institucional, campos, mensajes y presentación en pantallas pequeñas.
+ */
+/* Acceso: composición institucional y selector de apariencia. */
 .pagina {
   min-height: 100svh;
   display: grid;
@@ -77,6 +80,7 @@
   color: var(--texto-secundario);
   font-weight: 400;
 }
+/* Formulario de autenticación y campos. */
 .tarjeta {
   padding: 64px 48px 24px;
   background: var(--superficie);
@@ -124,6 +128,7 @@
 .campo input[aria-invalid='true'] {
   border-color: var(--error);
 }
+/* Control de visibilidad de contraseña. */
 .contrasena {
   display: flex;
   border: 1px solid var(--borde-control);
@@ -163,6 +168,7 @@
 .ingresar:hover:not(:disabled) {
   background: var(--primario-hover);
 }
+/* Mensajes de respuesta y pie del formulario. */
 .error,
 .exito {
   padding: 12px;

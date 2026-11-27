@@ -1,101 +1,66 @@
-# Creación manual de cuentas iniciales
+# Cuentas iniciales
 
-No se ejecutó ningún INSERT de usuarios, ni se generó una cuenta de bootstrap.
-No se usa `.env.bootstrap-local`. Todo lo siguiente es una guía para el propietario.
+[Base de datos](README.md) · [Inicio](../README.md)
 
-## Hash compatible, sin guardar la contraseña
+El instalador crea roles técnicos y oficinas, pero ninguna cuenta. La primera cuenta debe ser Superadministrador; las restantes se crean desde la administración del sistema para aplicar validación, pertenencia y auditoría.
 
-En una terminal PowerShell interactiva:
+## Generar un hash
 
-```powershell
-Set-Location C:\Users\David\Sistema_Web_Final\backend
+Desde `backend/`, después de `npm ci`, ejecutar en una terminal interactiva:
+
+```sh
 npm run hash:local
 ```
 
-El comando pide la contraseña con entrada oculta; no la recibe por argumentos,
-no la guarda en un archivo y no crea usuarios. Copia únicamente el hash que
-devuelve para el INSERT manual. El formato es `scrypt$16384$8$1$sal$derivado`.
-El login existente verifica ese formato con comparación de tiempo constante.
-No pegues la contraseña ni el hash en el chat. No uses el comando con redirecciones
-de entrada, grabación de terminal ni argumentos que contengan la contraseña.
+El comando solicita la contraseña con entrada oculta, genera un hash `scrypt$16384$8$1$sal$derivado` y no crea usuarios. La contraseña debe tener entre 8 y 128 caracteres. Guardar el hash solo para el alta inicial en una sesión privada; no incluirlo en código, informes ni argumentos de consola.
 
-## Columnas de usuarios
+## Crear la primera cuenta con psql
 
-Obligatorias: `rol_id`, `nombre`, `apellido`, `nombre_usuario`, `contrasena_hash`.
-El ID es identidad. `activo` empieza true y `version_autenticacion` empieza 0.
-`email`, `telefono` y `oficina_id` admiten NULL. Usa nombre_usuario en minúsculas,
-único, de 3–80 caracteres alfanuméricos, punto, guion o guion bajo para coincidir
-con la validación del backend. La contraseña debe tener 8–128 caracteres.
-
-| Código de rol | ID sembrado | Oficina | Pertenencia |
-|---|---|---|---|
-| SUPERADMINISTRADOR | 1 | NULL | Ninguna; lectura global por rol |
-| ADMINISTRADOR | 2 | NULL | Ninguna |
-| DIRECTOR | 3 | ID de Dirección | Ámbito COMPARTIDO_DIRECCION |
-| SECRETARIA_DIRECCION | 4 | ID de Mesa de Partes | Ámbito COMPARTIDO_DIRECCION |
-| USUARIO | 5 | NULL o una oficina existente | Ámbito PERSONAL cuyo titular sea esa misma cuenta |
-
-Consulta los IDs reales antes de insertar:
+Conectar a la base recién instalada como propietario o cuenta de mantenimiento. Verificar el destino y los catálogos:
 
 ```sql
-SELECT current_database(), inet_server_addr(), inet_server_port();
-SELECT id,codigo FROM roles ORDER BY id;
-SELECT id,nombre FROM oficinas ORDER BY id;
-SELECT id,clase,titular_id FROM ambitos_registro ORDER BY id;
+SELECT current_database(), current_user, current_schema();
+SELECT id, codigo FROM public.roles ORDER BY id;
+SELECT count(*) FROM public.usuarios;
 ```
 
-La base debe ser `sistema_web_documental_final` local. No ejecutar en la anterior
-ni en producción. No uses un ID manual de usuario; usa el ID de `RETURNING id`.
-Un solo Superadministrador: el índice parcial rechazará una segunda cuenta.
-
-## Plantilla SQL manual
-
-Esta plantilla contiene marcadores que debes sustituir en tu editor privado;
-no es un archivo ejecutable ni se ejecutó como parte de la adaptación:
+En una sesión **interactiva de psql**, solicitar los valores y ejecutar el alta. `\prompt` evita incrustar datos personales en el archivo SQL del repositorio. El hash se trata como secreto aunque no sea la contraseña original.
 
 ```sql
+\prompt 'Nombre: ' nombre
+\prompt 'Apellido: ' apellido
+\prompt 'Usuario en minusculas: ' usuario
+\prompt 'Hash scrypt generado: ' hash
 BEGIN;
-INSERT INTO usuarios(rol_id,oficina_id,nombre,apellido,nombre_usuario,contrasena_hash)
-VALUES (<ID_ROL>, <ID_OFICINA_O_NULL>, '<NOMBRE>', '<APELLIDO>',
-        '<USUARIO_MINUSCULAS>', '<HASH_SCRYPT_GENERADO>')
-RETURNING id;
--- Completar la pertenencia correspondiente debajo antes de confirmar.
+INSERT INTO public.usuarios
+  (rol_id, nombre, apellido, nombre_usuario, contrasena_hash)
+SELECT id, :'nombre', :'apellido', :'usuario', :'hash'
+FROM public.roles WHERE codigo = 'SUPERADMINISTRADOR'
+RETURNING id, nombre_usuario;
 COMMIT;
+\unset hash
 ```
 
-Para Superadministrador y Administrador no insertes miembros_ambito.
-Para Dirección y Secretaría, dentro de la misma transacción y usando el ID devuelto:
+No asignar oficina ni pertenencia al Superadministrador. El índice parcial limita este rol a una cuenta. El nombre de usuario utiliza entre 3 y 80 caracteres alfanuméricos, punto, guion o guion bajo, en minúsculas. Ante un error dentro de la transacción, ejecutar `ROLLBACK` y corregir la entrada.
+
+## Pertenencias de las cuentas posteriores
+
+| Código estable | Oficina | Ámbito |
+|---|---|---|
+| `SUPERADMINISTRADOR` | Ninguna | Ninguno; lectura global por rol |
+| `ADMINISTRADOR` | Ninguna | Ninguno |
+| `DIRECTOR` | Dirección | Compartido con Secretaría |
+| `SECRETARIA_DIRECCION` | Mesa de Partes | Compartido con Dirección |
+| `USUARIO` | Opcional, según asignación | Personal, propio de esa cuenta |
+
+La API crea estas relaciones transaccionalmente. Dos usuarios de una oficina tienen ámbitos personales distintos. Una delegación no agrega al destinatario al ámbito del autor. Para comprobar las cuentas sin exponer hashes:
 
 ```sql
-INSERT INTO miembros_ambito(usuario_id,ambito_id)
-SELECT <ID_USUARIO>,id FROM ambitos_registro WHERE clase='COMPARTIDO_DIRECCION';
+SELECT u.id, u.nombre_usuario, r.codigo, o.nombre AS oficina, a.clase
+FROM public.usuarios u
+JOIN public.roles r ON r.id = u.rol_id
+LEFT JOIN public.oficinas o ON o.id = u.oficina_id
+LEFT JOIN public.miembros_ambito m ON m.usuario_id = u.id
+LEFT JOIN public.ambitos_registro a ON a.id = m.ambito_id
+ORDER BY u.id;
 ```
-
-Para cada Usuario, crea su ámbito personal y vincúlalo **en la misma transacción**:
-
-```sql
-WITH ambito AS (
-  INSERT INTO ambitos_registro(clase,titular_id)
-  VALUES('PERSONAL',<ID_USUARIO>) RETURNING id
-)
-INSERT INTO miembros_ambito(usuario_id,ambito_id)
-SELECT <ID_USUARIO>,id FROM ambito;
-```
-
-Dos Usuarios de la misma oficina necesitan ámbitos personales distintos. No
-insertes al destinatario de una delegación como miembro del ámbito del autor.
-Los triggers rechazan Dirección fuera de Dirección, Secretaría fuera de Mesa
-de Partes y cuentas administrativas con oficina documental.
-
-Verifica sin consultar hashes:
-
-```sql
-SELECT u.id,u.nombre_usuario,r.codigo,o.nombre oficina,m.ambito_id,a.clase,a.titular_id
-FROM usuarios u JOIN roles r ON r.id=u.rol_id
-LEFT JOIN oficinas o ON o.id=u.oficina_id
-LEFT JOIN miembros_ambito m ON m.usuario_id=u.id
-LEFT JOIN ambitos_registro a ON a.id=m.ambito_id ORDER BY u.id;
-```
-
-Después avisa que las cuentas están registradas. Las comprobaciones autenticadas
-se realizarán sobre esas cuentas y con las restricciones de datos que indiques.

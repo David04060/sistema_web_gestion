@@ -1,3 +1,6 @@
+/** Archivo: Ajusta el diálogo de exportación, sus campos de periodo y el estado de descarga.
+ */
+/* Diálogo de exportación Excel: periodo, acciones y progreso. */
 .dialogo {
   max-height: calc(100svh - 32px);
   overflow: auto;

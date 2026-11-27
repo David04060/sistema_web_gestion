@@ -1,3 +1,5 @@
+/** Archivo: Responde al inicio de sesión y a la consulta del perfil de la cuenta autenticada.
+ */
 import type { Request, Response, NextFunction } from 'express';
 import { loginSchema } from './auth.schema.js';
 import { iniciarSesion } from './auth.service.js';
@@ -25,7 +27,7 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
     next(error);
   }
 }
-/** Serializa el perfil validado por requiereAuth, sin asumir que el middleware siempre se ejecutó. */
+/** Devuelve el perfil público comprobado por requiereAuth; sin cuenta responde que debe iniciar sesión. */
 export function me(req: RequestAutenticada, res: Response): void {
   if (!req.usuario) {
     res.status(401).json({ error: 'Autenticación requerida' });

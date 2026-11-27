@@ -31,7 +31,7 @@ test('Administración: HTTP, SQL, auditoría y permisos reales con ROLLBACK auto
             assert.equal(o.status, 200);
             roles = r.body.roles;
             oficinas = o.body.oficinas;
-            assert.ok(roles.find(/** Selecciona las entradas de roles que cumplen el criterio requerido por la comprobación. */ /** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ rol => rol.nombre === 'Administrador').reservado);
+            assert.ok(roles.find(/** Localiza el rol real del catálogo utilizado por el actor o cuenta efímera de esta prueba. */ rol => rol.nombre === 'Administrador').reservado);
             for (const id of ['abc', '0', '9223372036854775808'])
                 assert.equal((await call(`/api/roles/${id}`)).status, 400);
         });
@@ -40,12 +40,12 @@ test('Administración: HTTP, SQL, auditoría y permisos reales con ROLLBACK auto
             const actual = consulta.body.usuario;
             const { nombre, apellido, nombre_usuario, email, telefono } = actual;
             const datos = { nombre, apellido, nombre_usuario, email, telefono,
-                rol_id: roles.find(/** Selecciona las entradas de roles que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Usuario').id, oficina_id: oficinas.find(/** Selecciona las entradas de oficinas que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => o.nombre === 'Dirección').id };
+                rol_id: roles.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Usuario').id, oficina_id: oficinas.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => o.nombre === 'Dirección').id };
             assert.equal((await call(`/api/usuarios/${sandbox.idInicial}/estado`, 'PATCH', { activo: false })).status, 409);
             assert.equal((await call(`/api/usuarios/${sandbox.idInicial}`, 'PUT', datos)).status, 409);
         });
         await t.test('crear una cuenta administradora de QA por el endpoint real y autenticar con scrypt', /** Verifica el caso «crear una cuenta administradora de QA por el endpoint real y autenticar con scrypt»; una aserción fallida invalida este resultado. */ async () => {
-            const res = await call('/api/usuarios', 'POST', { ...usuarioDatos(roles.find(/** Selecciona las entradas de roles que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Administrador').id, null), nombre_usuario: `adminqa_${sufijo}`, email: null, contrasena: secreto });
+            const res = await call('/api/usuarios', 'POST', { ...usuarioDatos(roles.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Administrador').id, null), nombre_usuario: `adminqa_${sufijo}`, email: null, contrasena: secreto });
             assert.equal(res.status, 201);
             adminQa = res.body.usuario;
             const login = await call('/api/auth/login', 'POST', { identificador: adminQa.nombre_usuario, contrasena: secreto }, '');
@@ -71,15 +71,15 @@ test('Administración: HTTP, SQL, auditoría y permisos reales con ROLLBACK auto
             assert.equal((await call('/api/oficinas', 'POST', { nombre: ` oficina   qa ${sufijo} ` })).status, 409);
             assert.equal((await call(`/api/oficinas/${oficinaCreada.id}`, 'PUT', { nombre: `Oficina editada ${sufijo}` })).status, 200);
             assert.equal((await call(`/api/oficinas/${oficinaCreada.id}`)).body.usuarios.length, 0);
-            const direccion = oficinas.find(/** Selecciona las entradas de oficinas que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => o.nombre === 'Dirección');
+            const direccion = oficinas.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => o.nombre === 'Dirección');
             assert.equal((await call(`/api/oficinas/${direccion.id}`, 'PUT', { nombre: 'Otro nombre' })).status, 409);
         });
         await t.test('rechazar asignaciones incompatibles, contraseña corta y campos internos', /** Verifica el caso «rechazar asignaciones incompatibles, contraseña corta y campos internos»; una aserción fallida invalida este resultado. */ async () => {
-            const usuarioRol = roles.find(/** Selecciona las entradas de roles que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Usuario');
+            const usuarioRol = roles.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Usuario');
             for (const cuerpo of [
                 { ...usuarioDatos(usuarioRol.id, null), contrasena: secreto },
-                { ...usuarioDatos(roles.find(/** Selecciona las entradas de roles que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Director(a)').id, oficinaCreada.id), contrasena: secreto },
-                { ...usuarioDatos(roles.find(/** Selecciona las entradas de roles que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Secretaria de Dirección').id, oficinaCreada.id), contrasena: secreto },
+                { ...usuarioDatos(roles.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Director(a)').id, oficinaCreada.id), contrasena: secreto },
+                { ...usuarioDatos(roles.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Secretaria de Dirección').id, oficinaCreada.id), contrasena: secreto },
                 { ...usuarioDatos(usuarioRol.id, oficinaCreada.id), contrasena: 'corta' },
                 { ...usuarioDatos(usuarioRol.id, oficinaCreada.id), contrasena: secreto, version_autenticacion: 999 },
             ])
@@ -103,9 +103,9 @@ test('Administración: HTTP, SQL, auditoría y permisos reales con ROLLBACK auto
         await t.test('duplicados de cuenta/correo, edición personal y asignaciones válidas', /** Verifica el caso «duplicados de cuenta/correo, edición personal y asignaciones válidas»; una aserción fallida invalida este resultado. */ async () => {
             assert.equal((await call('/api/usuarios', 'POST', { ...usuarioDatos(rolCreado.id, oficinaCreada.id), contrasena: secreto })).status, 409);
             assert.equal((await call('/api/usuarios', 'POST', { ...usuarioDatos(rolCreado.id, oficinaCreada.id), nombre_usuario: `otro_${sufijo}`, email: cuenta.email.toUpperCase(), contrasena: secreto })).status, 409);
-            const datos = { ...usuarioDatos(roles.find(/** Selecciona las entradas de roles que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Director(a)').id, oficinas.find(/** Selecciona las entradas de oficinas que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => o.nombre === 'Dirección').id), nombre: 'Nombre editado', telefono: '555000' };
+            const datos = { ...usuarioDatos(roles.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Director(a)').id, oficinas.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => o.nombre === 'Dirección').id), nombre: 'Nombre editado', telefono: '555000' };
             assert.equal((await call(`/api/usuarios/${cuenta.id}`, 'PUT', datos)).status, 200);
-            const secretaria = { ...datos, rol_id: roles.find(/** Selecciona las entradas de roles que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Secretaria de Dirección').id, oficina_id: oficinas.find(/** Selecciona las entradas de oficinas que cumplen el criterio requerido por la comprobación. */ /** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => o.nombre === 'Mesa de Partes').id };
+            const secretaria = { ...datos, rol_id: roles.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ r => r.nombre === 'Secretaria de Dirección').id, oficina_id: oficinas.find(/** Busca por denominación institucional el registro del catálogo que necesita el escenario QA. */ o => o.nombre === 'Mesa de Partes').id };
             assert.equal((await call(`/api/usuarios/${cuenta.id}`, 'PUT', secretaria)).status, 200);
         });
         await t.test('usuario ordinario no administra ninguno de los tres módulos', /** Verifica el caso «usuario ordinario no administra ninguno de los tres módulos»; una aserción fallida invalida este resultado. */ async () => {
@@ -140,7 +140,7 @@ test('Administración: HTTP, SQL, auditoría y permisos reales con ROLLBACK auto
             assert.ok(rows.every(/** Exige que todas las filas cumplan el alcance del escenario «auditoría identifica al actor y nunca contiene hashes o contraseña literal». */  row => row.usuario_actor_id === adminQa.id));
             assert.equal(JSON.stringify(rows).includes(secreto), false);
             assert.equal(JSON.stringify(rows).includes('contrasena_hash'), false);
-            assert.ok(rows.some(/** Selecciona las entradas de rows que cumplen el criterio requerido por la comprobación. */ /** Extrae del resultado de la operación los valores que contrastan las aserciones del escenario QA. */ row => row.campos_modificados.contrasena?.modificada));
+            assert.ok(rows.some(/** Extrae del resultado de la operación los valores que contrastan las aserciones del escenario QA. */ row => row.campos_modificados.contrasena?.modificada));
         });
     }
     finally {

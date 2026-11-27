@@ -1,3 +1,5 @@
+/** Archivo: Lee y guarda la preferencia de apariencia; usa la del sistema si no hay elección válida.
+ */
 export type Tema = 'claro' | 'oscuro';
 export const claveTema = 'paillardelle-tema';
 

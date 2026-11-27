@@ -1,6 +1,8 @@
+/** Archivo: Busca documentos autorizados para relacionarlos con un nuevo registro.
+ */
 import { useEffect, useId, useState } from 'react';
 import { api } from '../../../api/documental';
-type DocumentoElegible={id:string;ruta:string};
+type DocumentoElegible = { id: string; ruta: string };
 import styles from '../../../components/ui/Admin.module.css';
 
 export function SelectorDocumentoOrigen({
@@ -27,26 +29,43 @@ export function SelectorDocumentoOrigen({
   const clave = JSON.stringify([token, q, apertura]);
   const [respuesta, setRespuesta] = useState<{
     clave: string;
-    datos?: {documentos:DocumentoElegible[];hay_mas:boolean};
+    datos?: { documentos: DocumentoElegible[]; hay_mas: boolean };
   }>();
 
   useEffect(() => {
     if (!activo) return;
     const control = new AbortController();
-    const espera = setTimeout(() => {
-      void api.origenes(token, q, control.signal).then(r=>({documentos:r.documentos.map(d=>({id:d.id,ruta:d.codigo_visible+' — '+d.asunto})),hay_mas:r.hay_mas})).then(
-        (datos) => { if (!control.signal.aborted) setRespuesta({ clave, datos }); },
-        () => { if (!control.signal.aborted) setRespuesta({ clave }); },
-      );
-    }, q ? 200 : 0);
-    return () => { clearTimeout(espera); control.abort(); };
+    const espera = setTimeout(
+      () => {
+        void api
+          .origenes(token, q, control.signal)
+          .then((r) => ({
+            documentos: r.documentos.map((d) => ({ id: d.id, ruta: d.codigo_visible + ' — ' + d.asunto })),
+            hay_mas: r.hay_mas,
+          }))
+          .then(
+            (datos) => {
+              if (!control.signal.aborted) setRespuesta({ clave, datos });
+            },
+            () => {
+              if (!control.signal.aborted) setRespuesta({ clave });
+            },
+          );
+      },
+      q ? 200 : 0,
+    );
+    return () => {
+      clearTimeout(espera);
+      control.abort();
+    };
   }, [activo, clave, token, q]);
 
   const actual = activo && respuesta?.clave === clave ? respuesta : undefined;
   const documentos = actual?.datos?.documentos ?? [];
-  const opciones = !q && (opcional || valor)
-    ? [{ id: '', ruta: opcional ? 'Sin documento de origen' : 'Limpiar selección' }, ...documentos]
-    : documentos;
+  const opciones =
+    !q && (opcional || valor)
+      ? [{ id: '', ruta: opcional ? 'Sin documento de origen' : 'Limpiar selección' }, ...documentos]
+      : documentos;
   const opcionActiva = activo && opciones[indice] ? listaId + '-' + indice : undefined;
   useEffect(() => {
     if (opcionActiva) document.getElementById(opcionActiva)?.scrollIntoView({ block: 'nearest' });
@@ -80,7 +99,7 @@ export function SelectorDocumentoOrigen({
           maxLength={250}
           placeholder="Buscar por código o asunto"
           title={!activo ? valor?.ruta : undefined}
-          value={activo ? texto : valor?.ruta ?? (opcional ? 'Sin documento de origen' : '')}
+          value={activo ? texto : (valor?.ruta ?? (opcional ? 'Sin documento de origen' : ''))}
           disabled={deshabilitado}
           onFocus={abrir}
           onClick={() => {
@@ -102,9 +121,13 @@ export function SelectorDocumentoOrigen({
               e.preventDefault();
               abrir();
               if (activo && opciones.length)
-                setIndice((i) => e.key === 'ArrowDown'
-                  ? Math.min(i + 1, opciones.length - 1)
-                  : i < 0 ? opciones.length - 1 : Math.max(i - 1, 0));
+                setIndice((i) =>
+                  e.key === 'ArrowDown'
+                    ? Math.min(i + 1, opciones.length - 1)
+                    : i < 0
+                      ? opciones.length - 1
+                      : Math.max(i - 1, 0),
+                );
             } else if (e.key === 'Enter' && activo) {
               e.preventDefault();
               if (opciones[indice]) elegir(opciones[indice]);
@@ -133,9 +156,7 @@ export function SelectorDocumentoOrigen({
             <p role="alert">No se pudo buscar. Vuelve a escribir o pulsa el campo para reintentar.</p>
           )}
           {actual?.datos && !documentos.length && (
-            <p role="status">
-              {q ? 'No se encontraron documentos.' : 'No tienes documentos disponibles.'}
-            </p>
+            <p role="status">{q ? 'No se encontraron documentos.' : 'No tienes documentos disponibles.'}</p>
           )}
           {actual?.datos?.hay_mas && (
             <p role="status">Hay más documentos. Escribe para acotar la búsqueda.</p>

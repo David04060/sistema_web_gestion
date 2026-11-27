@@ -1,3 +1,6 @@
+/** Archivo: Dibuja marcadores de espera para listas, detalles, gráficos y PDF.
+ */
+/* Carga accesible: anuncio de estado y formas sin contenido real. */
 .carga {
   margin: 20px 0;
   min-width: 0;
@@ -33,6 +36,7 @@
 .bloque i:last-child {
   width: 65%;
 }
+/* Variantes para lista, dashboard, detalle y visor PDF. */
 .lista .bloque {
   grid-template-columns: 1fr 2fr 1fr;
   align-items: center;

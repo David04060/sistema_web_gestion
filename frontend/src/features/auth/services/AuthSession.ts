@@ -1,3 +1,6 @@
+/** Archivo: Controla acceso, vencimiento y recuperación de sesión y descarta respuestas de operaciones
+ * anteriores.
+ */
 import { ApiError, suscribirNoAutorizado } from '../../../api/client';
 import { iniciarSesion, obtenerMiUsuario } from '../api/auth.api';
 import type { LoginInput, Usuario } from '../schemas/auth.schema';
@@ -36,9 +39,9 @@ const inicial: EstadoAuth = {
   revisionAcceso: 0,
 };
 /**
- * Única autoridad de sesión del cliente. El servidor decide la validez; exp solo
- * acota su duración local. Las dependencias por defecto usan Fetch y sessionStorage
- * reales. Las pruebas pueden inyectarlas sin cambiar el comportamiento productivo.
+ * Coordina la sesión de la interfaz; el servidor decide si sigue siendo válida.
+ * El campo exp del comprobante indica cuándo vence. Las pruebas sustituyen red,
+ * almacenamiento y reloj para reproducir errores sin usar cuentas reales.
  */
 export class AuthSession {
   private estado: EstadoAuth = inicial;
@@ -53,7 +56,8 @@ export class AuthSession {
   };
   private deps: Dependencias;
   /**
-   * Configura los adaptadores de API, almacenamiento, reloj y temporizadores; las pruebas pueden sustituirlos sin cambiar las reglas de sesión.
+   * Configura los adaptadores de API, almacenamiento, reloj y temporizadores; las pruebas pueden
+   * sustituirlos sin cambiar las reglas de sesión.
    * @param deps - Adaptadores opcionales para API, almacenamiento, reloj y temporizadores.
    */
   constructor(deps: Partial<Dependencias> = {}) {
@@ -62,16 +66,7 @@ export class AuthSession {
       storage: almacenamientoSesion,
       ahora: Date.now,
       // Las funciones nativas de Window necesitan su contexto; no se invocan como métodos de deps.
-      /**
-       * Programa la comprobación de vencimiento mediante la función global para conservar el contexto nativo del navegador.
-       * @param accion - Función que debe ejecutarse al vencer el temporizador.
-       * @param ms - Demora en milisegundos hasta ejecutar la comprobación.
-       */
       programar: (accion, ms) => setTimeout(accion, ms),
-      /**
-       * Cancela el temporizador mediante la función global para conservar el contexto nativo del navegador.
-       * @param id - Identificador del temporizador nativo que deja de observarse.
-       */
       cancelar: (id) => clearTimeout(id),
       ...deps,
     };
@@ -86,8 +81,7 @@ export class AuthSession {
     };
   };
   /**
-   * Sustituye la instantánea de sesión y notifica a los consumidores de useSyncExternalStore.
-   * @param estado - Nueva instantánea o estado que debe publicarse.
+   * Guarda el nuevo estado y avisa a React para que actualice los componentes suscritos.
    */
   private publicar(estado: EstadoAuth): void {
     this.estado = estado;
@@ -108,7 +102,8 @@ export class AuthSession {
     if (this.temporizador) this.deps.cancelar(this.temporizador);
   }
   /**
-   * Cancela el temporizador y elimina el JWT de la pestaña; devuelve un mensaje si el navegador impide limpiar el almacenamiento.
+   * Cancela el temporizador y elimina el JWT de la pestaña; devuelve un mensaje si el navegador impide
+   * limpiar el almacenamiento.
    */
   private limpiar(): string {
     if (this.temporizador) this.deps.cancelar(this.temporizador);
@@ -120,7 +115,8 @@ export class AuthSession {
     }
   }
   /**
-   * Incrementa la versión de operación para descartar respuestas anteriores y publica una sesión anónima después de limpiar el JWT.
+   * Incrementa la versión de operación para descartar respuestas anteriores y publica una sesión anónima
+   * después de limpiar el JWT.
    * @param mensaje - Mensaje público que acompaña la transición.
    */
   private invalidar(mensaje: string): void {
@@ -140,20 +136,18 @@ export class AuthSession {
     this.invalidar('Has cerrado sesión correctamente.');
   };
   /**
-   * Publica un perfil ya verificado y programa el cierre en el vencimiento original; rechaza fechas vencidas sin ampliar la sesión.
+   * Publica un perfil ya verificado y programa el cierre en el vencimiento original; rechaza fechas
+   * vencidas sin ampliar la sesión.
    * @param token - JWT de la sesión vigente; no se envía en la URL.
-   * @param usuario - Cuenta o ID al que corresponde la operación.
+   * @param usuario - Perfil de la cuenta que acaba de verificar el servidor.
    * @param venceEn - Vencimiento absoluto original expresado en milisegundos.
    */
   private aceptar(token: string, usuario: Usuario, venceEn: number): void {
-    if (this.estado.sesion?.token === token)
-      venceEn = Math.min(venceEn, this.estado.sesion.venceEn);
-    if (venceEn <= this.deps.ahora())
-      throw new Error('Tu sesión ha vencido. Inicia sesión nuevamente.');
+    if (this.estado.sesion?.token === token) venceEn = Math.min(venceEn, this.estado.sesion.venceEn);
+    if (venceEn <= this.deps.ahora()) throw new Error('Tu sesión ha vencido. Inicia sesión nuevamente.');
     if (this.temporizador) this.deps.cancelar(this.temporizador);
     const anterior = this.estado.sesion;
-    const igual =
-      anterior?.token === token && JSON.stringify(anterior.usuario) === JSON.stringify(usuario);
+    const igual = anterior?.token === token && JSON.stringify(anterior.usuario) === JSON.stringify(usuario);
     this.ultimaVerificacion = this.deps.ahora();
     this.publicar({
       ...inicial,
@@ -189,15 +183,11 @@ export class AuthSession {
   recuperar = (): Promise<void> => {
     // focus/pageshow/visibilitychange pueden coincidir. Solo se comparte la solicitud
     // pendiente de la misma operación; logout, vencimiento o login invalidan su versión.
-    if (this.recuperacionEnCurso?.version === this.operacion)
-      return this.recuperacionEnCurso.promesa;
+    if (this.recuperacionEnCurso?.version === this.operacion) return this.recuperacionEnCurso.promesa;
     const promesa = this.recuperarAhora();
     const pendiente = { version: this.operacion, promesa };
     this.recuperacionEnCurso = pendiente;
-    /**
-     * Retira únicamente la referencia a esta recuperación terminada, tanto si resolvió como si falló.
-     * Una recuperación posterior conserva su propia referencia; aquí no se elimina el JWT ni se altera su vencimiento.
-     */
+    // Una solicitud antigua que termina después no debe borrar la nueva recuperación.
     const limpiar = () => {
       if (this.recuperacionEnCurso === pendiente) this.recuperacionEnCurso = undefined;
     };
@@ -205,7 +195,8 @@ export class AuthSession {
     return promesa;
   };
   /**
-   * Lee el JWT, valida su vencimiento y consulta /me antes de publicar contenido privado; descarta respuestas antiguas y diferencia rechazo de credenciales de indisponibilidad de red.
+   * Lee el JWT, valida su vencimiento y consulta /me antes de publicar contenido privado; descarta
+   * respuestas antiguas y diferencia rechazo de credenciales de indisponibilidad de red.
    */
   private recuperarAhora = async (): Promise<void> => {
     const anterior = this.estado.sesion;
@@ -239,8 +230,7 @@ export class AuthSession {
     // El token también vence si /me queda pendiente o falla: nunca se aplaza por la red.
     this.temporizador = this.deps.programar(
       () => {
-        if (version === this.operacion)
-          this.invalidar('Tu sesión ha vencido. Inicia sesión nuevamente.');
+        if (version === this.operacion) this.invalidar('Tu sesión ha vencido. Inicia sesión nuevamente.');
       },
       Math.min(venceEn - this.deps.ahora(), 2147483647),
     );
@@ -281,8 +271,7 @@ export class AuthSession {
       if (version !== this.operacion) return;
       if (perfil.usuario.id !== respuesta.usuario.id)
         throw new Error('No se pudo validar el usuario de la sesión.');
-      if (venceEn <= this.deps.ahora())
-        throw new Error('Tu sesión ha vencido. Inicia sesión nuevamente.');
+      if (venceEn <= this.deps.ahora()) throw new Error('Tu sesión ha vencido. Inicia sesión nuevamente.');
       this.deps.storage.guardar(respuesta.token);
       this.aceptar(respuesta.token, perfil.usuario, venceEn);
     } catch (fallo) {
@@ -291,8 +280,7 @@ export class AuthSession {
       this.publicar({
         ...inicial,
         estado: 'anonimo',
-        error:
-          errorStorage || (fallo instanceof Error ? fallo.message : 'No se pudo iniciar sesión.'),
+        error: errorStorage || (fallo instanceof Error ? fallo.message : 'No se pudo iniciar sesión.'),
         mensaje: '',
       });
     }

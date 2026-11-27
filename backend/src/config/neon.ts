@@ -1,3 +1,5 @@
+/** Archivo: Comprueba el host, la base, la cuenta y el cifrado de las conexiones remotas.
+ */
 /** Identidad mínima obtenida por SQL; no incluye secretos ni datos documentales. */
 export interface IdentidadPostgres {
   base_datos: string;

@@ -1,3 +1,5 @@
+/** Archivo: Compone menú, cuenta y contenido de la página para escritorio y móvil.
+ */
 import { Suspense } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/hooks/useAuth';
@@ -27,7 +29,10 @@ function GrupoEnlaces({ enlaces, cerrar }: { enlaces: Enlace[]; cerrar: () => vo
     </NavLink>
   ));
 }
-/** Compone navegación y cuenta activa; delega el modal al hook y conserva los límites de error y carga por ruta. */
+/**
+ * Compone navegación y cuenta activa; delega el modal al hook y conserva los límites de error y
+ * carga por ruta.
+ */
 /** Compone la navegación del perfil actual; el servidor sigue decidiendo el acceso a cada dato. */
 export function AdminLayout() {
   const auth = useAuth();
@@ -36,8 +41,8 @@ export function AdminLayout() {
   const usuario = auth.sesion!.usuario;
   const enlaces = enlacesPerfil(usuario.rol, usuario.oficina_id);
   const titulo =
-    enlaces.find((e) => location.pathname === e.ruta || location.pathname.startsWith(e.ruta + '/'))
-      ?.titulo ?? 'Gestión documental';
+    enlaces.find((e) => location.pathname === e.ruta || location.pathname.startsWith(e.ruta + '/'))?.titulo ??
+    'Gestión documental';
   const marca = (
     <div className={styles.marca}>
       <img

@@ -1,7 +1,12 @@
+/** Archivo: Conecta las consultas con React y descarta resultados de una cuenta, permiso o filtro anterior.
+ */
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../features/auth/hooks/useAuth';
 import { Consulta } from './consulta';
-/** Separa primera carga y actualización; descarta resultados ante cambios de cuenta, permisos o filtros. */
+/** Separa primera carga y actualización; descarta resultados de otra cuenta, permiso o filtro.
+ * @param consultar Callback estable que obtiene los datos y rechaza errores de transporte.
+ * @param opciones Controla habilitación y conservación de resultados de una consulta restringida.
+ * @returns Datos vigentes, estados de carga/error y recarga; la limpieza invalida respuestas tardías. */
 export function useConsulta<T>(
   consultar: () => Promise<T>,
   opciones: { restringida?: boolean; habilitada?: boolean } = {},

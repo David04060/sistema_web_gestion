@@ -1,57 +1,58 @@
-# Frontend — Sistema Web Documental
+# Frontend documental
 
-Interfaz de la I.E. Enrique Paillardelle. Ver las decisiones comunes en [../README.md](../README.md).
+Aplicación React para consultar y gestionar documentos según los permisos de la API. [Volver al proyecto](../README.md).
 
-## Tecnologías y configuración
+## Instalación y configuración
 
-React, TypeScript, Vite, Tailwind CSS 4, React Router, React Hook Form, Zod, Fetch API, CSS Modules y ESLint con soporte de TypeScript.
+Requiere Node.js 24.x y npm. Desde este directorio:
 
-React Router implementa navegación y guards. React Hook Form y Zod validan el formulario y los contratos de la API. Fetch API y CSS Modules no requieren paquetes adicionales.
+```sh
+npm ci
+npm run dev
+```
 
-`src/index.css`, importado por `main.tsx`, centraliza los estilos globales. `@tailwindcss/vite` procesa las capas de tema y utilidades de Tailwind 4. Se omite Preflight para conservar los estilos existentes. Esta configuración básica no necesita `tailwind.config.js`.
+Abrir [localhost:5173](http://localhost:5173). `vite.config.ts` fija ese puerto y reenvía `/api` a `http://127.0.0.1:3000`. Iniciar el backend en otra terminal.
 
-Los estilos de una funcionalidad deben permanecer en su módulo, normalmente en `styles/`. Los archivos `*.module.css` permiten encapsular clases mediante el soporte incluido en Vite y sus tipos.
+La variable pública de conexión es **`VITE_API_URL`**. Copiar `.env.example` como `.env` cuando sea necesario: vacía para el proxy local o el origen HTTPS de Render para producción, sin `/api` y sin barra final. Vite la incorpora al compilar; cambiarla exige volver a construir y publicar. Nunca colocar credenciales PostgreSQL, JWT ni R2 en variables `VITE_*`.
 
 ## Comandos
 
-Ejecutar desde `frontend/`:
+| Comando desde `frontend/` | Uso |
+|---|---|
+| `npm run dev` | Servidor Vite de desarrollo |
+| `npm run lint` | ESLint de fuentes y herramientas |
+| `npm run typecheck` | Verifica proyectos TypeScript; genera metadatos incrementales ignorados |
+| `npm test` | Contratos, rutas, sesión, PDF, dashboard, tema y Excel |
+| `npm run build` | TypeScript y Vite; salida `dist/` |
+| `npm run preview` | Inspección local del build; no es servidor de producción |
 
-- `npm ci`: reproducir las versiones del archivo de bloqueo.
-- `npm run dev`: iniciar Vite; `/api` se redirige a `http://localhost:3000`.
-- `npm run typecheck`: comprobar la aplicación y la configuración de Vite.
-- `npm run lint`: ejecutar ESLint; las advertencias también hacen fallar el comando.
-- `npm run build`: comprobar TypeScript y compilar para producción.
-- `npm run preview`: previsualizar una compilación existente.
-- `npm test`: verificar contratos y errores HTTP con respuestas simuladas, sin conexión a PostgreSQL.
+La suite predeterminada usa `node:test`; no abre navegador ni conecta con producción. Las respuestas de las pruebas se generan en memoria; el renderizado de HTML no sustituye una comprobación visual en navegador.
 
-## Estado actual
+## Estructura
 
-`App.tsx` compone `routes/AppRoutes.tsx`. `features/auth/` contiene API, esquemas/tipos, gestor de sesión, contexto/proveedor, hook, página y CSS Module del login. Las pantallas de los diez módulos se cargan por rutas con React.lazy y Suspense. Dashboard consume estadísticas autorizadas calculadas en PostgreSQL; Documentos, Movimientos y SíseVe conservan sus flujos y contratos existentes.
+- `src/main.tsx`: entrada de React y estilos generales.
+- `src/routes/AppRoutes.tsx`: rutas, carga diferida y barreras de sesión y perfil.
+- `src/api/client.ts`: transporte JSON y descargas, validación Zod y notificación de 401. `conectividad.ts` acota esperas y reintentos; `documental.ts` agrupa solicitudes y `documental.schemas.ts` valida sus respuestas.
+- `src/features/auth`: formulario, contexto, hook y máquina de sesión.
+- `src/features/documentos`: listado, alta, edición, detalle, destinatarios, ubicaciones, PDF y Excel.
+- `src/features/dashboard`: indicadores y gráficos por perfil.
+- `src/features/usuarios`: administración vigente de cuentas, oficinas, roles, tipos y relevos.
+- `src/features/ubicaciones`: árbol personal de estantes y archivadores.
+- `src/components/layout` y `src/components/ui`: navegación, diálogos, carga y controles comunes.
+- `src/hooks` y `src/lib`: consultas cancelables, fechas, tema, perfiles e historial.
+- `src/index.css`: tokens, tipografía y reglas globales. `*.module.css` limita estilos por componente.
+- `public/`: iconos, IBM Plex Sans y licencias.
 
-`src/api/client.ts` se ocupa exclusivamente del transporte y valida las respuestas con el esquema proporcionado por cada funcionalidad. La compilación completa ya pasa: el login importa `features/auth/styles/Login.module.css`, con estilos reales y responsivos.
+El frontend usa permisos del detalle para mostrar acciones; API y PostgreSQL los comprueban al escribir. Ocultar un botón no autoriza una operación. `useConsulta` descarta resultados de otra cuenta, filtro o revisión de acceso.
 
-`features/roles/`, `features/oficinas/` y `features/usuarios/` implementan la administración
-de los catálogos y las cuentas con API real. `components/layout/AdminLayout.tsx`
-centraliza navegación y cierre de sesión. Las rutas administrativas tienen un guard
-de rol y Express vuelve a comprobar los permisos. Los catálogos de los selectores
-proceden de PostgreSQL. Ver [documentación de administración](../docs/ADMINISTRACION.md).
+## Estilos y publicación
 
-La sesión persiste en sessionStorage guardando solo el JWT y se recupera mediante /me antes de mostrar contenido privado. La entrada `/` redirige según la sesión y `/login` permanece pública. El layout privado contiene Dashboard, Documentos, Movimientos, Tipos documentales y Ubicaciones; SíseVe exige además autorización individual y clave por operación. Usuarios, Roles, Oficinas y la administración de SíseVe tienen guard de Administrador. Las rutas inexistentes muestran 404. Al llegar a exp o recibir 401 autenticado, se limpia la sesión; la recarga no extiende los 900 segundos del backend. Los fallos de red bloquean la pantalla privada y permiten reintentar.
+Los comentarios de sección identifican estructura, contenido, estados, tema y adaptación de pantalla. El orden de reglas conserva la cascada. Las fuentes se sirven localmente con sus licencias.
 
-sessionStorage es accesible ante XSS y normalmente dura la sesión de la pestaña. Cerrar sesión elimina el token local, pero no lo revoca en Express. No hay cookies, sesiones de servidor ni renovación. Ver [documentación de autenticación y resultados reales](../docs/AUTENTICACION.md).
+Cloudflare Pages publica `dist/`, con raíz `frontend` y comando `npm ci && npm run build`. Configurar `VITE_API_URL` antes de compilar. La [guía manual](../documentacion-publica/DESPLIEGUE_MANUAL.md) explica CORS, rutas SPA y R2.
 
-## Tipos documentales y ubicaciones
+## Atención documental (26/11/2026)
 
-`features/tipos-documentales` contiene catálogo, detalles y formulario administrativo.
-`features/ubicaciones` contiene listados, detalles y formularios de estantes y archivadores.
-Ambos utilizan API real, Zod, RHF, el gestor de sesión y los CSS Modules compartidos.
-Las opciones de asignación provienen de PostgreSQL y el servidor aplica permisos.
-Ver [documentación técnica](../docs/TIPOS_UBICACIONES.md).
+El detalle incorpora `AtencionDocumento`, con acciones individuales, correcciones propias, visor PDF y recorrido cronológico. El contrato se valida en `features/documentos/api/atencion.api.ts`; el servidor concede las capacidades. Se conserva el selector «Delegado a mí» y el formulario habitual de relacionados.
 
-## Mantenimiento
-
-La separación por módulos, los archivos de las pantallas y formularios de ubicaciones,
-el hook del menú móvil y las reglas que deben conservarse están descritos en
-[la guía de arquitectura del código](../docs/ARQUITECTURA_CODIGO.md).
-Desde la raíz del proyecto, `node frontend/scripts/auditar-documentacion.mjs --check`
-comprueba que las implementaciones propias tengan documentación descriptiva.
+Revisión local con backend en 3000 y Vite en 5173. También puede revisarse una compilación con `npm run build` y `npm run preview -- --port 5174`; conserva el proxy API local. Resultados concretos y límites en `docs/ATENCION_SEGUIMIENTO_DOCUMENTAL_20261126.md`.

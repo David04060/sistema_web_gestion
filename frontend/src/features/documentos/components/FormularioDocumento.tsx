@@ -1,3 +1,7 @@
+/**
+ * Archivo: Guarda el registro o su corrección y después carga el PDF opcional sin duplicar
+ * documentos ante un fallo.
+ */
 import { useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -56,8 +60,9 @@ export function FormularioDocumento({
     [ocupado, setOcupado] = useState(false),
     [error, setError] = useState(''),
     [creado, setCreado] = useState<string>();
-  const cambiar = (k: keyof typeof datos, v: string | boolean) =>
-    setDatos((d) => ({ ...d, [k]: v }));
+  const cambiar = (k: keyof typeof datos, v: string | boolean) => setDatos((d) => ({ ...d, [k]: v }));
+  /** Envía el alta o la corrección validada por la API y después carga el PDF opcional.
+   * Si falla el adjunto, conserva el ID creado para que el reintento no duplique el documento. */
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
     if (enviando.current) return;
@@ -120,21 +125,20 @@ export function FormularioDocumento({
         <ArchivoPdf token={token} id={creado} />
       </>
     );
+  // Secretaría solo puede delegar al registrar si conserva inicialmente el documento en Mesa de Partes.
   const conservarEnMesa = perfil.rol === 'Secretaria de Dirección' && (delegar || datos.conservar_en_mesa);
-  const mostrarUbicacion = !!perfil.oficina_id && (perfil.rol === 'Usuario' || conservarEnMesa || perfil.rol === 'Director(a)');
+  const mostrarUbicacion =
+    !!perfil.oficina_id && (perfil.rol === 'Usuario' || conservarEnMesa || perfil.rol === 'Director(a)');
   const ubicable =
     !(delegar && perfil.rol === 'Director(a)') &&
     !!perfil.oficina_id &&
-    (perfil.rol === 'Usuario' ||
-      (conservarEnMesa) ||
-      perfil.rol === 'Director(a)');
+    (perfil.rol === 'Usuario' || conservarEnMesa || perfil.rol === 'Director(a)');
   return (
     <>
       <section className={styles.tarjeta}>
         {origen && (
           <p>
-            Documento de origen:{' '}
-            <Link to={'/documentos/' + origen.id}>{origen.codigo_visible}</Link>
+            Documento de origen: <Link to={'/documentos/' + origen.id}>{origen.codigo_visible}</Link>
           </p>
         )}
         <form onSubmit={(e) => void guardar(e)}>
@@ -153,11 +157,7 @@ export function FormularioDocumento({
                 </label>
                 <label className={styles.campo}>
                   Tipo documental
-                  <select
-                    required
-                    value={datos.tipo_id}
-                    onChange={(e) => cambiar('tipo_id', e.target.value)}
-                  >
+                  <select required value={datos.tipo_id} onChange={(e) => cambiar('tipo_id', e.target.value)}>
                     <option value="">Seleccionar tipo</option>
                     {opciones.tipos.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -222,7 +222,11 @@ export function FormularioDocumento({
               </details>
             )}
             {!id && (
-              <details name={grupoAcciones} className={styles.campoCompleto} onToggle={(e) => setDelegar(e.currentTarget.open)}>
+              <details
+                name={grupoAcciones}
+                className={styles.campoCompleto}
+                onToggle={(e) => setDelegar(e.currentTarget.open)}
+              >
                 <summary>Delegar</summary>
                 {delegar && (
                   <DestinoDocumental token={token} valor={destino} cambiar={setDestino} opciones={opciones} />
@@ -286,11 +290,7 @@ export function FormularioDocumento({
           )}
           <div className={styles.acciones}>
             <button className={styles.boton} disabled={ocupado || (!id && !opciones.tipos.length)}>
-              {ocupado
-                ? 'Guardando…'
-                : id
-                  ? 'Guardar corrección'
-                  : 'Registrar documento'}
+              {ocupado ? 'Guardando…' : id ? 'Guardar corrección' : 'Registrar documento'}
             </button>
             <Link className={styles.secundario} to={id ? '/documentos/' + id : '/documentos'}>
               Cancelar

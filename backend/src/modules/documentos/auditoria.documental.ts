@@ -1,3 +1,5 @@
+/** Archivo: Selecciona cambios comprensibles del historial sin mostrar claves de archivos ni datos internos.
+ */
 import { etiquetasSituacion } from '../../shared/documental/presentacion.js';
 const etiquetas: Record<string, string> = {
   ...etiquetasSituacion,
@@ -17,6 +19,8 @@ export function datosAuditoria(anterior: unknown, posterior: unknown) {
     tipo_nombre_guardado: 'Tipo documental',
     clasificacion: 'Clasificación',
     asunto: 'Asunto',
+    descripcion: 'Descripción de la acción',
+    pdf_nombre: 'PDF de la acción',
     remitente: 'Remitente',
     observaciones: 'Observaciones',
     situacion: 'Situación',
@@ -26,11 +30,7 @@ export function datosAuditoria(anterior: unknown, posterior: unknown) {
     ruta: 'Ubicación',
   };
   const texto = (v: unknown) =>
-    typeof v === 'string' && v.trim()
-      ? (etiquetas[v] ?? v)
-      : typeof v === 'number'
-        ? String(v)
-        : null;
+    typeof v === 'string' && v.trim() ? (etiquetas[v] ?? v) : typeof v === 'number' ? String(v) : null;
   return Object.entries(campos).flatMap(([k, campo]) => {
     const antes = texto(anteriorPublico[k]),
       despues = texto(posteriorPublico[k]);

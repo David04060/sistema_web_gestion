@@ -1,3 +1,5 @@
+/** Archivo: Comparte conexiones PostgreSQL y verifica el destino de cada conexión nueva.
+ */
 import { validarUrlLocal, verificarConexionLocal } from './local.js';
 import pg, { type ClientBase } from 'pg';
 import { env, perfilNeon } from './env.js';
@@ -12,9 +14,11 @@ export const pool = new Pool({
   connectionString: env.DATABASE_URL,
   verify: (cliente, listo) => {
     void verificarConexionConfigurada(cliente).then(
-      (identidad) => { identidades.set(cliente, identidad); listo(); },
-      (error) =>
-        listo(error instanceof Error ? error : new Error('Identidad PostgreSQL incorrecta')),
+      (identidad) => {
+        identidades.set(cliente, identidad);
+        listo();
+      },
+      (error) => listo(error instanceof Error ? error : new Error('Identidad PostgreSQL incorrecta')),
     );
   },
   max: 10,
@@ -24,7 +28,7 @@ export const pool = new Pool({
 pool.on('error', (error) => {
   console.error('Error inesperado del pool PostgreSQL:', { tipo: error.name });
 });
-/** Verifica cada conexi�n nueva contra su destino expl�cito antes de permitir consultas del sistema. */
+/** Verifica cada conexión nueva contra su destino explícito antes de permitir consultas del sistema. */
 async function verificarConexionConfigurada(cliente: ClientBase) {
   if (!perfilNeon) return verificarConexionLocal(cliente, env.DATABASE_URL);
   const identidad = (
@@ -50,16 +54,13 @@ async function verificarConexionConfigurada(cliente: ClientBase) {
   await cliente.query('SELECT usuario_id,ambito_id FROM miembros_ambito LIMIT 0');
   return { ...identidad, tls };
 }
-/** Verifica el destino configurado antes de abrir HTTP; nunca imprime cadenas de conexi�n. */
+/** Verifica el destino configurado antes de abrir HTTP; nunca imprime cadenas de conexión. */
 export async function verificarBaseDatos() {
   const cliente = await pool.connect();
   try {
     const identidad = identidades.get(cliente);
     if (!identidad) throw new Error('Conexión PostgreSQL sin verificar');
-    console.log(
-      perfilNeon ? 'PostgreSQL Neon verificado:' : 'PostgreSQL local verificado:',
-      identidad,
-    );
+    console.log(perfilNeon ? 'PostgreSQL Neon verificado:' : 'PostgreSQL local verificado:', identidad);
     return identidad;
   } finally {
     cliente.release();

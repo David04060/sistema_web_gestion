@@ -1,6 +1,9 @@
+/** Archivo: Define tipografía local, colores de ambos temas, controles básicos y ajustes de accesibilidad.
+ */
 @layer theme, base, components, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
+/* Tipografía local: IBM Plex Sans y licencia en public/fuentes. */
 @font-face {
   font-family: 'IBM Plex Sans';
   src: url('/fuentes/ibm-plex-sans/normal.ttf') format('truetype');
@@ -8,6 +11,7 @@
   font-weight: 100 700;
   font-display: swap;
 }
+/* Tokens del tema claro y valores compartidos por los módulos. */
 :root {
   --primario: #075a91;
   --primario-hover: #064574;
@@ -71,6 +75,7 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
+/* Tema oscuro: sustituye tokens sin cambiar clases de componentes. */
 :root[data-tema='oscuro'] {
   --primario: #69c2ff;
   --primario-hover: #a3daff;
@@ -119,6 +124,7 @@
   --sombra: 0 2px 8px #0000004d;
   color-scheme: dark;
 }
+/* Base: dimensiones, controles, foco y lectura. */
 *,
 *::before,
 *::after {
@@ -216,6 +222,7 @@ button:active:not(:disabled),
 a:active {
   filter: brightness(0.94);
 }
+/* Integración global de gráficos, diálogos y bloqueo de scroll. */
 .recharts-wrapper {
   font-family: var(--fuente-interfaz);
 }
@@ -236,6 +243,7 @@ dialog {
 body:has(dialog[open]) {
   overflow: hidden;
 }
+/* Accesibilidad: respetar la preferencia de movimiento reducido. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

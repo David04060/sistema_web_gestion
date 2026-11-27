@@ -1,9 +1,10 @@
+/** Archivo: Representa un rechazo previsto con su estado HTTP y un mensaje apto para mostrar en pantalla.
+ */
 /** Error previsto del dominio; solo su mensaje público se envía al cliente. */
 export class HttpError extends Error {
   /**
-   * Crea un error de negocio con estado y mensaje público para que el middleware HTTP lo traduzca sin exponer detalles internos.
-   * @param status - Estado HTTP o cero si no se recibió una respuesta.
-   * @param mensaje - Mensaje público que acompaña la transición.
+   * Conserva un estado HTTP y un mensaje seguro para responder desde la API.
+   * Por ejemplo, 403 rechaza una acción sin permiso y 409 indica un conflicto.
    */
   constructor(
     public readonly status: number,

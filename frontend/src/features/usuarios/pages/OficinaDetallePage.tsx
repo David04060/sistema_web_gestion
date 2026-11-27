@@ -1,3 +1,6 @@
+/** Archivo: Presenta actividad y responsable de una oficina y permite un relevo o cambio de actividad
+ * autorizado.
+ */
 import { useCallback, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { RelevoOficina } from '../components/RelevoOficina';
@@ -69,9 +72,7 @@ export function OficinaDetallePage() {
                 {o.activa ? 'Activa' : 'Inactiva'}
               </span>
             </p>
-            {o.activa && (
-              <RelevoOficina token={token} oficina={id} alCambiar={consulta.recargar} />
-            )}
+            {o.activa && <RelevoOficina token={token} oficina={id} alCambiar={consulta.recargar} />}
             {institucional(o.nombre) && (
               <p className={styles.aviso}>
                 Dirección y Mesa de Partes conservan su nombre y permanecen activas.

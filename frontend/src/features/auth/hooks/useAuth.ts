@@ -1,3 +1,5 @@
+/** Archivo: Permite a los componentes leer la sesión y ejecutar acceso, recuperación y cierre.
+ */
 import { useContext, useSyncExternalStore } from 'react';
 import { AuthContext } from '../context/AuthContext';
 /** Suscribe cada consumidor al mismo estado; usar exclusivamente dentro de AuthProvider. */
