@@ -271,7 +271,7 @@ recursos binarios se distribuyen completos; no se editan como código de aplicac
 - [integridad.schema.sql](../database/schema/integridad.schema.sql): Permisos, protección histórica, relevo y retención de PDF.
 
 Estos archivos permiten consultar las definiciones; no se ejecutan como pasos de instalación.
-`database/changes/` contiene los scripts numerados 001 a 015 para adaptar bases existentes.
+`database/changes/` contiene los scripts numerados 001 a 016 para adaptar bases existentes. La 016 incorpora atención y delegaciones sucesivas.
 La [guía SQL](../database/README.md) explica cómo distinguirlos del instalador vigente.
 
 ### database/instalacion
@@ -310,7 +310,7 @@ La [guía SQL](../database/README.md) explica cómo distinguirlos del instalador
 - [registrar_oficina_documento.sql](../database/instalacion/funciones/registrar_oficina_documento.sql): Vincula el alta al periodo de oficina vigente del autor para permitir consulta histórica tras relevo.
 - [registrar_oficina_tipo.sql](../database/instalacion/funciones/registrar_oficina_tipo.sql): Conserva la oficina de origen de un tipo documental para mapear tipos en relevos posteriores.
 - [sincronizar_periodo_oficina.sql](../database/instalacion/funciones/sincronizar_periodo_oficina.sql): Al cambiar actividad u oficina, cierra el periodo anterior y abre el vigente; conserva trazabilidad de titularidad.
-- [validar_delegacion.sql](../database/instalacion/funciones/validar_delegacion.sql): Antes de insertar, verifica actor, situación y destino compatible. No permite delegaciones sucesivas ni cambio de ámbito.
+- [validar_delegacion.sql](../database/instalacion/funciones/validar_delegacion.sql): Antes de insertar, verifica actor, situación y destino compatible. Permite delegaciones sucesivas conservando autoría y ámbito.
 - [validar_documento_actualizacion.sql](../database/instalacion/funciones/validar_documento_actualizacion.sql): Protege identidad y clasificación; exige permiso, motivo y transición válida y actualiza revisión/fecha.
 - [validar_estado_final.sql](../database/instalacion/funciones/validar_estado_final.sql): Trigger diferido: comprueba al confirmar que situación y hechos de delegación/ubicación sean coherentes.
 - [validar_mapeo_tipo_relevo.sql](../database/instalacion/funciones/validar_mapeo_tipo_relevo.sql): Valida que origen, destino y ámbito del tipo correspondan al relevo; evita asociaciones ajenas.

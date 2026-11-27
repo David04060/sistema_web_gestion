@@ -402,7 +402,7 @@ Los índices de claves primarias y restricciones UNIQUE se crean además de los 
 ## Ampliación vigente del 26/11/2026
 
 Migración `changes/016-atencion-seguimiento.sql`; instalación modular en `instalacion/atencion.sql`.
-Referencia de detalle: `atencion.schema.sql` y `docs/ATENCION_SEGUIMIENTO_DOCUMENTAL_20261126.md`.
+Referencia de detalle: `atencion.schema.sql` y la sección de atención en `database/README.md`.
 
 - `delegaciones_documento.id`: identidad y nueva clave primaria. `documento_id` deja de ser único; se conserva la FK.
 - Índices `delegaciones_documento_recorrido`, `delegaciones_documento_destinatario`, `acciones_documento_recorrido`, `acciones_pdf_cargas_pendientes`.

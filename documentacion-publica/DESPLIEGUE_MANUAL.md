@@ -157,7 +157,7 @@ La aplicación no incluye `404.html` en la raíz pública: Pages sirve `index.ht
 
 - Abrir Pages, iniciar sesión y consultar dashboard/listado según perfil.
 - Comprobar que las peticiones `/api` salen hacia Render y no hacia Pages. Un login que recibe HTML o 405 puede indicar un build sin `VITE_API_URL`.
-- Probar con datos de ensayo en una instalación de evaluación: registro, destinatario de solo lectura, ubicación, PDF, historial y Excel. No reutilizar documentos productivos como fixtures.
+- Probar con datos de ensayo en una instalación de evaluación: registro, permisos diferenciados del destinatario, delegaciones sucesivas, acciones propias, recorrido, ubicación, PDF y Excel. En producción usar comprobaciones de solo lectura y datos existentes; no crear fixtures para verificar una publicación.
 - Verificar CORS tanto de la API como de R2. Si se cambia dominio, actualizar ambos y volver a publicar si cambió el origen API.
 - El mantenimiento PDF corre al iniciar y cada cinco minutos mientras el servicio esté activo. Una instancia suspendida no procesa tareas hasta reanudarse.
 - Conservar respaldos privados de cada instalación y comprobar su restauración antes de aplicar cambios de estructura.

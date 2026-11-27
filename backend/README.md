@@ -74,10 +74,10 @@ Véanse la [estructura completa](../documentacion-publica/ESTRUCTURA.md) y el
 
 La consulta se decide en PostgreSQL: `documento_consultable_con_delegacion` combina la lectura ordinaria con `documento_delegado_por`, que reconoce a la cuenta destinataria activa y elegible. `lecturaSQL` y `documento()` en `shared/documental/nucleo.ts` aplican esa decisión al listado y al detalle. Un destino manual no concede acceso.
 
-`permisos()` calcula las acciones por separado y las escrituras las vuelven a exigir con revisión vigente. El destinatario puede consultar datos y PDF; ese acceso deshabilita corregir, anular, ubicar, gestionar PDF, relacionar y volver a delegar. `documentos.consultas.ts` restringe también historial y auditoría. Véase el [flujo completo](../documentacion-publica/FUNCIONAMIENTO.md#registrar-delegar-y-consultar-como-destinatario).
+`permisos()` calcula las acciones por separado y las escrituras las vuelven a exigir con revisión vigente. El destinatario puede consultar datos y PDF, registrar acciones, corregir sus propias acciones, volver a delegar y seleccionar el documento como origen de uno relacionado según su perfil. La delegación no concede corrección, anulación, ubicación ni gestión del PDF principal. `documentos.consultas.ts` restringe también historial y auditoría; el recorrido de atención tiene su propia lectura autorizada. Véase el [flujo completo](../documentacion-publica/FUNCIONAMIENTO.md#registrar-delegar-y-consultar-como-destinatario).
 
 ## Atención y seguimiento documental (26/11/2026)
 
 `modules/documentos/atencion.documental.ts` contiene acciones propias, PDF opcional y recorrido. Reutiliza `operacion`, el adaptador R2 y la cola `pdf_objetos_pendientes`; `permisos()` separa atención de edición del documento original. Aplicar la migración 016 antes de iniciar esta API.
 
-Pruebas focalizadas después de compilar: `node scripts/probar-backend-aislado.mjs atencion`. La variante `atencion-monolitica` comprueba el instalador SQL alternativo. Ambas usan exclusivamente PostgreSQL temporal. Informe: `docs/ATENCION_SEGUIMIENTO_DOCUMENTAL_20261126.md`.
+Pruebas focalizadas después de compilar: `node scripts/probar-backend-aislado.mjs atencion`. La variante `atencion-monolitica` comprueba el instalador SQL alternativo. Ambas usan exclusivamente PostgreSQL temporal.

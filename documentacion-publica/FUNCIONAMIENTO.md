@@ -169,7 +169,7 @@ y auditoría; cambiar una contraseña o actividad invalida sesiones anteriores.
 `GraficosDashboard.tsx` elige el alcance, `GraficosDistribucion.tsx` presenta distribuciones
 y barras, y `SerieMensual.tsx` muestra meses. Las tablas utilizan las mismas cifras del gráfico.
 
-## Acciones realizadas y recorrido — ampliación local del 26/11/2026
+## Acciones realizadas y recorrido
 
 Cada destinatario registrado agrega acciones independientes con descripción obligatoria y un PDF opcional de hasta 15 MiB. Usuario, oficina si existe y fecha/hora son automáticos. Solo el autor corrige su acción, con control de revisión; la corrección no crea otra acción y conserva antes/después en la auditoría existente.
 
@@ -177,4 +177,4 @@ Dirección y los destinatarios consultan un recorrido cronológico con registro 
 
 El buscador de documento de origen incluye exclusivamente registros propios y delegados al usuario, aunque haya vuelto a delegarlos. Cada relacionado conserva sus permisos; el origen directo y el origen del grupo se distinguen visualmente cuando son visibles. Registrar un relacionado no altera el origen ni agrega eventos al recorrido.
 
-No se añaden estados de atención, cierre, recepción física, aceptación ni rechazo. La publicación de esta ampliación sigue pendiente de revisión y autorización del usuario. Evidencia y límites en `docs/ATENCION_SEGUIMIENTO_DOCUMENTAL_20261126.md`.
+No se añaden estados de atención, cierre, recepción física, aceptación ni rechazo. Las instalaciones existentes necesitan la migración 016 antes de iniciar la API de esta versión; véase [Base de datos](../database/README.md).
